@@ -49,7 +49,15 @@ export default defineConfig({
   },
   fmt: {
     // wrangler types による生成物はフォーマット対象外
-    ignorePatterns: ["worker-configuration.d.ts"],
+    ignorePatterns: [
+      "worker-configuration.d.ts",
+      // MathJax/highlight.js のプリレンダー生成物
+      "src/components/blog/rendered.ts",
+      // sample.html からの verbatim 移植 (差分追跡のため整形しない)
+      "src/components/blog/blog.css",
+      // 移植元のソースアーティファクト
+      "sample.html",
+    ],
   },
   server: {
     allowedHosts: true,

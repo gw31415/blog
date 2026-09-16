@@ -27,7 +27,7 @@ export default extendConfig(baseConfig, ({ command }) => ({
           cloudflarePagesAdapter({
             ssg: {
               include: ["/*"],
-              origin: "https://qwik-on-viteplus.gw31415.workers.dev",
+              origin: "https://blog.gw31415.workers.dev",
             },
           }),
         ],
