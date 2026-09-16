@@ -8,6 +8,7 @@
  * 数式・コードは SSR 済み HTML (rendered.ts) を埋め込むだけなので、
  * MathJax / highlight.js の CDN スクリプトやクライアント実行は不要。
  */
+/* oxlint-disable qwik/jsx-img -- 記事写真は紙面幅に合わせた単一サイズで用意し、明示的な寸法・lazy指定でそのまま配信する。 */
 import { component$ } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
 
@@ -19,6 +20,7 @@ import {
   BlogPaper,
   CodeBlock,
   DetailsNote,
+  Figure,
   InlineMath,
   MathBlock,
   ProseP,
@@ -176,6 +178,10 @@ export default component$(() => {
           でもリンク色が透明化しない。
         </AsideNote>
 
+        <Figure caption="図一　文字だけで作った簡素な図版。写真や画像も同じ余白設計で置ける。">
+          <div class="figure-mark">秋</div>
+        </Figure>
+
         <DetailsNote summary="リンク表現について">
           通常時は赤褐色の文字 + 下線。 マウスホバー時はさらに濃い赤褐色になり、
           ごく薄い背景色を加える。 キーボードフォーカス時には破線のアウトラインも表示する。
@@ -190,6 +196,17 @@ export default component$(() => {
           道路の端に伸びる影が長くなり、建物の壁は少し赤みを帯びて見える。
           夏ならまだ一日の途中だった時間が、いつの間にか夕方として感じられるようになっている。
         </ProseP>
+
+        <Figure caption="図二　夕暮れに霞む谷。写真は紙面に馴染むよう彩度を落としている。">
+          <img
+            src="/images/dusk-hills.jpg"
+            alt="夕光に霞む山並み"
+            width="1200"
+            height="715"
+            loading="lazy"
+            decoding="async"
+          />
+        </Figure>
 
         <ProseP>
           けれども、このページだけは残る。

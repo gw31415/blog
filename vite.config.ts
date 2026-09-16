@@ -53,7 +53,7 @@ export default defineConfig({
       "worker-configuration.d.ts",
       // MathJax/highlight.js のプリレンダー生成物
       "src/components/blog/rendered.ts",
-      // sample.html からの verbatim 移植 (差分追跡のため整形しない)
+      // sample.html 起源の記事スタイル (整形対象外。罫線色のみ濃度調整済み)
       "src/components/blog/blog.css",
       // 移植元のソースアーティファクト
       "sample.html",

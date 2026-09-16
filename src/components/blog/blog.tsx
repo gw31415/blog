@@ -306,6 +306,26 @@ export const TableWrap = component$(() => {
   );
 });
 
+interface FigureProps {
+  caption: string;
+}
+
+/**
+ * 図版。枠内には図・写真など任意の内容を置く。
+ * 写真は CSS で紙面に馴染む調子に整えられる。
+ */
+export const Figure = component$((props: FigureProps) => {
+  return (
+    <figure>
+      <div class="figure-field">
+        <Slot />
+      </div>
+
+      <figcaption>{props.caption}</figcaption>
+    </figure>
+  );
+});
+
 interface BlogFooterProps {
   left: string;
   right: string;

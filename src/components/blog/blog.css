@@ -7,7 +7,16 @@
       --faint: #918778;
 
       --red: #87594f;
-      --rule: rgb(112 65 58 / 18%);
+      --rule: rgb(112 65 58 / 32%);
+
+      /*
+       * 構造線の濃さ三段階。方眼（～16%）より明確に濃くし、
+       * 表・引用・区切りなどが背景と混ざらないようにする。
+       * 色相は方眼・アクセントと同系で雰囲気を維持。
+       */
+      --line-soft: rgb(112 65 58 / 30%);
+      --line: rgb(112 65 58 / 40%);
+      --line-strong: rgb(112 65 58 / 55%);
       --highlight: rgb(166 124 83 / 15%);
 
       /*
@@ -244,7 +253,7 @@
       padding: 0.24em 0.58em;
 
       border:
-        1px solid rgb(112 65 58 / 22%);
+        1px solid var(--line);
 
       font-size: 10px;
       letter-spacing: 0.12em;
@@ -255,7 +264,7 @@
       height: 1px;
 
       background:
-        rgb(112 65 58 / 24%);
+        var(--line);
     }
 
     h1 {
@@ -562,11 +571,11 @@
 
       border-top:
         1px dashed
-        rgb(112 65 58 / 19%);
+        var(--line);
 
       border-bottom:
         1px dashed
-        rgb(112 65 58 / 19%);
+        var(--line);
 
       text-align: center;
 
@@ -642,7 +651,7 @@
 
       border-left:
         1px solid
-        rgb(112 65 58 / 25%);
+        var(--line);
 
       line-height: 1.3;
 
@@ -675,7 +684,7 @@
 
       border:
         1px solid
-        rgb(121 79 65 / 14%);
+        rgb(121 79 65 / 26%);
 
       border-radius: 2px;
 
@@ -704,11 +713,11 @@
 
       border:
         1px solid
-        rgb(112 65 58 / 18%);
+        var(--line-soft);
 
       border-left:
         3px double
-        rgb(112 65 58 / 38%);
+        var(--line-strong);
     }
 
     .code-caption {
@@ -726,7 +735,7 @@
 
       border-bottom:
         1px dashed
-        rgb(112 65 58 / 18%);
+        var(--line-soft);
 
       font-family: var(--sans);
       font-size: 9px;
@@ -937,7 +946,7 @@
 
       border-bottom:
         1px dashed
-        rgb(112 65 58 / 13%);
+        var(--line-soft);
     }
 
     th {
@@ -947,6 +956,89 @@
 
     tbody tr:last-child td {
       border-bottom: 0;
+    }
+
+    /* ─────────────────────────────
+       Figure / Caption
+       ───────────────────────────── */
+
+    figure {
+      margin:
+        calc(var(--body-leading) * 2)
+        0;
+    }
+
+    .figure-field {
+      min-height: 120px;
+
+      display: grid;
+      place-items: center;
+
+      padding: 20px;
+
+      background:
+        repeating-linear-gradient(
+          -45deg,
+          rgb(117 74 62 / 3%) 0,
+          rgb(117 74 62 / 3%) 1px,
+          transparent 1px,
+          transparent 7px
+        );
+
+      border:
+        1px solid
+        var(--line-soft);
+    }
+
+    .figure-mark {
+      width: 68px;
+      aspect-ratio: 1;
+
+      display: grid;
+      place-items: center;
+
+      color: var(--red);
+
+      border:
+        1px solid
+        rgb(135 89 79 / 42%);
+
+      border-radius: 50%;
+
+      font-family: var(--serif);
+      font-size: 24px;
+
+      transform: rotate(-5deg);
+    }
+
+    /*
+     * 写真は紙面に馴染むよう彩度を落とし、わずかに暖色へ寄せる。
+     */
+    .figure-field img {
+      display: block;
+
+      width: 100%;
+      height: auto;
+
+      filter:
+        sepia(38%)
+        saturate(82%)
+        contrast(96%)
+        brightness(102%);
+    }
+
+    figcaption {
+      margin-top: 0.55em;
+
+      color: var(--muted);
+
+      font-family: var(--sans);
+      font-size: 10px;
+      line-height: 1.45;
+
+      letter-spacing: 0.04em;
+
+      text-align: center;
     }
 
     /* ─────────────────────────────
@@ -963,11 +1055,11 @@
 
       border-top:
         1px solid
-        rgb(112 65 58 / 15%);
+        var(--line-soft);
 
       border-bottom:
         1px solid
-        rgb(112 65 58 / 15%);
+        var(--line-soft);
 
       font-family: var(--sans);
 
@@ -990,11 +1082,11 @@
 
       border-top:
         1px dashed
-        rgb(112 65 58 / 20%);
+        var(--line);
 
       border-bottom:
         1px dashed
-        rgb(112 65 58 / 20%);
+        var(--line);
     }
 
     summary {
@@ -1027,7 +1119,7 @@
 
       border-top:
         1px dashed
-        rgb(112 65 58 / 24%);
+        var(--line);
     }
 
     .page-footer {
@@ -1043,7 +1135,7 @@
 
       border-top:
         1px solid
-        rgb(112 65 58 / 14%);
+        var(--line-soft);
 
       font-family: var(--sans);
 
