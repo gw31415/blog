@@ -1,0 +1,20 @@
+overrides:
+  vite: npm:@voidzero-dev/vite-plus-core@0.3.0
+
+# vite-plus-core implements the Vite 8 API but publishes as 0.3.0. Resolve all
+# Vite peers to that implementation and accept its own package version.
+peerDependencyRules:
+  allowedVersions:
+    vite: 0.3.0
+
+allowBuilds:
+  "@parcel/watcher": true
+  esbuild: true
+  sharp: true
+  workerd: true
+minimumReleaseAgeExclude:
+  - "@qstyle/compiler@1.0.0-alpha.0"
+  - "@qstyle/core@0.1.1"
+  - "@qstyle/inspector@0.1.1"
+  - "@qstyle/qwik@0.2.0"
+  - "@qstyle/vite@0.2.0"

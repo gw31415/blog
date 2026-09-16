@@ -1,0 +1,5 @@
+_worker.js
+# qstyle-manifest.json はビルド時メタ（CSS 全文含む）。ランタイム参照なし
+# （client は routes.json / units.json のみ使用）のため公開しない。
+# NOTE: units.json / routes.json は SPA 遷移時に client が fetch するため除外不可。
+qstyle-manifest.json

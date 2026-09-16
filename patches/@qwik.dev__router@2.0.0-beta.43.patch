@@ -1,0 +1,77 @@
+diff --git a/lib/adapters/shared/vite/index.mjs b/lib/adapters/shared/vite/index.mjs
+index ba646d2b47bcef903f35aff8ae71444a2c6f95dc..487130bcd91805008215a61d6370a6cd9b76eb80 100644
+--- a/lib/adapters/shared/vite/index.mjs
++++ b/lib/adapters/shared/vite/index.mjs
+@@ -76,11 +76,25 @@ var injectStatics = async (staticPathsCode, outDir) => {
+ var QWIK_SSG_ENTRY_RESOLVED = "\0@qwik-ssg-entry";
+ var QWIK_SSG_WORKER_ENTRY_ID = "@qwik-ssg-worker-entry";
+ var QWIK_SSG_WORKER_ENTRY_RESOLVED = "\0@qwik-ssg-worker-entry";
++/**
++ * Why the buildApp record lives here instead of in the factory closure:
++ *
++ * 1. 前提: Vite の builder モードでは設定ファイルが環境ごと（top-level／client／ssr／ssg）
++ *    に再評価され、そのたびに viteAdapter() factory が呼ばれてプラグイン実体が分岐する
++ *    （1ビルドで factory が4回呼ばれることをログで確認済み）。一方モジュール自体の評価は
++ *    一度きり（Node のモジュールキャッシュ）のため、モジュール直下の変数は全実体から共有される。
++ * 2. 問題: 「buildApp() が実行されたか」の記録を実体のクロージャに置くと、フックを実行する
++ *    実体（全体用）と ssr をビルドする実体（ssr 環境用）が別物になるため記録が見えない。
++ *    その結果、SSG が正常に実行されたにもかかわらず generateBundle で
++ *    「SSG was skipped」の誤警告が出る。
++ * 3. 修正: 記録をモジュール直下に移し、アダプタ名をキーにして実体間で共有する。
++ *    buildApp が一度も呼ばれない真の直ビルドでは記録が残らないため、正当な警告は維持される。
++ */
++const buildAppRanByAdapter = /* @__PURE__ */ new Map();
+ /** @public */ function viteAdapter(opts) {
+ 	let qwikRouterPlugin = null;
+ 	let qwikVitePlugin = null;
+ 	let viteCommand;
+-	let buildAppRan = false;
+ 	const outputEntries = [];
+ 	const ssgOutDirFor = (root) => join(resolve(root), "node_modules", ".cache", `qwik-router-ssg-${process.pid}`);
+ 	return [{
+@@ -208,11 +222,11 @@ var QWIK_SSG_WORKER_ENTRY_RESOLVED = "\0@qwik-ssg-worker-entry";
+ 					const chunk = bundles[fileName];
+ 					if (chunk.type === "chunk" && chunk.isEntry) outputEntries.push(fileName);
+ 				}
+-				if (opts.ssg !== null && viteCommand === "build" && !buildAppRan) this.warn("Qwik Router SSG was skipped: the `ssr` environment was built directly instead of through the Vite app builder, so no pages were prerendered. Build with the Qwik CLI or `createBuilder(config).buildApp()` (a plain `vite build` does this automatically).");
++				if (opts.ssg !== null && viteCommand === "build" && !buildAppRanByAdapter.get(opts.name)) this.warn("Qwik Router SSG was skipped: the `ssr` environment was built directly instead of through the Vite app builder, so no pages were prerendered. Build with the Qwik CLI or `createBuilder(config).buildApp()` (a plain `vite build` does this automatically).");
+ 			}
+ 		},
+ 		async buildApp(builder) {
+-			buildAppRan = true;
++			buildAppRanByAdapter.set(opts.name, true);
+ 			const ssr = builder.environments.ssr;
+ 			if (ssr) await builder.build(ssr);
+ 			const serverOutDir = ssr?.config.build.outDir;
+diff --git a/lib/vite/index.mjs b/lib/vite/index.mjs
+index 53d378977914f79ce750ba33ed7e3f82787c7d6c..89e7f0a726010e919640249158c44816fbc7b47a 100644
+--- a/lib/vite/index.mjs
++++ b/lib/vite/index.mjs
+@@ -2035,7 +2035,7 @@ var isCssPath = (url) => CSS_EXTENSIONS.some((ext) => url.endsWith(ext));
+ 			});
+ 			if ((isEntryCSS || hasJSImporter) && !hasCSSImporter && !cssImportedByCSS.has(mod.url)) {
+ 				cssModules.add(`${mod.url}${mod.lastHMRTimestamp ? `?t=${mod.lastHMRTimestamp}` : ""}`);
+-				if (mod.file) server.watcher.add(mod.file);
++				if (mod.file && !mod.file.startsWith('\0')) server.watcher.add(mod.file);
+ 			}
+ 		}
+ 	}
+@@ -2467,7 +2467,17 @@ function qwikRouterPlugin(userOpts, buildContextRef) {
+ 		closeBundle: {
+ 			sequential: true,
+ 			async handler() {
+-				if (this.environment.config.consumer === "server" && outDir) await generateServerPackageJson(outDir);
++				// Why this uses the closing environment's outDir instead of the closure:
++				// 1. outDir は configResolved でクロージャに代入されるが、解決は環境ごとに走る。
++				//    実体共有時（builder.sharedPlugins）は同一実体で client→ssr→ssg の順に
++				//    上書きされ、最後に解決された ssg 環境の outDir が残る。
++				//    ssg の outDir は SSG 後に rm -rf されるキャッシュ dir である。
++				// 2. closeBundle は this.environment が server 系かで判定しているのに、書き先だけ
++				//    別解決の outDir を使うため、server/package.json がキャッシュ内に書かれて消える。
++				// 3. 閉じている環境自身の config.build.outDir を使えば共有/非共有どちらの実体でも正しい。
++				//    非共有時はクロージャと同値のため挙動不変。
++				const envOutDir = this.environment.config.build?.outDir;
++				if (this.environment.config.consumer === "server" && envOutDir) await generateServerPackageJson(envOutDir);
+ 			}
+ 		}
+ 	};
