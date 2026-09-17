@@ -1,4 +1,12 @@
-import { $, component$, noSerialize, useSignal, useStore, type NoSerialize } from "@qwik.dev/core";
+import {
+  $,
+  component$,
+  noSerialize,
+  useSignal,
+  useStore,
+  useTask$,
+  type NoSerialize,
+} from "@qwik.dev/core";
 
 import { BlogFooter, BlogHeader, BlogPaper } from "~/components/blog/blog";
 import { formatJapaneseDate, formatJapaneseEraYear, type ArticleDraft } from "~/content/article";
@@ -13,14 +21,22 @@ import {
 } from "./editor-controller";
 
 export function createArticlePresentation(article: Pick<ArticleDraft, "publishedAt">) {
+  if (article.publishedAt === "") {
+    return { dateLabel: "公開日未設定", footerRight: "年未設定" };
+  }
   return {
     dateLabel: formatJapaneseDate(article.publishedAt),
     footerRight: formatJapaneseEraYear(article.publishedAt),
   };
 }
 
+export function canSwitchToView(mode: EditorUiState["mode"]): boolean {
+  return mode !== "loading";
+}
+
 interface EditorUiState {
   mode: "view" | "loading" | "edit";
+  editorReady: boolean;
   error: string;
   category: string;
   publishedAt: string;
@@ -40,6 +56,7 @@ export const ArticleShell = component$(() => {
   const controller = useSignal<NoSerialize<EditorController>>();
   const ui = useStore<EditorUiState>({
     mode: "view",
+    editorReady: false,
     error: "",
     category: INITIAL_ARTICLE.category,
     publishedAt: INITIAL_ARTICLE.publishedAt,
@@ -54,6 +71,11 @@ export const ArticleShell = component$(() => {
     math: null,
   });
   const presentation = createArticlePresentation(ui);
+
+  useTask$(({ cleanup, track }) => {
+    const ready = track(() => ui.editorReady);
+    if (ready) cleanup(() => controller.value?.destroy());
+  });
 
   const command$ = $((command: EditorCommand) => controller.value?.run(command));
 
@@ -85,6 +107,7 @@ export const ArticleShell = component$(() => {
         onSelectionChange: () => {},
         onMathEdit: (request) => void openMathEditor$(request),
       });
+      ui.editorReady = true;
       ui.mode = "edit";
     } catch (error) {
       ui.mode = "view";
@@ -93,6 +116,7 @@ export const ArticleShell = component$(() => {
   });
 
   const enterView$ = $(() => {
+    if (!canSwitchToView(ui.mode)) return;
     controller.value?.enterView();
     ui.math = null;
     ui.mode = "view";
@@ -147,6 +171,7 @@ export const ArticleShell = component$(() => {
           type="button"
           class={{ active: ui.mode === "view" }}
           aria-pressed={ui.mode === "view"}
+          disabled={!canSwitchToView(ui.mode)}
           onClick$={enterView$}
         >
           閲覧
