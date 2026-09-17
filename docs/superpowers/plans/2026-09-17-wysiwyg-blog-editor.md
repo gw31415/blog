@@ -25,12 +25,14 @@
 ### Task 1: Article data and derived presentation
 
 **Files:**
+
 - Create: `src/content/article.ts`
 - Create: `src/content/article.test.ts`
 - Create: `src/content/initial-article.ts`
 - Modify: `package.json`
 
 **Interfaces:**
+
 - Produces: `ArticleDraft`, `formatJapaneseDate(isoDate: string): string`, `formatJapaneseEraYear(isoDate: string): string`, `INITIAL_ARTICLE: Readonly<ArticleDraft>`.
 - Consumes: no feature code.
 
@@ -100,6 +102,7 @@ git commit -m "feat(content): model transient article draft"
 ### Task 2: Markdown/editor schema and static rendering
 
 **Files:**
+
 - Create: `src/components/editor/editor-extensions.ts`
 - Create: `src/components/editor/markdown.ts`
 - Create: `src/components/editor/markdown.test.ts`
@@ -109,6 +112,7 @@ git commit -m "feat(content): model transient article draft"
 - Modify: `pnpm-lock.yaml`
 
 **Interfaces:**
+
 - Consumes: `INITIAL_ARTICLE.bodyMarkdown`.
 - Produces: `createEditorExtensions(): Extensions`, `parseArticleMarkdown(markdown: string): JSONContent`, `serializeArticleMarkdown(content: JSONContent): string`, `INITIAL_ARTICLE_JSON`, `INITIAL_ARTICLE_HTML`.
 
@@ -165,7 +169,7 @@ The generator imports the initial Markdown, parses it to JSON, renders JSON to H
 ```ts
 import type { JSONContent } from "@tiptap/core";
 
-export const INITIAL_ARTICLE_JSON = { /* generated document */ } satisfies JSONContent;
+export const INITIAL_ARTICLE_JSON = {/* generated document */} satisfies JSONContent;
 export const INITIAL_ARTICLE_HTML = "<p>...</p>";
 ```
 
@@ -181,6 +185,7 @@ git commit -m "feat(editor): define Markdown document schema"
 ### Task 3: Static Qwik article shell and automatic section numbering
 
 **Files:**
+
 - Create: `src/components/editor/article-shell.tsx`
 - Create: `src/components/editor/article-shell.test.ts`
 - Modify: `src/components/blog/blog.tsx`
@@ -188,6 +193,7 @@ git commit -m "feat(editor): define Markdown document schema"
 - Modify: `src/routes/index.tsx`
 
 **Interfaces:**
+
 - Consumes: `INITIAL_ARTICLE`, `INITIAL_ARTICLE_HTML`, date/footer formatters.
 - Produces: `ArticleShell` with stable `data-layout-key` landmarks and a body mount identified by `data-editor-mount`.
 
@@ -256,6 +262,7 @@ git commit -m "refactor(blog): render article from Markdown data"
 ### Task 4: Lazy Tiptap runtime, metadata editing, and toolbar
 
 **Files:**
+
 - Create: `src/components/editor/editor-runtime.ts`
 - Create: `src/components/editor/editor-controller.ts`
 - Create: `src/components/editor/editor-controller.test.ts`
@@ -264,6 +271,7 @@ git commit -m "refactor(blog): render article from Markdown data"
 - Modify: `src/components/blog/blog.css`
 
 **Interfaces:**
+
 - Consumes: `INITIAL_ARTICLE_JSON`, `createEditorExtensions`, `ArticleDraft`.
 - Produces: `mountArticleEditor(options): EditorHandle`, `EditorCommand`, `executeEditorCommand(handle, command): boolean`, and the Qwik editing controls.
 
@@ -303,7 +311,9 @@ it("keeps one editor handle across edit/view toggles", async () => {
 });
 
 it("leaves static content intact when loading fails", async () => {
-  const controller = createEditorController(async () => { throw new Error("offline"); });
+  const controller = createEditorController(async () => {
+    throw new Error("offline");
+  });
   await expect(controller.enterEdit(element)).rejects.toThrow("offline");
   expect(element.innerHTML).toBe(originalHtml);
 });
@@ -352,6 +362,7 @@ git commit -m "feat(editor): add lazy in-place editing controls"
 ### Task 5: Math popover, specialist controls, and browser acceptance
 
 **Files:**
+
 - Create: `src/components/editor/math-dialog.tsx`
 - Create: `src/components/editor/math-dialog.test.ts`
 - Create: `playwright.config.ts`
@@ -364,6 +375,7 @@ git commit -m "feat(editor): add lazy in-place editing controls"
 - Modify: `pnpm-lock.yaml`
 
 **Interfaces:**
+
 - Consumes: `MathEditRequest`, `EditorHandle`, layout landmarks.
 - Produces: accessible LaTeX dialog and end-to-end acceptance coverage.
 
@@ -426,11 +438,13 @@ git commit -m "feat(editor): complete Markdown and math editing"
 ### Task 6: Performance, production build, and visual verification
 
 **Files:**
+
 - Create: `scripts/check-editor-chunk.mjs`
 - Modify: `package.json`
 - Modify: `README.md`
 
 **Interfaces:**
+
 - Consumes: production `dist/build` manifest and emitted chunks.
 - Produces: `pnpm check:editor-chunk` guard and documented demo behavior.
 
