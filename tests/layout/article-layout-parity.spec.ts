@@ -1,5 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 
+// Chromium exposes native find-in-page beyond the standard DOM typings.
+declare global {
+  interface Window {
+    find(text: string): boolean;
+  }
+}
+
 interface LayoutRect {
   x: number;
   y: number;
@@ -12,6 +19,12 @@ export interface ArticleLayoutSnapshot {
   lines: Record<string, LayoutRect[]>;
 }
 
+function detailBodyKeys(snapshot: ArticleLayoutSnapshot): string[] {
+  return Object.keys(snapshot.elements).filter((key) =>
+    key.includes("details[article-node=details] > div"),
+  );
+}
+
 interface CodeLanguageControlRects {
   control: LayoutRect;
   label: LayoutRect;
@@ -19,7 +32,7 @@ interface CodeLanguageControlRects {
 }
 
 const EXCLUDED_LAYOUT =
-  ".mode-switch, .editor-dock, .editor-error, .math-dialog, [data-editor-overlay]";
+  ".mode-switch, .editor-dock, .editor-error, .math-dialog, [data-editor-overlay], details:not([open]) > :not(summary:first-of-type)";
 
 export async function captureArticleLayout(page: Page): Promise<ArticleLayoutSnapshot> {
   await page.evaluate(() => document.fonts.ready);
@@ -28,6 +41,8 @@ export async function captureArticleLayout(page: Page): Promise<ArticleLayoutSna
     const elements: Record<string, LayoutRect> = {};
     const lines: Record<string, LayoutRect[]> = {};
 
+    // Closed details bodies have no visible layout. Their cached browser rectangles
+    // are not stable; keep native find-in-page behavior and measure them when open.
     const isExcluded = (element: Element) =>
       element.matches(excludedLayout) || !!element.closest(excludedLayout);
 
@@ -255,6 +270,27 @@ for (const viewport of [
     await waitForEditShell(page);
     const table = page.locator(".ProseMirror table").first();
     await table.scrollIntoViewIfNeeded();
+    if (viewport.name === "mobile") {
+      const bounds = await page.locator('button[data-table-axis="row"]').evaluateAll((handles) =>
+        handles.map((handle) => {
+          const rect = handle.getBoundingClientRect();
+          return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+        }),
+      );
+      expect(bounds.length).toBeGreaterThan(0);
+      for (const rect of bounds) {
+        expect({ x: rect.x, width: rect.width, height: rect.height }).toEqual({
+          x: 4,
+          width: 24,
+          height: 24,
+        });
+        // The 2px focus outline and 2px offset also fit, with no clipped hit area.
+        expect(rect.x - 4).toBeGreaterThanOrEqual(0);
+        expect(rect.x + rect.width + 4).toBeLessThanOrEqual(viewport.width);
+        expect(rect.y - 4).toBeGreaterThanOrEqual(0);
+        expect(rect.y + rect.height + 4).toBeLessThanOrEqual(viewport.height);
+      }
+    }
     const before = await captureArticleLayout(page);
     for (const axis of ["row", "column"] as const) {
       const handle = page
@@ -349,21 +385,40 @@ test("opens the selected row menu with a touchscreen tap", async ({ browser }) =
   }
 });
 
-test("closed details keep zero descendant geometry after having been laid out", async ({
+test("closed details remain browser-searchable and snapshots omit only hidden descendants", async ({
   page,
 }) => {
   await page.goto("/");
   const details = page.locator("details").first();
+  await expect(details).not.toHaveAttribute("open");
+  const hiddenText = (await details.locator(".details-body").textContent())!.trim();
+  expect(await page.evaluate((text) => window.find(text), hiddenText)).toBe(true);
+  await page.evaluate(() => window.getSelection()?.removeAllRanges());
+  await page.evaluate(() => document.querySelector("details")?.removeAttribute("open"));
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const initial = await captureArticleLayout(page);
+  expect(detailBodyKeys(initial)).toEqual([]);
+  expect(
+    Object.keys(initial.lines).some((key) => key.includes("details[article-node=details] > div")),
+  ).toBe(false);
+  expect(
+    Object.keys(initial.elements).some((key) =>
+      key.endsWith("details[article-node=details] > summary:nth-of-type(1)"),
+    ),
+  ).toBe(true);
+  await page.getByRole("button", { name: "編集" }).click();
+  await waitForEditShell(page);
+  expectLayoutEqual(initial, await captureArticleLayout(page));
+  await page.getByRole("button", { name: "閲覧" }).click();
+  await waitForViewShell(page);
+  expectLayoutEqual(initial, await captureArticleLayout(page));
   await details.locator("summary").click();
   await expect(details).toHaveAttribute("open", "");
+  const open = await captureArticleLayout(page);
+  expect(detailBodyKeys(open).length).toBeGreaterThan(0);
   expect(
-    await details.locator(".details-body").evaluate((body) => body.getBoundingClientRect().height),
-  ).toBeGreaterThan(0);
-  await details.locator("summary").click();
-  await expect(details).not.toHaveAttribute("open");
-  expect(
-    await details.locator(".details-body").evaluate((body) => body.getBoundingClientRect().height),
-  ).toBe(0);
+    Object.keys(open.lines).some((key) => key.includes("details[article-node=details] > div")),
+  ).toBe(true);
 });
 
 test("round-trips a shared code block through clipboard HTML", async ({ page }) => {

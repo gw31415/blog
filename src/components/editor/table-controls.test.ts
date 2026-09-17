@@ -20,6 +20,18 @@ describe("table handle geometry", () => {
       handlePosition(mount, table, { x: 200, y: 300, width: 150, height: 40 }, "column"),
     ).toEqual({ x: 195, y: 186 });
   });
+
+  it("keeps the full row button and focus outline within a narrow viewport", () => {
+    expect(
+      handlePosition(
+        { x: 22, y: 100, width: 346, height: 900 },
+        { x: 22, y: 300, width: 430, height: 120 },
+        { x: 22, y: 340, width: 430, height: 50 },
+        "row",
+        390,
+      ),
+    ).toEqual({ x: -6, y: 265 });
+  });
 });
 
 describe("table menu actions", () => {

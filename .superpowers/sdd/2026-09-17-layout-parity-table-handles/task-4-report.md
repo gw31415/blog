@@ -31,7 +31,7 @@ The browser suite checks strict, unrounded article element and text-line snapsho
 
 The added touchscreen test once exposed a closed details body changing from a zero rectangle to a cached nonzero rectangle between snapshots. A minimal Chromium reproduction confirmed a closed `<details>` may expose body and Range rectangles while `open` remains false. A deterministic application regression test opens and closes details, then checks hidden-body geometry: before the fix it exited 1 with expected height 0 and actual height 51.
 
-Added `details:not([open]) > .details-body { display: none; }` in the owned stylesheet. This stabilizes closed descendant geometry without changing visible or open-details layout, and retains every exact comparison rather than excluding details or adding a tolerance. The new regression and touchscreen test now pass.
+Original approach, superseded by the review correction below: added `details:not([open]) > .details-body { display: none; }`. Although visual snapshots passed, review found that it removed hidden text from browser find-in-page. The rule has now been removed.
 
 ## Final verification
 
@@ -58,3 +58,32 @@ Only these paths belong in the Task 4 commit:
 - All Task 4 acceptance items are implemented; only the closed-details stabilization was discovered beyond its initial brief, within owned files and required for reliable exact geometry checks.
 - The transform module and article contents were not modified. Other agents' paths and the active ledger/plan were preserved.
 - Task 5 owns drag/reorder, and Task 6 owns full build/lazy-chunk verification and delivery. These were not claimed or performed here.
+
+## Task 4 review correction
+
+Both requested review fixes are implemented in a separate commit, `fix(editor): preserve details search and visible table handles`.
+
+### Native details behavior and semantic measurement
+
+- Removed the `display: none` rule so closed native details remain searchable.
+- Snapshot capture now excludes only descendants hidden by a closed details element. The details box and visible summary remain measured, and all body element/text-line rectangles are measured when open. Exact values and strict comparisons remain unchanged for visible content.
+- The browser regression proves `window.find` locates the closed-body text, checks body elements and lines are absent only while closed, compares initial/edit/final geometry exactly, then opens the details and checks body elements and lines are included.
+
+RED: `pnpm test:layout --grep 'closed details|keyboard on mobile'` exited 1 with `window.find` returning false. After removing the CSS rule and updating capture semantics, both focused browser tests passed.
+
+### Narrow-screen handle bounds
+
+- Row handle centers retain their row's vertical center and normal 14px horizontal offset when space permits. Near a viewport edge the center is clamped to 16px inside that edge, fitting the 24px button plus 2px outline and 2px outline offset.
+- Added a pure geometry regression and a 390px browser assertion for every row button: exact `x: 4`, `width: 24`, `height: 24`, with full focus-outline bounds inside both viewport dimensions.
+
+RED: the focused unit test expected relative `x: -6` but received `-14`; the browser expected left edge `4` but received `-4`. Both became GREEN with viewport-aware positioning.
+
+### Verification after review fixes
+
+- `pnpm test src/components/editor/table-controls.test.ts`: exit 0; 10 passed.
+- `pnpm test`: exit 0; 73 tests in 11 files passed.
+- `pnpm test:layout`: exit 0; 9 browser tests passed.
+- `pnpm check`: exit 0; 50 files formatted and no warnings/lint/type errors in 39 checked files. The native Chromium `window.find` typing and test-helper scoping were corrected after the first check identified them.
+- `git diff --check`: exit 0.
+
+The correction uses five paths from the existing owned-path allowlist: table controls, their unit tests, the blog stylesheet, browser layout tests, and this report. Runtime integration, transform implementation, and other agents' files are untouched.

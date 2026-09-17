@@ -1314,10 +1314,6 @@
       font-weight: 500;
     }
 
-    details:not([open]) > .details-body {
-      display: none;
-    }
-
     .details-body {
       padding:
         0 0 12px 1.5em;

@@ -20,9 +20,14 @@ export function handlePosition(
   table: Rect,
   item: Rect,
   axis: TableAxis,
+  viewportWidth = Infinity,
 ): { x: number; y: number } {
   return axis === "row"
-    ? { x: table.x - mount.x - 14, y: item.y - mount.y + item.height / 2 }
+    ? {
+        // Keep the 24px hit target plus its 4px focus ring inside narrow viewports.
+        x: Math.max(16, Math.min(table.x - 14, viewportWidth - 16)) - mount.x,
+        y: item.y - mount.y + item.height / 2,
+      }
     : { x: item.x - mount.x + item.width / 2, y: table.y - mount.y - 14 };
 }
 
@@ -221,7 +226,7 @@ class TableControls {
     for (const handle of this.handles) {
       const table = handle.tableDOM.getBoundingClientRect();
       const item = handle.itemDOM.getBoundingClientRect();
-      const point = handlePosition(mount, table, item, handle.axis);
+      const point = handlePosition(mount, table, item, handle.axis, window.innerWidth);
       handle.button.hidden = table.width === 0 || table.height === 0;
       handle.button.style.left = `${point.x}px`;
       handle.button.style.top = `${point.y}px`;
