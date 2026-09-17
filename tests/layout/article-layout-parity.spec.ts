@@ -245,7 +245,126 @@ for (const viewport of [
     expectLayoutEqual(initialView, edit);
     expectLayoutEqual(initialView, finalView);
   });
+
+  test(`table handle menus preserve geometry and support keyboard on ${viewport.name}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto("/");
+    await page.getByRole("button", { name: "編集" }).click();
+    await waitForEditShell(page);
+    const table = page.locator(".ProseMirror table").first();
+    await table.scrollIntoViewIfNeeded();
+    const before = await captureArticleLayout(page);
+    for (const axis of ["row", "column"] as const) {
+      const handle = page
+        .locator(`button[data-table-axis="${axis}"][data-table-index="1"]`)
+        .first();
+      await handle.focus();
+      await handle.press(axis === "row" ? "Enter" : "Space");
+      const menu = page.getByRole("menu");
+      await expect(menu).toBeVisible();
+      await expect(
+        page.getByRole("menuitem", { name: axis === "row" ? "上へ追加" : "左へ追加" }),
+      ).toBeFocused();
+      expectLayoutEqual(before, await captureArticleLayout(page));
+      await page.keyboard.press("Escape");
+      await expect(menu).toHaveCount(0);
+      await expect(handle).toBeFocused();
+      await handle.click();
+      await page.locator(".ProseMirror th").first().click();
+      await expect(menu).toHaveCount(0);
+    }
+    await page.getByRole("button", { name: "閲覧" }).click();
+    await waitForViewShell(page);
+    await expect(page.locator('[data-editor-overlay="table-controls"]')).toBeHidden();
+  });
 }
+
+test("table contextual actions target their row and column and protect the last axis", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集" }).click();
+  await waitForEditShell(page);
+  const table = page.locator(".ProseMirror table").first();
+  await table.scrollIntoViewIfNeeded();
+  const rows = table.locator("tr");
+  const initialRows = await rows.count();
+  const original = await rows.nth(1).textContent();
+  await page.getByRole("button", { name: "2行目の操作", exact: true }).first().click();
+  await page.getByRole("menuitem", { name: "行を複製", exact: true }).click();
+  await expect(rows).toHaveCount(initialRows + 1);
+  await expect(rows.nth(2)).toHaveText(original!);
+  await page.getByRole("button", { name: "3行目の操作", exact: true }).first().click();
+  await page.getByRole("menuitem", { name: "行を削除", exact: true }).click();
+  await expect(rows).toHaveCount(initialRows);
+  const initialColumns = await rows.first().locator("th,td").count();
+  await page.getByRole("button", { name: "2列目の操作", exact: true }).first().click();
+  await page.getByRole("menuitem", { name: "右へ追加", exact: true }).click();
+  await expect(rows.first().locator("th,td")).toHaveCount(initialColumns + 1);
+  await expect(rows.nth(1).locator("th,td").nth(2)).toHaveText("");
+  await page.getByRole("button", { name: "3列目の操作", exact: true }).first().click();
+  await page.getByRole("menuitem", { name: "列を削除", exact: true }).click();
+  await expect(rows.first().locator("th,td")).toHaveCount(initialColumns);
+  for (const axis of ["row", "column"] as const) {
+    const handles = page.locator(`button[data-table-axis="${axis}"]`);
+    while ((await handles.count()) > 1) {
+      await handles.last().click();
+      await page
+        .getByRole("menuitem", { name: axis === "row" ? "行を削除" : "列を削除", exact: true })
+        .click();
+    }
+    await handles.first().click();
+    await expect(
+      page.getByRole("menuitem", { name: axis === "row" ? "行を削除" : "列を削除", exact: true }),
+    ).toBeDisabled();
+    await page.keyboard.press("Escape");
+  }
+  await expect(table.locator("tr")).toHaveCount(1);
+  await expect(table.locator("th,td")).toHaveCount(1);
+});
+
+test("opens the selected row menu with a touchscreen tap", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  try {
+    await page.goto("/");
+    await page.getByRole("button", { name: "編集" }).tap();
+    await waitForEditShell(page);
+    await page.locator(".ProseMirror table").first().scrollIntoViewIfNeeded();
+    const handle = page.getByRole("button", { name: "2行目の操作", exact: true }).first();
+    const before = await captureArticleLayout(page);
+    await handle.tap();
+    await expect(page.getByRole("menu", { name: "2行目の操作", exact: true })).toBeVisible();
+    expectLayoutEqual(before, await captureArticleLayout(page));
+    await page.getByRole("menuitem", { name: "下へ追加", exact: true }).tap();
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    await expect(page.locator(".ProseMirror table tr").nth(2)).toHaveText("");
+  } finally {
+    await context.close();
+  }
+});
+
+test("closed details keep zero descendant geometry after having been laid out", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const details = page.locator("details").first();
+  await details.locator("summary").click();
+  await expect(details).toHaveAttribute("open", "");
+  expect(
+    await details.locator(".details-body").evaluate((body) => body.getBoundingClientRect().height),
+  ).toBeGreaterThan(0);
+  await details.locator("summary").click();
+  await expect(details).not.toHaveAttribute("open");
+  expect(
+    await details.locator(".details-body").evaluate((body) => body.getBoundingClientRect().height),
+  ).toBe(0);
+});
 
 test("round-trips a shared code block through clipboard HTML", async ({ page }) => {
   await page.goto("/");

@@ -351,6 +351,7 @@
     }
 
     .article-content {
+      position: relative;
       counter-reset: section;
     }
 
@@ -1041,6 +1042,74 @@
        Table
        ───────────────────────────── */
 
+    .table-controls {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      pointer-events: none;
+      font-family: var(--sans);
+      font-size: 13px;
+      line-height: 1.4;
+      text-align: left;
+    }
+
+    .table-controls[hidden], .table-handle[hidden] {
+      display: none;
+    }
+
+    .table-handle {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: 1px solid var(--rule);
+      border-radius: 6px;
+      background: var(--paper, #faf8f4);
+      color: var(--ink);
+      font: 18px/1 var(--sans);
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+    .table-handle:focus-visible, .table-controls-menu button:focus-visible {
+      outline: 2px solid var(--red);
+      outline-offset: 2px;
+    }
+
+    .table-controls-menu, .table-controls-error {
+      position: absolute;
+      z-index: 1;
+      padding: 4px;
+      border: 1px solid var(--rule);
+      border-radius: 6px;
+      background: var(--paper, #faf8f4);
+      box-shadow: 0 4px 16px rgb(0 0 0 / 15%);
+      pointer-events: auto;
+    }
+
+    .table-controls-menu button {
+      display: block;
+      width: 100%;
+      padding: 8px 16px;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      text-align: left;
+      white-space: nowrap;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .table-controls-menu button:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    .table-controls-menu button:not(:disabled):hover {
+      background: rgb(135 89 79 / 10%);
+    }
+
     .table-wrap {
       margin:
         calc(var(--body-leading) * 2)
@@ -1243,6 +1312,10 @@
 
       font-size: 12px;
       font-weight: 500;
+    }
+
+    details:not([open]) > .details-body {
+      display: none;
     }
 
     .details-body {

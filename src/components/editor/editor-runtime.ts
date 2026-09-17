@@ -10,6 +10,7 @@ import type {
   ToolbarState,
 } from "./editor-controller";
 import { serializeArticleMarkdown } from "./markdown";
+import { createTableControlsPlugin } from "./table-controls";
 
 interface MathEditRequest {
   kind: "inline" | "block";
@@ -173,7 +174,13 @@ export async function mountArticleEditor(
   editor = new Editor({
     element: null,
     extensions: createEditorExtensions({
-      additionalExtensions: [createSyntaxHighlighting(highlightCode)],
+      additionalExtensions: [
+        createSyntaxHighlighting(highlightCode),
+        Extension.create({
+          name: "articleTableControls",
+          addProseMirrorPlugins: () => [createTableControlsPlugin()],
+        }),
+      ],
       onMathEdit: (request) => {
         const current = editor.state.doc.nodeAt(request.position);
         requestMathEditWhenEditable(
