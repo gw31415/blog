@@ -23,6 +23,8 @@ vite-plus が dev / build / lint / fmt を兼ねるため、専用の ESLint・P
 
 初期表示はSSR済みHTMLです。TipTap、ProseMirror、編集用KaTeXランタイムは最初に「編集」を押したときだけ動的に読み込み、その後は同じエディターインスタンスのeditable状態だけを切り替えます。静的表示とエディターは同じDOM構造・CSSを使うため、モード切替だけでは紙面の座標と寸法が変わりません。
 
+アプリ固有のスタイルは `src/components/editor/article-styles.tsx` の module-local な qstyle tagged template で管理し、同一モジュールの `css` prop から適用します。外部配布物であるKaTeXのCSSだけはパッケージから直接importします。
+
 ## プロジェクト構成
 
 ```
@@ -34,7 +36,9 @@ vite-plus が dev / build / lint / fmt を兼ねるため、専用の ESLint・P
     ├── root.tsx
     ├── entry.ssr.tsx
     ├── entry.cloudflare-pages.tsx
-    ├── global.css
+    ├── components/
+    │   └── editor/
+    │       └── article-styles.tsx # qstyle によるアプリ固有スタイル
     └── routes/      # ディレクトリベースルーティング
 ```
 

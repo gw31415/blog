@@ -63,13 +63,13 @@ Fresh verification will include:
 
 ## qstyle Pipeline Contract
 
-| Input | Expected output | Failure condition |
-| --- | --- | --- |
-| Static declarations | qstyle atomic classes and route CSS asset | missing class or computed declaration |
-| Nested selectors | scoped selector beneath the boundary class | residual diagnostic or selector loss |
-| `@media` / `@supports` | condition-wrapped scoped rules | build diagnostic or responsive mismatch |
-| Existing duplicate declarations | stable qstyle deduplication | cascade or computed-style change |
-| Unsupported syntax | fail-closed production build | warning-only build or silently missing style |
+| Input                           | Expected output                            | Failure condition                            |
+| ------------------------------- | ------------------------------------------ | -------------------------------------------- |
+| Static declarations             | qstyle atomic classes and route CSS asset  | missing class or computed declaration        |
+| Nested selectors                | scoped selector beneath the boundary class | residual diagnostic or selector loss         |
+| `@media` / `@supports`          | condition-wrapped scoped rules             | build diagnostic or responsive mismatch      |
+| Existing duplicate declarations | stable qstyle deduplication                | cascade or computed-style change             |
+| Unsupported syntax              | fail-closed production build               | warning-only build or silently missing style |
 
 Hash-collision handling and cache invalidation are compiler-owned contracts and are not changed here. The application verifies that the production build emits content-hashed CSS and that a style source edit changes the built asset rather than relying on a runtime stylesheet compiler. HMR receives a focused development smoke check after the build path is green.
 

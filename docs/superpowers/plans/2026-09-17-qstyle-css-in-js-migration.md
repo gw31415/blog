@@ -37,12 +37,14 @@
 ### Task 1: Establish the browser-visible qstyle contract
 
 **Files:**
+
 - Create: `tests/layout/qstyle-style-contract.spec.ts`
 - Modify: `src/components/editor/article-shell.test.ts`
 - Modify: `src/components/editor/rendering-regressions.test.ts`
 - Modify: `src/components/blog/visual-texture-contract.test.ts`
 
 **Interfaces:**
+
 - Consumes: the existing page at `/`, current class names, and the existing Playwright web server.
 - Produces: a browser contract requiring `[data-qstyle-boundary]`, a generated qstyle class (`qd_` in development or `q_` in production), and preserved computed styles.
 
@@ -143,6 +145,7 @@ git commit -m "test: define qstyle style delivery contract"
 ### Task 2: Move application styles into module-local qstyle
 
 **Files:**
+
 - Create: `src/components/editor/article-styles.tsx`
 - Modify: `src/root.tsx`
 - Modify: `src/components/editor/article-shell.tsx`
@@ -151,6 +154,7 @@ git commit -m "test: define qstyle style delivery contract"
 - Delete: `src/global.css`
 
 **Interfaces:**
+
 - Consumes: all declarations and selector order from `blog.css` plus the `css` prop augmentation in `src/qstyle.d.ts`.
 - Produces: `ArticleStyleBoundary`, a Qwik component with no layout box and `data-qstyle-boundary` on its root element.
 
@@ -263,18 +267,20 @@ git commit -m "refactor: migrate application styles to qstyle"
 ### Task 3: Verify parity and update documentation
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `vite.config.ts`
 
 **Interfaces:**
+
 - Consumes: the completed qstyle boundary and temporary before screenshots.
 - Produces: current project documentation and fresh evidence that the CSS-in-JS migration preserves appearance.
 
-- [ ] **Step 1: Update project documentation**
+- [x] **Step 1: Update project documentation**
 
 Change the project tree in `README.md` to list `src/components/editor/article-styles.tsx` instead of `src/global.css`. State that application styles are a module-local qstyle tagged template and KaTeX is the only vendor CSS import. Remove the obsolete `blog.css` formatter-ignore entry and comment from `vite.config.ts`.
 
-- [ ] **Step 2: Capture after screenshots and compare exact pixels**
+- [x] **Step 2: Capture after screenshots and compare exact pixels**
 
 With the same dev command and browser version used for the before images, run:
 
@@ -287,11 +293,11 @@ cmp .cache/qstyle-before-mobile.png .cache/qstyle-after-mobile.png
 
 Expected: both `cmp` commands exit 0. If a comparison differs, inspect the two images and resolve the first computed-style or layout difference before continuing.
 
-- [ ] **Step 3: Smoke-test development HMR**
+- [x] **Step 3: Smoke-test development HMR**
 
 While `pnpm dev` is running, make a temporary change to one harmless static value in `articleShellStyles`, confirm the open page receives the corresponding CSS update without a full reload error, then revert that temporary change before verification. Confirm the qstyle-generated class and route remain present.
 
-- [ ] **Step 4: Run complete verification**
+- [x] **Step 4: Run complete verification**
 
 Run fresh commands:
 
@@ -305,16 +311,16 @@ pnpm build
 git diff --check
 ```
 
-Expected: every command exits 0; the tests report zero failures; qstyle emits no residual or diagnostic; the production build emits hashed CSS.
+Expected: every command exits 0; the tests report zero failures; qstyle emits no residual lowering diagnostic; the production build emits hashed CSS.
 
-- [ ] **Step 5: Commit documentation and verification-facing cleanup**
+- [x] **Step 5: Commit documentation and verification-facing cleanup**
 
 ```bash
 git add README.md vite.config.ts
 git commit -m "docs: document qstyle style ownership"
 ```
 
-- [ ] **Step 6: Review the final repository state**
+- [x] **Step 6: Review the final repository state**
 
 Run:
 

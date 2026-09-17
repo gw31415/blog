@@ -57,8 +57,6 @@ export default defineConfig({
       "src/components/blog/rendered.ts",
       // Markdown から生成した初期記事の JSON / HTML
       "src/content/initial-article.generated.ts",
-      // sample.html 起源の記事スタイル (整形対象外。罫線色のみ濃度調整済み)
-      "src/components/blog/blog.css",
       // 移植元のソースアーティファクト
       "sample.html",
     ],
