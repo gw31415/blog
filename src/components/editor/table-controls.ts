@@ -70,11 +70,12 @@ export function handlePosition(
 ): { x: number; y: number } {
   return axis === "row"
     ? {
-        // Keep the 24px hit target plus its 4px focus ring inside narrow viewports.
-        x: Math.max(16, Math.min(table.x - 14, viewportWidth - 16)) - mount.x,
+        // The visible 14px handle touches the rule. Its pseudo-element expands
+        // the pointer target to 24px without adding visible whitespace.
+        x: Math.max(12, Math.min(table.x - 7, viewportWidth - 12)) - mount.x,
         y: item.y - mount.y + item.height / 2,
       }
-    : { x: item.x - mount.x + item.width / 2, y: table.y - mount.y - 14 };
+    : { x: item.x - mount.x + item.width / 2, y: table.y - mount.y - 7 };
 }
 
 export function menuAction(axis: TableAxis, index: number, action: MenuAction): TableAction {
@@ -215,6 +216,7 @@ class TableControls {
       (action, index) => {
         const item = document.createElement("button");
         item.type = "button";
+        item.dataset.tableAction = action;
         item.setAttribute("role", "menuitem");
         item.textContent = labels[index];
         item.disabled =
@@ -375,7 +377,7 @@ class TableControls {
       const anchor = this.active.button.getBoundingClientRect();
       const menu = this.menu.getBoundingClientRect();
       this.menu.style.left = `${Math.max(4, Math.min(anchor.left, window.innerWidth - menu.width - 4)) - mount.left}px`;
-      this.menu.style.top = `${Math.max(4, Math.min(anchor.bottom + 4, window.innerHeight - menu.height - 4)) - mount.top}px`;
+      this.menu.style.top = `${Math.max(4, Math.min(anchor.bottom + 2, window.innerHeight - menu.height - 4)) - mount.top}px`;
     }
     if (this.gesture?.state.active) this.positionDrag();
   }

@@ -43,6 +43,21 @@ export function canSwitchToView(mode: EditorUiState["mode"]): boolean {
   return mode !== "loading";
 }
 
+export type InsertDialogState =
+  | { kind: "link"; href: string; error: string }
+  | { kind: "image"; src: string; alt: string; error: string };
+
+export function createInsertDialog(kind: InsertDialogState["kind"]): InsertDialogState {
+  return kind === "link"
+    ? { kind, href: "https://", error: "" }
+    : { kind, src: "", alt: "", error: "" };
+}
+
+export function canApplyInsertDialog(dialog: InsertDialogState): boolean {
+  const destination = dialog.kind === "link" ? dialog.href.trim() : dialog.src.trim();
+  return destination !== "" && destination !== "https://" && dialog.error === "";
+}
+
 interface EditorUiState {
   mode: "view" | "loading" | "edit";
   editorReady: boolean;
@@ -52,11 +67,7 @@ interface EditorUiState {
   title: string;
   subtitle: string;
   bodyMarkdown: string;
-  link: string;
-  imageUrl: string;
-  imageAlt: string;
-  detailsSummary: string;
-  detailsBody: string;
+  insertDialog: InsertDialogState | null;
   math: (MathEditRequest & { preview: string; error: string }) | null;
 }
 
@@ -72,11 +83,7 @@ export const ArticleShell = component$(() => {
     title: INITIAL_ARTICLE.title,
     subtitle: INITIAL_ARTICLE.subtitle,
     bodyMarkdown: INITIAL_ARTICLE.bodyMarkdown,
-    link: "https://",
-    imageUrl: "",
-    imageAlt: "",
-    detailsSummary: "補足",
-    detailsBody: "詳しい内容を書きます。",
+    insertDialog: null,
     math: null,
   });
   const presentation = createArticlePresentation(ui);
@@ -129,8 +136,30 @@ export const ArticleShell = component$(() => {
   const enterView$ = $(() => {
     if (!canSwitchToView(ui.mode)) return;
     controller.value?.enterView();
+    ui.insertDialog = null;
     ui.math = null;
     ui.mode = "view";
+  });
+
+  const applyInsert$ = $(() => {
+    const dialog = ui.insertDialog;
+    if (!dialog || !canApplyInsertDialog(dialog)) return;
+    const applied =
+      dialog.kind === "link"
+        ? controller.value?.run({ type: "link", href: dialog.href.trim() })
+        : controller.value?.run({
+            type: "image",
+            src: dialog.src.trim(),
+            alt: dialog.alt.trim(),
+          });
+    if (!applied) {
+      dialog.error =
+        dialog.kind === "link"
+          ? "リンクを設定する文字列を選択してから、もう一度お試しください。"
+          : "画像を挿入できませんでした。カーソル位置を確認してください。";
+      return;
+    }
+    ui.insertDialog = null;
   });
 
   const updateMathPreview$ = $(async (latex: string) => {
@@ -238,6 +267,9 @@ export const ArticleShell = component$(() => {
               <button type="button" onClick$={() => command$({ type: "blockquote" })}>
                 引用
               </button>
+              <button type="button" onClick$={() => (ui.insertDialog = createInsertDialog("link"))}>
+                リンク
+              </button>
               <button type="button" onClick$={() => command$({ type: "codeBlock" })}>
                 コード
               </button>
@@ -256,62 +288,118 @@ export const ArticleShell = component$(() => {
               <button type="button" onClick$={() => command$({ type: "callout", label: "補足" })}>
                 補足
               </button>
+              <button
+                type="button"
+                onClick$={() => (ui.insertDialog = createInsertDialog("image"))}
+              >
+                画像
+              </button>
+              <button
+                type="button"
+                onClick$={() =>
+                  command$({
+                    type: "details",
+                    summary: "補足",
+                    body: "詳しい内容を書きます。",
+                  })
+                }
+              >
+                折り畳み
+              </button>
             </div>
-
-            <details class="editor-panel">
-              <summary title="リンク・画像・折りたたみ">挿入</summary>
-              <div class="editor-fields">
-                <label class="wide">
-                  リンクURL
-                  <input value={ui.link} onInput$={(_, el) => (ui.link = el.value)} />
-                </label>
-                <button type="button" onClick$={() => command$({ type: "link", href: ui.link })}>
-                  選択範囲へリンク
-                </button>
-                <label>
-                  画像URL
-                  <input value={ui.imageUrl} onInput$={(_, el) => (ui.imageUrl = el.value)} />
-                </label>
-                <label>
-                  代替テキスト
-                  <input value={ui.imageAlt} onInput$={(_, el) => (ui.imageAlt = el.value)} />
-                </label>
-                <button
-                  type="button"
-                  disabled={!ui.imageUrl}
-                  onClick$={() => command$({ type: "image", src: ui.imageUrl, alt: ui.imageAlt })}
-                >
-                  画像を挿入
-                </button>
-                <label>
-                  折りたたみ見出し
-                  <input
-                    value={ui.detailsSummary}
-                    onInput$={(_, el) => (ui.detailsSummary = el.value)}
-                  />
-                </label>
-                <label class="wide">
-                  折りたたみ本文
-                  <input value={ui.detailsBody} onInput$={(_, el) => (ui.detailsBody = el.value)} />
-                </label>
-                <button
-                  type="button"
-                  onClick$={() =>
-                    command$({ type: "details", summary: ui.detailsSummary, body: ui.detailsBody })
-                  }
-                >
-                  折りたたみを挿入
-                </button>
-              </div>
-            </details>
           </div>
         </aside>
       )}
 
-      {ui.math && (
-        <div class="math-dialog-backdrop" role="presentation" onClick$={() => (ui.math = null)}>
+      {ui.insertDialog && (
+        <div
+          class="editor-dialog-backdrop"
+          role="presentation"
+          onClick$={() => (ui.insertDialog = null)}
+        >
           <form
-            class="math-dialog"
+            class="editor-dialog insert-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="insert-dialog-title"
+            onClick$={(event) => event.stopPropagation()}
+            preventdefault:submit
+            onSubmit$={applyInsert$}
+          >
+            <div class="editor-dialog-heading">
+              <p>挿入ツール</p>
+              <h2 id="insert-dialog-title">
+                {ui.insertDialog.kind === "link" ? "リンクを挿入" : "画像を挿入"}
+              </h2>
+            </div>
+            <div class="editor-dialog-fields">
+              {ui.insertDialog.kind === "link" ? (
+                <label>
+                  リンクURL
+                  <input
+                    name="href"
+                    inputMode="url"
+                    value={ui.insertDialog.href}
+                    autoFocus
+                    onInput$={(_, el) => {
+                      if (ui.insertDialog?.kind === "link") {
+                        ui.insertDialog.href = el.value;
+                        ui.insertDialog.error = "";
+                      }
+                    }}
+                  />
+                </label>
+              ) : (
+                <>
+                  <label>
+                    画像URL
+                    <input
+                      name="src"
+                      inputMode="url"
+                      value={ui.insertDialog.src}
+                      autoFocus
+                      onInput$={(_, el) => {
+                        if (ui.insertDialog?.kind === "image") {
+                          ui.insertDialog.src = el.value;
+                          ui.insertDialog.error = "";
+                        }
+                      }}
+                    />
+                  </label>
+                  <label>
+                    代替テキスト（任意）
+                    <input
+                      name="alt"
+                      value={ui.insertDialog.alt}
+                      onInput$={(_, el) => {
+                        if (ui.insertDialog?.kind === "image") ui.insertDialog.alt = el.value;
+                      }}
+                    />
+                  </label>
+                </>
+              )}
+            </div>
+            {ui.insertDialog.error && (
+              <p class="editor-dialog-error" role="alert">
+                {ui.insertDialog.error}
+              </p>
+            )}
+            <div class="editor-dialog-actions">
+              <button type="button" onClick$={() => (ui.insertDialog = null)}>
+                キャンセル
+              </button>
+              <button type="submit" disabled={!canApplyInsertDialog(ui.insertDialog)}>
+                挿入
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {ui.math && (
+        <div class="editor-dialog-backdrop" role="presentation" onClick$={() => (ui.math = null)}>
+          <form
+            class="editor-dialog math-dialog"
             data-math-position={ui.math.position}
             role="dialog"
             aria-modal="true"

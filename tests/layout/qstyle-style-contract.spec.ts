@@ -46,7 +46,7 @@ test("delivers application styles through qstyle", async ({ page }) => {
     bodyBackground: "rgb(222, 216, 202)",
     paperBackground: "rgb(242, 234, 213)",
     articleFontSize: "15px",
-    articleLineHeight: "19.5px",
+    articleLineHeight: "22.5px",
     tableBorderTopWidth: "1px",
     tableBorderBottomWidth: "1px",
     sectionNumberContent: '"第" counter(section, cjk-ideographic) "節"',
@@ -73,19 +73,18 @@ test("preserves editor control styles while editing", async ({ page }) => {
   );
   await expect(page.locator(".editor-formatting")).toHaveCSS("overflow-x", "auto");
   await expect(page.locator(".editor-formatting")).toHaveCSS("overflow-y", "hidden");
-  await expect(page.locator(".editor-panel")).toHaveCSS("border-left-width", "1px");
-
-  await page.locator(".editor-panel > summary").click();
-  await expect(page.locator(".editor-fields")).toHaveCSS("border-top-width", "0px");
 
   const control = page.locator(".code-language-control").first();
   const label = control.locator(".code-language-label");
   const select = control.locator(".code-language-select");
 
+  await expect(control).toHaveCSS("border-top-width", "1px");
+  await expect(control).toHaveCSS("border-radius", "0px");
   await expect(select).toHaveCSS("position", "absolute");
   await expect(select).toHaveCSS("visibility", "visible");
   await expect(select).toHaveCSS("pointer-events", "auto");
-  await expect(label).toHaveCSS("visibility", "hidden");
+  await expect(select).toHaveCSS("opacity", "0");
+  await expect(label).toHaveCSS("visibility", "visible");
   await expect(label).toHaveCSS("pointer-events", "none");
 
   const boxes = await Promise.all([
@@ -96,4 +95,28 @@ test("preserves editor control styles while editing", async ({ page }) => {
   expect(boxes[0]).not.toBeNull();
   expect(boxes[1]).toStrictEqual(boxes[0]);
   expect(boxes[2]).toStrictEqual(boxes[0]);
+});
+
+test("keeps every bordered surface square", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集", exact: true }).click();
+  await expect(page.locator('[data-editor-mode="edit"]')).toBeVisible();
+  await page.getByRole("button", { name: "画像", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "画像を挿入" })).toBeVisible();
+
+  const rounded = await page.locator("[data-qstyle-boundary] *").evaluateAll((elements) =>
+    elements.flatMap((element) => {
+      const style = getComputedStyle(element);
+      const hasBorder =
+        Number.parseFloat(style.borderTopWidth) > 0 ||
+        Number.parseFloat(style.borderRightWidth) > 0 ||
+        Number.parseFloat(style.borderBottomWidth) > 0 ||
+        Number.parseFloat(style.borderLeftWidth) > 0;
+      return hasBorder && style.borderRadius !== "0px"
+        ? [`${element.tagName.toLowerCase()}.${element.className}: ${style.borderRadius}`]
+        : [];
+    }),
+  );
+
+  expect(rounded).toEqual([]);
 });

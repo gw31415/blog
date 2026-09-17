@@ -725,7 +725,7 @@ const articleShellStyles = css`
 
     border: 1px solid rgb(121 79 65 / 26%);
 
-    border-radius: 2px;
+    border-radius: 0;
 
     font-family: var(--mono);
     font-size: 0.86em;
@@ -767,6 +767,10 @@ const articleShellStyles = css`
     inline-size: 108px;
     block-size: 24px;
 
+    border: 1px solid transparent;
+    border-radius: 0;
+    background: transparent;
+
     color: var(--muted);
     -webkit-text-fill-color: var(--muted);
 
@@ -778,23 +782,24 @@ const articleShellStyles = css`
   & .code-language-label,
   & .code-language-select {
     position: absolute;
-    inset: 0;
-    inline-size: 100%;
-    block-size: 100%;
+    inset: -1px;
+    inline-size: calc(100% + 2px);
+    block-size: calc(100% + 2px);
+    padding: 1px 20px 1px 6px;
   }
 
   & .code-language-label {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: flex-start;
+    pointer-events: none;
   }
 
   & .code-language-select {
-    padding: 1px 20px 1px 6px;
-    color: var(--muted);
-    border: 1px solid var(--line-soft);
-    border-radius: 2px;
-    background: var(--paper);
+    color: transparent;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     font: inherit;
     letter-spacing: inherit;
     visibility: hidden;
@@ -802,16 +807,21 @@ const articleShellStyles = css`
     pointer-events: none;
   }
 
-  & [data-editor-mode="edit"] .code-language-label {
-    visibility: hidden;
-    opacity: 0;
-    pointer-events: none;
+  & [data-editor-mode="edit"] .code-language-control {
+    border-color: var(--line-soft);
+    background: rgb(255 253 247 / 58%);
   }
 
   & [data-editor-mode="edit"] .code-language-select {
     visibility: visible;
-    opacity: 1;
+    opacity: 0;
     pointer-events: auto;
+    cursor: pointer;
+  }
+
+  & [data-editor-mode="edit"] .code-language-control:focus-within {
+    outline: 2px solid var(--red);
+    outline-offset: 2px;
   }
 
   & .code-caption {
@@ -988,20 +998,30 @@ const articleShellStyles = css`
 
   & .table-handle {
     position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transform: translate(-50%, -50%);
-    width: 24px;
-    height: 24px;
+    width: 14px;
+    height: 14px;
     padding: 0;
     border: 1px solid var(--rule);
-    border-radius: 6px;
+    border-radius: 0;
     background: var(--paper, #faf8f4);
     color: var(--ink);
-    font: 18px/1 var(--sans);
+    font: 10px/1 var(--sans);
+    text-align: center;
     cursor: pointer;
     pointer-events: auto;
     touch-action: none;
     user-select: none;
     -webkit-touch-callout: none;
+  }
+
+  & .table-handle::after {
+    content: "";
+    position: absolute;
+    inset: -5px;
   }
 
   & .table-handle[data-dragging] {
@@ -1020,7 +1040,7 @@ const articleShellStyles = css`
   & .table-drag-ghost {
     padding: 6px 10px;
     border: 1px solid var(--red);
-    border-radius: 6px;
+    border-radius: 0;
     background: var(--paper, #faf8f4);
     color: var(--ink);
     opacity: 0.85;
@@ -1044,23 +1064,45 @@ const articleShellStyles = css`
     z-index: 1;
     padding: 4px;
     border: 1px solid var(--rule);
-    border-radius: 6px;
+    border-radius: 0;
     background: var(--paper, #faf8f4);
-    box-shadow: 0 4px 16px rgb(0 0 0 / 15%);
+    box-shadow: 4px 4px 0 rgb(53 47 37 / 10%);
     pointer-events: auto;
+  }
+
+  & .table-controls-menu {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(86px, 1fr));
+    gap: 0;
+    padding: 0;
   }
 
   & .table-controls-menu button {
     display: block;
     width: 100%;
-    padding: 8px 16px;
+    padding: 7px 10px;
     border: 0;
+    border-right: 1px solid var(--line-soft);
+    border-bottom: 1px solid var(--line-soft);
+    border-radius: 0;
     background: transparent;
     color: var(--ink);
     text-align: left;
     white-space: nowrap;
     font: inherit;
     cursor: pointer;
+  }
+
+  & .table-controls-menu button:nth-child(2n) {
+    border-right: 0;
+  }
+
+  & .table-controls-menu button:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+
+  & .table-controls-menu button[data-table-action="delete"] {
+    color: var(--link);
   }
 
   & .table-controls-menu button:disabled {
@@ -1170,7 +1212,7 @@ const articleShellStyles = css`
 
     border: 1px solid rgb(135 89 79 / 42%);
 
-    border-radius: 50%;
+    border-radius: 0;
 
     font-family: var(--serif);
     font-size: 24px;
@@ -1295,7 +1337,7 @@ const articleShellStyles = css`
 
   & .editor-dock,
   & .editor-error,
-  & .math-dialog {
+  & .editor-dialog {
     color: #322b22;
     -webkit-text-fill-color: currentcolor;
     font-family: var(--sans);
@@ -1303,7 +1345,7 @@ const articleShellStyles = css`
   }
 
   & .editor-dock button,
-  & .math-dialog button {
+  & .editor-dialog button {
     min-height: 28px;
     padding: 2px 6px;
 
@@ -1321,19 +1363,18 @@ const articleShellStyles = css`
     cursor: pointer;
   }
 
-  & .editor-dock button:hover,
-  & .editor-panel > summary:hover {
+  & .editor-dock button:hover {
     color: var(--link);
     background: transparent;
   }
 
-  & .math-dialog button:last-child {
+  & .editor-dialog button:last-child {
     background: #352f25;
     color: #fffaf0;
   }
 
   & .editor-dock button:disabled,
-  & .math-dialog button:disabled {
+  & .editor-dialog button:disabled {
     cursor: wait;
     opacity: 0.48;
   }
@@ -1376,7 +1417,7 @@ const articleShellStyles = css`
   & .editor-dock-head {
     position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     height: 32px;
     border-bottom: 1px solid rgb(86 70 55 / 14%);
   }
@@ -1394,7 +1435,7 @@ const articleShellStyles = css`
 
   & .editor-done {
     grid-row: 1;
-    grid-column: 3;
+    grid-column: 2;
     min-width: 44px;
     border-left: 1px solid rgb(86 70 55 / 14%);
     border-radius: 0;
@@ -1405,105 +1446,79 @@ const articleShellStyles = css`
     flex: 0 0 auto;
   }
 
-  & .editor-panel {
-    grid-row: 1;
-    grid-column: 2;
-    align-self: stretch;
-    margin: 0;
-    border-top: 0;
-    border-right: 0;
-    border-bottom: 0;
-    border-left: 1px solid rgb(86 70 55 / 14%);
-  }
-
-  & .editor-panel > summary {
+  & .editor-dialog label {
     display: grid;
-    height: 100%;
-    padding: 0 8px;
-    place-items: center;
-    color: var(--faint);
-    font-size: 10px;
-    cursor: pointer;
-    list-style: none;
-  }
-
-  & .editor-panel > summary::-webkit-details-marker {
-    display: none;
-  }
-
-  & .editor-panel[open] > summary {
-    color: var(--link);
-  }
-
-  & .editor-fields {
-    position: absolute;
-    z-index: 1;
-    top: calc(100% + 1px);
-    right: -1px;
-    left: -1px;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(160px, 1fr));
-    gap: 8px;
-    padding: 4px 10px 10px;
-    max-height: min(52vh, 388px);
-    overflow: auto;
-    border-top: 0;
-    border-right: 1px solid var(--line-soft);
-    border-bottom: 1px solid var(--line-soft);
-    border-left: 1px solid var(--line-soft);
-    background: rgb(242 234 213 / 98%);
-  }
-
-  & .editor-panel:not([open]) > .editor-fields {
-    display: none;
-  }
-
-  & .editor-fields label,
-  & .math-dialog label {
-    display: grid;
-    gap: 3px;
+    gap: 5px;
     color: #74685b;
     font-size: 10px;
     letter-spacing: 0.05em;
   }
 
-  & .editor-fields label.wide {
-    grid-column: 1 / -1;
-  }
-
-  & .editor-fields input,
+  & .editor-dialog input,
   & .math-dialog textarea {
     width: 100%;
-    min-height: 32px;
-    padding: 6px 8px;
+    min-height: 36px;
+    padding: 7px 9px;
     color: #352f25;
-    border: 1px solid rgb(86 70 55 / 25%);
-    border-radius: 4px;
-    background: #fffdf7;
+    border: 1px solid var(--line);
+    border-radius: 0;
+    background: #fffaf0;
     font: 13px/1.35 var(--sans);
   }
 
-  & .math-dialog-backdrop {
+  & .editor-dialog input:focus,
+  & .math-dialog textarea:focus {
+    outline: 2px solid rgb(135 89 79 / 42%);
+    outline-offset: 2px;
+  }
+
+  & .editor-dialog-backdrop {
     position: fixed;
     z-index: 60;
     inset: 0;
     display: grid;
     place-items: center;
     padding: 20px;
-    background: rgb(30 25 20 / 38%);
+    background: rgb(53 47 37 / 32%);
   }
 
-  & .math-dialog {
+  & .editor-dialog {
     width: min(560px, 100%);
-    padding: 20px;
-    border-radius: 10px;
-    background: #fffdf7;
-    box-shadow: 0 20px 70px rgb(20 15 10 / 28%);
+    padding: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: 0;
+    background: var(--paper);
+    box-shadow: 8px 8px 0 rgb(53 47 37 / 14%);
   }
 
-  & .math-dialog h2 {
-    margin: 0 0 14px;
+  & .editor-dialog-heading {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  & .editor-dialog-heading p {
+    margin: 0 0 3px;
+    color: var(--faint);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+  }
+
+  & .editor-dialog h2 {
+    margin: 0;
     font-size: 17px;
+    font-weight: 400;
+  }
+
+  & .editor-dialog-fields,
+  & .math-dialog > label {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  & .math-dialog > h2 {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--line-soft);
   }
 
   & .math-dialog textarea {
@@ -1513,7 +1528,7 @@ const articleShellStyles = css`
 
   & .math-dialog-preview {
     min-height: 64px;
-    margin-top: 12px;
+    margin: 0 16px;
     padding: 12px;
     overflow-x: auto;
     border: 1px dashed rgb(86 70 55 / 25%);
@@ -1521,15 +1536,29 @@ const articleShellStyles = css`
   }
 
   & .math-dialog-error {
-    color: #8c4037;
+    margin-inline: 16px;
+  }
+
+  & .editor-dialog-error {
+    margin: 0 16px;
+    color: var(--link);
     font-size: 11px;
   }
 
+  & .editor-dialog-actions,
   & .math-dialog-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 6px;
-    margin-top: 14px;
+    gap: 0;
+    margin-top: 16px;
+    border-top: 1px solid var(--line-soft);
+  }
+
+  & .editor-dialog-actions button,
+  & .math-dialog-actions button {
+    min-width: 84px;
+    min-height: 36px;
+    border-left: 1px solid var(--line-soft);
   }
 
   /* ─────────────────────────────
@@ -1556,12 +1585,8 @@ const articleShellStyles = css`
       width: 100vw;
     }
 
-    & .editor-fields {
-      grid-template-columns: 1fr;
-    }
-
-    & .editor-fields label.wide {
-      grid-column: auto;
+    & .editor-dialog {
+      width: min(100%, 420px);
     }
 
     & .content {

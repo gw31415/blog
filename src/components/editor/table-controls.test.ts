@@ -57,7 +57,7 @@ describe("table handle geometry", () => {
 
   it("anchors row controls outside the table at each row center", () => {
     expect(handlePosition(mount, table, { x: 100, y: 340, width: 400, height: 50 }, "row")).toEqual(
-      { x: 6, y: 265 },
+      { x: 13, y: 265 },
     );
     expect(table).toEqual({ x: 100, y: 300, width: 400, height: 120 });
   });
@@ -65,7 +65,7 @@ describe("table handle geometry", () => {
   it("anchors column controls above the table at each cell center", () => {
     expect(
       handlePosition(mount, table, { x: 200, y: 300, width: 150, height: 40 }, "column"),
-    ).toEqual({ x: 195, y: 186 });
+    ).toEqual({ x: 195, y: 193 });
   });
 
   it("keeps the full row button and focus outline within a narrow viewport", () => {
@@ -77,7 +77,7 @@ describe("table handle geometry", () => {
         "row",
         390,
       ),
-    ).toEqual({ x: -6, y: 265 });
+    ).toEqual({ x: -7, y: 265 });
   });
 });
 

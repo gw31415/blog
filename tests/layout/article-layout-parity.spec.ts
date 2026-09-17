@@ -430,35 +430,48 @@ test("keeps the closed editing toolbar to one compact row", async ({ page }) => 
 
   const dock = await page.getByRole("complementary", { name: "記事編集ツール" }).boundingBox();
   const formatting = await page.getByRole("toolbar", { name: "本文の書式" }).boundingBox();
-  const insert = await page.locator(".editor-panel > summary").boundingBox();
+  const link = await page.getByRole("button", { name: "リンク", exact: true }).boundingBox();
+  const image = await page.getByRole("button", { name: "画像", exact: true }).boundingBox();
+  const details = await page.getByRole("button", { name: "折り畳み", exact: true }).boundingBox();
   const done = await page.getByRole("button", { name: "完了", exact: true }).boundingBox();
 
   expect(dock).not.toBeNull();
   expect(formatting).not.toBeNull();
-  expect(insert).not.toBeNull();
+  expect(link).not.toBeNull();
+  expect(image).not.toBeNull();
+  expect(details).not.toBeNull();
   expect(done).not.toBeNull();
   expect(dock!.height).toBeLessThanOrEqual(34);
-  expect(insert!.y).toBeCloseTo(formatting!.y, 0);
+  for (const action of [link!, image!, details!]) {
+    expect(action.y).toBeGreaterThanOrEqual(formatting!.y);
+    expect(action.y + action.height).toBeLessThanOrEqual(formatting!.y + formatting!.height);
+  }
   expect(done!.y).toBeCloseTo(formatting!.y, 0);
 });
 
-test("opens insertion fields below the compact toolbar", async ({ page }) => {
+test("uses focused link and image forms while details insert immediately", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await page.getByRole("button", { name: "編集", exact: true }).click();
   await waitForEditShell(page);
 
-  const dock = await page.getByRole("complementary", { name: "記事編集ツール" }).boundingBox();
-  const head = await page.locator(".editor-dock-head").boundingBox();
-  const summary = page.locator(".editor-panel > summary");
-  await summary.click();
-  const fields = await page.locator(".editor-fields").boundingBox();
+  await page.getByRole("button", { name: "リンク", exact: true }).click();
+  const linkDialog = page.getByRole("dialog", { name: "リンクを挿入" });
+  await expect(linkDialog).toBeVisible();
+  await expect(linkDialog.getByLabel("リンクURL")).toHaveValue("https://");
+  await expect(linkDialog.getByRole("button", { name: "挿入", exact: true })).toBeDisabled();
+  await linkDialog.getByRole("button", { name: "キャンセル", exact: true }).click();
 
-  expect(dock).not.toBeNull();
-  expect(head).not.toBeNull();
-  expect(fields).not.toBeNull();
-  expect(fields!.y).toBeCloseTo(head!.y + head!.height, 0);
-  expect(fields!.width).toBeGreaterThanOrEqual(dock!.width - 2);
+  await page.getByRole("button", { name: "画像", exact: true }).click();
+  const imageDialog = page.getByRole("dialog", { name: "画像を挿入" });
+  await expect(imageDialog).toBeVisible();
+  await expect(imageDialog.getByLabel("画像URL")).toHaveValue("");
+  await expect(imageDialog.getByLabel("代替テキスト（任意）")).toHaveValue("");
+  await imageDialog.getByRole("button", { name: "キャンセル", exact: true }).click();
+
+  const before = await page.locator(".ProseMirror details").count();
+  await page.getByRole("button", { name: "折り畳み", exact: true }).click();
+  await expect(page.locator(".ProseMirror details")).toHaveCount(before + 1);
 });
 
 test("keeps toolbar hover styling plain", async ({ page }) => {
@@ -540,6 +553,8 @@ for (const viewport of [
     expectCodeLanguageControlRectsEqual(initialCodeControls);
     expectCodeLanguageControlRectsEqual(editCodeControls);
     expectCodeLanguageControlRectsEqual(finalCodeControls);
+    expect(editCodeControls).toStrictEqual(initialCodeControls);
+    expect(finalCodeControls).toStrictEqual(initialCodeControls);
     expectLayoutEqual(initialView, edit);
     expectLayoutEqual(initialView, finalView);
   });
@@ -563,16 +578,33 @@ for (const viewport of [
       expect(bounds.length).toBeGreaterThan(0);
       for (const rect of bounds) {
         expect({ x: rect.x, width: rect.width, height: rect.height }).toEqual({
-          x: 4,
-          width: 24,
-          height: 24,
+          x: 8,
+          width: 14,
+          height: 14,
         });
-        // The 2px focus outline and 2px offset also fit, with no clipped hit area.
+        // The visible handle and its 4px focus treatment fit in the viewport.
         expect(rect.x - 4).toBeGreaterThanOrEqual(0);
         expect(rect.x + rect.width + 4).toBeLessThanOrEqual(viewport.width);
         expect(rect.y - 4).toBeGreaterThanOrEqual(0);
         expect(rect.y + rect.height + 4).toBeLessThanOrEqual(viewport.height);
       }
+    }
+    const centerOffsets = await page.locator(".table-handle").evaluateAll((handles) =>
+      handles.map((handle) => {
+        const button = handle.getBoundingClientRect();
+        const content = document.createRange();
+        content.selectNodeContents(handle);
+        const mark = content.getBoundingClientRect();
+        return {
+          x: mark.x + mark.width / 2 - (button.x + button.width / 2),
+          y: mark.y + mark.height / 2 - (button.y + button.height / 2),
+        };
+      }),
+    );
+    expect(centerOffsets.length).toBeGreaterThan(0);
+    for (const offset of centerOffsets) {
+      expect(Math.abs(offset.x)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(offset.y)).toBeLessThanOrEqual(0.5);
     }
     const before = await captureArticleLayout(page);
     for (const axis of ["row", "column"] as const) {

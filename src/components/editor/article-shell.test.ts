@@ -5,7 +5,12 @@ import { describe, expect, it } from "vite-plus/test";
 import { INITIAL_ARTICLE } from "~/content/initial-article";
 import { INITIAL_ARTICLE_HTML } from "~/content/initial-article.generated";
 
-import { canSwitchToView, createArticlePresentation } from "./article-shell";
+import {
+  canApplyInsertDialog,
+  canSwitchToView,
+  createArticlePresentation,
+  createInsertDialog,
+} from "./article-shell";
 
 describe("article shell", () => {
   it("derives visible date and footer text from the article date", () => {
@@ -25,6 +30,22 @@ describe("article shell", () => {
   it("does not switch to view while the first editor load is pending", () => {
     expect(canSwitchToView("loading")).toBe(false);
     expect(canSwitchToView("edit")).toBe(true);
+  });
+
+  it("opens link and image forms with useful empty defaults", () => {
+    expect(createInsertDialog("link")).toEqual({ kind: "link", href: "https://", error: "" });
+    expect(createInsertDialog("image")).toEqual({ kind: "image", src: "", alt: "", error: "" });
+  });
+
+  it("requires a destination but keeps image alternative text optional", () => {
+    expect(canApplyInsertDialog({ kind: "link", href: "https://", error: "" })).toBe(false);
+    expect(canApplyInsertDialog({ kind: "link", href: "https://example.com", error: "" })).toBe(
+      true,
+    );
+    expect(canApplyInsertDialog({ kind: "image", src: "", alt: "", error: "" })).toBe(false);
+    expect(canApplyInsertDialog({ kind: "image", src: "/image.png", alt: "", error: "" })).toBe(
+      true,
+    );
   });
 
   it("keeps section numbers out of generated article content", () => {
