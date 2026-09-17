@@ -136,6 +136,9 @@ interface BlogHeaderProps {
   title: string;
   subtitle?: string;
   editable?: boolean;
+  editLoading?: boolean;
+  onEditIntent$?: QRL<() => void>;
+  onEditRequest$?: QRL<() => void>;
   onCategoryInput$?: QRL<(value: string) => void>;
   onDateInput$?: QRL<(value: string) => void>;
   onTitleInput$?: QRL<(value: string) => void>;
@@ -172,6 +175,23 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
             />
           )}
         </span>
+
+        <button
+          type="button"
+          class={{
+            "article-edit-action": true,
+            "is-hidden": props.editable,
+          }}
+          aria-busy={props.editLoading}
+          aria-hidden={props.editable}
+          disabled={props.editable || props.editLoading}
+          tabIndex={props.editable ? -1 : undefined}
+          onPointerEnter$={props.onEditIntent$}
+          onFocus$={props.onEditIntent$}
+          onClick$={props.onEditRequest$}
+        >
+          <span class="article-edit-label">{props.editLoading ? "読込中…" : "編集"}</span>
+        </button>
       </div>
 
       <h1

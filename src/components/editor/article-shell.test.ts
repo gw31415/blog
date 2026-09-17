@@ -46,9 +46,11 @@ describe("article shell", () => {
 
   it("preloads the editor when the edit control receives pointer or keyboard intent", () => {
     const source = readFileSync(new URL("./article-shell.tsx", import.meta.url), "utf8");
+    const headerSource = readFileSync(new URL("../blog/blog.tsx", import.meta.url), "utf8");
 
     expect(source).toContain("preloadEditor$");
-    expect(source).toContain("onPointerEnter$={preloadEditor$}");
-    expect(source).toContain("onFocus$={preloadEditor$}");
+    expect(source).toContain("onEditIntent$={preloadEditor$}");
+    expect(headerSource).toContain("onPointerEnter$={props.onEditIntent$}");
+    expect(headerSource).toContain("onFocus$={props.onEditIntent$}");
   });
 });

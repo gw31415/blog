@@ -35,7 +35,7 @@ interface CodeLanguageControlRects {
 }
 
 const EXCLUDED_LAYOUT =
-  ".mode-switch, .editor-dock, .editor-error, .math-dialog, [data-editor-overlay], details:not([open]) > :not(summary:first-of-type)";
+  ".article-edit-action, .editor-dock, .editor-error, .math-dialog, [data-editor-overlay], details:not([open]) > :not(summary:first-of-type)";
 
 export async function captureArticleLayout(page: Page): Promise<ArticleLayoutSnapshot> {
   await page.evaluate(() => document.fonts.ready);
@@ -218,7 +218,8 @@ export function expectLayoutEqual(
 
 async function waitForEditShell(page: Page): Promise<void> {
   await expect(page.locator('[data-editor-mode="edit"]')).toBeVisible();
-  await expect(page.getByRole("button", { name: "編集" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "完了", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "編集", exact: true })).toBeHidden();
   await expect(page.locator('[data-article-field="title"]')).toHaveAttribute(
     "contenteditable",
     "true",
@@ -229,27 +230,136 @@ async function waitForEditShell(page: Page): Promise<void> {
 
 async function waitForViewShell(page: Page): Promise<void> {
   await expect(page.locator('[data-editor-mode="view"]')).toBeVisible();
-  await expect(page.getByRole("button", { name: "閲覧" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "編集" })).toHaveAttribute("aria-pressed", "false");
+  const editAction = page.locator(".article-edit-action");
+  await expect(editAction).toHaveAttribute("aria-hidden", "false");
+  await expect(editAction).not.toHaveClass(/is-hidden/);
+  await expect(editAction).toBeEnabled();
+  await expect(editAction).toBeVisible();
+  await expect(page.getByRole("button", { name: "編集", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "完了", exact: true })).toHaveCount(0);
   await expect(page.getByLabel("公開日")).toHaveCount(0);
   await expect(page.getByRole("complementary", { name: "記事編集ツール" })).toHaveCount(0);
 }
 
-test("presents the mode switch as accessible paper-and-pencil symbols", async ({ page }) => {
+test("keeps mode actions inside the article and editing tools", async ({ page }) => {
   await page.goto("/");
 
-  const viewButton = page.getByRole("button", { name: "閲覧モード", exact: true });
-  const editButton = page.getByRole("button", { name: "編集モード", exact: true });
+  const header = page.locator('[data-layout-key="header"]');
+  await expect(header.getByRole("button", { name: "編集", exact: true })).toBeVisible();
+  await expect(page.locator(".mode-switch")).toHaveCount(0);
 
-  await expect(viewButton).toHaveAttribute("title", "閲覧モード");
-  await expect(editButton).toHaveAttribute("title", "編集モード");
-  await expect(viewButton.locator('[data-mode-symbol="paper"]')).toBeVisible();
-  await expect(editButton.locator('[data-mode-symbol="paper-pencil"]')).toBeVisible();
-  await expect(viewButton).toHaveText("");
-  await expect(editButton).toHaveText("");
+  await header.getByRole("button", { name: "編集", exact: true }).click();
+  await waitForEditShell(page);
+
+  const dock = page.getByRole("complementary", { name: "記事編集ツール" });
+  await dock.getByRole("button", { name: "完了", exact: true }).click();
+  await waitForViewShell(page);
 });
 
-test("shows a graphite loading mark while the editor starts", async ({ page }) => {
+test("keeps the paper-edge edit tab in reach while the article scrolls", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+
+  const editAction = page.getByRole("button", { name: "編集", exact: true });
+  const initial = await editAction.boundingBox();
+  expect(initial).not.toBeNull();
+
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect(editAction).toBeVisible();
+  const scrolled = await editAction.boundingBox();
+
+  expect(scrolled).not.toBeNull();
+  expect(scrolled!.y).toBeCloseTo(initial!.y, 0);
+});
+
+test("places the mobile edit tab below center without attaching it to the bottom edge", async ({
+  page,
+}) => {
+  const viewport = { width: 390, height: 844 };
+  await page.setViewportSize(viewport);
+  await page.goto("/");
+
+  const action = await page.getByRole("button", { name: "編集", exact: true }).boundingBox();
+  expect(action).not.toBeNull();
+
+  const centerY = action!.y + action!.height / 2;
+  expect(centerY).toBeGreaterThan(viewport.height * 0.62);
+  expect(centerY).toBeLessThan(viewport.height * 0.75);
+  expect(viewport.height - (action!.y + action!.height)).toBeGreaterThan(viewport.height * 0.2);
+});
+
+test("keeps mobile paper padding symmetric and the edit tab compact", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  const action = await page.getByRole("button", { name: "編集", exact: true }).boundingBox();
+  const labelLocator = page.locator(".article-edit-label");
+  const label = await labelLocator.boundingBox();
+  const paper = await page.locator('[data-layout-key="paper"]').boundingBox();
+  const content = await page.locator(".content").boundingBox();
+  const textCenterDelta = await labelLocator.evaluate((element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const text = range.getBoundingClientRect();
+    const box = element.getBoundingClientRect();
+    return Math.abs(text.x + text.width / 2 - (box.x + box.width / 2));
+  });
+
+  expect(action?.width).toBeGreaterThanOrEqual(44);
+  expect(action?.height).toBe(44);
+  expect(label).not.toBeNull();
+  expect(label?.height).toBe(36);
+  expect(label?.width).toBe(16);
+  expect(label!.y + label!.height / 2).toBeCloseTo(action!.y + action!.height / 2, 0);
+  expect(paper).not.toBeNull();
+  expect(content).not.toBeNull();
+  expect(content!.x).toBeCloseTo(390 - (content!.x + content!.width), 0);
+  expect(label!.x).toBeCloseTo(paper!.x + 4, 0);
+  expect(label!.x + label!.width).toBeLessThan(content!.x);
+  expect(action!.x + action!.width).toBeLessThan(390 / 2);
+  expect(textCenterDelta).toBeLessThanOrEqual(0.5);
+});
+
+test("keeps the vertical edit label free of a detached hover underline", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  const action = page.getByRole("button", { name: "編集", exact: true });
+  const label = page.locator(".article-edit-label");
+  await action.hover();
+
+  await expect(label).toHaveCSS("text-decoration-line", "none");
+});
+
+test("keeps the desktop edit tab away from the right scrollbar", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+
+  const action = await page.getByRole("button", { name: "編集", exact: true }).boundingBox();
+  const labelLocator = page.locator(".article-edit-label");
+  const label = await labelLocator.boundingBox();
+  const paper = await page.locator('[data-layout-key="paper"]').boundingBox();
+  const content = await page.locator(".content").boundingBox();
+  const textCenterDelta = await labelLocator.evaluate((element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const text = range.getBoundingClientRect();
+    const box = element.getBoundingClientRect();
+    return Math.abs(text.x + text.width / 2 - (box.x + box.width / 2));
+  });
+
+  expect(action).not.toBeNull();
+  expect(label).not.toBeNull();
+  expect(label?.width).toBe(24);
+  expect(paper).not.toBeNull();
+  expect(content).not.toBeNull();
+  expect(label!.x).toBeCloseTo(paper!.x + 4, 0);
+  expect(label!.x + label!.width).toBeLessThan(content!.x);
+  expect(action!.x + action!.width).toBeLessThan(1280 / 2);
+  expect(textCenterDelta).toBeLessThanOrEqual(0.5);
+});
+
+test("shows quiet loading text in the header while the editor starts", async ({ page }) => {
   let releaseEditor: (() => void) | undefined;
   await page.route(/editor-runtime/, async (route) => {
     await new Promise<void>((resolve) => {
@@ -259,15 +369,128 @@ test("shows a graphite loading mark while the editor starts", async ({ page }) =
   });
   await page.goto("/");
 
-  const editButton = page.locator(".edit-toggle");
+  const editButton = page.locator(".article-edit-action");
   const click = editButton.click();
   await expect(editButton).toHaveAttribute("aria-busy", "true");
-  await expect(editButton.locator('[data-mode-symbol="graphite-loading"]')).toBeVisible();
-  await expect(editButton).toHaveText("");
+  await expect(editButton).toHaveText("読込中…");
 
   releaseEditor?.();
   await click;
   await waitForEditShell(page);
+});
+
+test("keeps the done action separate from the scrolling formatting strip", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集", exact: true }).click();
+  await waitForEditShell(page);
+
+  const layout = await page.locator(".editor-dock").evaluate((dock) => {
+    const row = dock.querySelector<HTMLElement>(".editor-formatting")?.getBoundingClientRect();
+    const done = dock.querySelector<HTMLElement>(".editor-done")?.getBoundingClientRect();
+    if (!row || !done) throw new Error("Editor toolbar layout is missing");
+
+    return {
+      formattingRight: row.right,
+      doneLeft: done.left,
+      overflowX: getComputedStyle(dock.querySelector<HTMLElement>(".editor-formatting")!).overflowX,
+    };
+  });
+
+  expect(layout.formattingRight).toBeLessThanOrEqual(layout.doneLeft);
+  expect(layout.overflowX).toBe("auto");
+});
+
+test("keeps the closed editing toolbar to one compact row", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集", exact: true }).click();
+  await waitForEditShell(page);
+
+  const dock = await page.getByRole("complementary", { name: "記事編集ツール" }).boundingBox();
+  const formatting = await page.getByRole("toolbar", { name: "本文の書式" }).boundingBox();
+  const insert = await page.locator(".editor-panel > summary").boundingBox();
+  const done = await page.getByRole("button", { name: "完了", exact: true }).boundingBox();
+
+  expect(dock).not.toBeNull();
+  expect(formatting).not.toBeNull();
+  expect(insert).not.toBeNull();
+  expect(done).not.toBeNull();
+  expect(dock!.height).toBeLessThanOrEqual(34);
+  expect(insert!.y).toBeCloseTo(formatting!.y, 0);
+  expect(done!.y).toBeCloseTo(formatting!.y, 0);
+});
+
+test("opens insertion fields below the compact toolbar", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集", exact: true }).click();
+  await waitForEditShell(page);
+
+  const dock = await page.getByRole("complementary", { name: "記事編集ツール" }).boundingBox();
+  const head = await page.locator(".editor-dock-head").boundingBox();
+  const summary = page.locator(".editor-panel > summary");
+  await summary.click();
+  const fields = await page.locator(".editor-fields").boundingBox();
+
+  expect(dock).not.toBeNull();
+  expect(head).not.toBeNull();
+  expect(fields).not.toBeNull();
+  expect(fields!.y).toBeCloseTo(head!.y + head!.height, 0);
+  expect(fields!.width).toBeGreaterThanOrEqual(dock!.width - 2);
+});
+
+test("keeps toolbar hover styling plain", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集", exact: true }).click();
+  await waitForEditShell(page);
+
+  const button = page.getByRole("button", { name: "本文", exact: true });
+  const before = await button.evaluate((element) => getComputedStyle(element).backgroundColor);
+  await button.hover();
+
+  await expect(button).toHaveCSS("background-color", before);
+  await expect(button).toHaveCSS("border-radius", "0px");
+});
+
+test("keeps the editing tools fixed to the top edge while the article scrolls", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集", exact: true }).click();
+  await waitForEditShell(page);
+
+  const dock = page.getByRole("complementary", { name: "記事編集ツール" });
+  const initial = await dock.boundingBox();
+  expect(initial?.y).toBe(0);
+
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const scrolled = await dock.boundingBox();
+  expect(scrolled?.y).toBe(0);
+});
+
+test("keeps mobile category and date fields clear of the fixed toolbar", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集", exact: true }).click();
+  await waitForEditShell(page);
+
+  const toolbar = await page.getByRole("complementary", { name: "記事編集ツール" }).boundingBox();
+  const category = page.locator('[data-article-field="category"]');
+  const date = page.getByLabel("公開日");
+  const categoryBox = await category.boundingBox();
+  const dateBox = await date.boundingBox();
+
+  expect(toolbar).not.toBeNull();
+  expect(categoryBox).not.toBeNull();
+  expect(dateBox).not.toBeNull();
+  expect(categoryBox!.y).toBeGreaterThanOrEqual(toolbar!.y + toolbar!.height + 8);
+  expect(dateBox!.y).toBeGreaterThanOrEqual(toolbar!.y + toolbar!.height + 8);
+
+  await category.click();
+  await expect(category).toBeFocused();
+  await date.click();
+  await expect(date).toBeFocused();
 });
 
 for (const viewport of [
@@ -287,7 +510,7 @@ for (const viewport of [
     const edit = await captureArticleLayout(page);
     const editCodeControls = await captureCodeLanguageControlRects(page);
 
-    await page.getByRole("button", { name: "閲覧" }).click();
+    await page.getByRole("button", { name: "完了" }).click();
     await waitForViewShell(page);
     const finalView = await captureArticleLayout(page);
     const finalCodeControls = await captureCodeLanguageControlRects(page);
@@ -349,7 +572,7 @@ for (const viewport of [
       await page.locator(".ProseMirror th").first().click();
       await expect(menu).toHaveCount(0);
     }
-    await page.getByRole("button", { name: "閲覧" }).click();
+    await page.getByRole("button", { name: "完了" }).click();
     await waitForViewShell(page);
     await expect(page.locator('[data-editor-overlay="table-controls"]')).toBeHidden();
   });
@@ -370,7 +593,7 @@ for (const viewport of [
     await waitForEditShell(page);
     await expect(details).toHaveAttribute("open", "");
     expectLayoutEqual(initial, await captureArticleLayout(page));
-    await page.getByRole("button", { name: "閲覧" }).click();
+    await page.getByRole("button", { name: "完了" }).click();
     await waitForViewShell(page);
     expectLayoutEqual(initial, await captureArticleLayout(page));
 
@@ -394,7 +617,7 @@ for (const viewport of [
     await math.click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.getByRole("button", { name: "キャンセル", exact: true }).click();
-    await page.getByRole("button", { name: "閲覧" }).click();
+    await page.getByRole("button", { name: "完了" }).click();
     await waitForViewShell(page);
     await page.evaluate(() => window.scrollTo(0, 0));
     const view = await captureArticleLayout(page);
@@ -521,7 +744,7 @@ test("scrolls a wide mobile table to the last column and operates its visible ha
     el.scrollLeft = el.scrollWidth;
   });
   const after = await captureArticleLayout(page);
-  await page.getByRole("button", { name: "閲覧" }).click();
+  await page.getByRole("button", { name: "完了" }).click();
   await waitForViewShell(page);
   expectLayoutEqual(after, await captureArticleLayout(page));
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
@@ -609,7 +832,7 @@ for (const direction of ["left", "right"] as const) {
     expectLayoutEqual(after, await captureArticleLayout(page));
     await page.keyboard.press("Escape");
     await expect(destination).toBeFocused();
-    await page.getByRole("button", { name: "閲覧" }).click();
+    await page.getByRole("button", { name: "完了" }).click();
     await waitForViewShell(page);
     expectLayoutEqual(after, await captureArticleLayout(page));
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
@@ -978,7 +1201,7 @@ test("closed details remain browser-searchable and snapshots omit only hidden de
   await page.getByRole("button", { name: "編集" }).click();
   await waitForEditShell(page);
   expectLayoutEqual(initial, await captureArticleLayout(page));
-  await page.getByRole("button", { name: "閲覧" }).click();
+  await page.getByRole("button", { name: "完了" }).click();
   await waitForViewShell(page);
   expectLayoutEqual(initial, await captureArticleLayout(page));
   await details.locator("summary").click();

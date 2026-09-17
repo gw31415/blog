@@ -166,6 +166,9 @@ export const ArticleShell = component$(() => {
           title={ui.title}
           subtitle={ui.subtitle}
           editable={editable.value}
+          editLoading={ui.mode === "loading"}
+          onEditIntent$={preloadEditor$}
+          onEditRequest$={enterEdit$}
           onCategoryInput$={$((value) => (ui.category = value))}
           onDateInput$={$((value) => (ui.publishedAt = value))}
           onTitleInput$={$((value) => (ui.title = value))}
@@ -181,68 +184,6 @@ export const ArticleShell = component$(() => {
         <BlogFooter left="日々の記録" right={presentation.footerRight} />
       </BlogPaper>
 
-      <div class="mode-switch" role="group" aria-label="表示モード">
-        <button
-          type="button"
-          class={{ active: ui.mode === "view" }}
-          aria-label="閲覧モード"
-          aria-pressed={ui.mode === "view"}
-          disabled={!canSwitchToView(ui.mode)}
-          title="閲覧モード"
-          onClick$={enterView$}
-        >
-          <svg
-            class="mode-symbol"
-            data-mode-symbol="paper"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-            focusable="false"
-          >
-            <path d="M6.4 3.8c3.7-.2 7.5-.1 11.2.1l.3 16.1c-3.9.2-7.9.2-11.8-.1z" />
-            <path d="M9 8.1c2-.2 4-.1 6 0M9 11.9c1.7-.1 3.5-.1 5.2 0M9 15.7c2-.2 4-.1 6 0" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          class={{ "edit-toggle": true, active: ui.mode === "edit" }}
-          aria-label="編集モード"
-          aria-pressed={ui.mode === "edit"}
-          aria-busy={ui.mode === "loading"}
-          disabled={ui.mode === "loading"}
-          title="編集モード"
-          onPointerEnter$={preloadEditor$}
-          onFocus$={preloadEditor$}
-          onClick$={enterEdit$}
-        >
-          <svg
-            class="mode-symbol edit-symbol-idle"
-            data-mode-symbol="paper-pencil"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-            focusable="false"
-          >
-            <path d="M5.6 3.8c3.5-.2 7-.1 10.5.1l.2 7.6M15.9 18.9c-3.5.1-7 .1-10.5-.1l.3-15" />
-            <path d="M8.3 8.1c1.8-.2 3.5-.1 5.3 0M8.3 11.8c1.2-.1 2.5-.1 3.7 0" />
-            <path
-              class="mode-symbol-pencil-mark"
-              d="m11.2 17.8.5-2.8 5.8-5.8c.4-.4 1-.4 1.4 0l.6.6c.4.4.4 1 0 1.4L13.7 17zM17 9.8l1.9 1.9"
-            />
-          </svg>
-          <svg
-            class="mode-symbol edit-symbol-loading"
-            data-mode-symbol="graphite-loading"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-            focusable="false"
-          >
-            <path d="m8.3 14.8.5-2.6 5.8-5.8c.4-.4 1-.4 1.4 0l.7.7c.4.4.4 1 0 1.4l-5.8 5.8zM14.1 6.9l2.1 2.1" />
-            <circle cx="8" cy="18.2" r=".65" />
-            <circle cx="12" cy="18.2" r=".65" />
-            <circle cx="16" cy="18.2" r=".65" />
-          </svg>
-        </button>
-      </div>
-
       {ui.error && (
         <p class="editor-error" role="alert">
           エディターを開始できませんでした: {ui.error}
@@ -251,113 +192,118 @@ export const ArticleShell = component$(() => {
 
       {ui.mode === "edit" && (
         <aside class="editor-dock" aria-label="記事編集ツール">
-          <div class="editor-dock-row editor-formatting" role="toolbar" aria-label="本文の書式">
-            <button type="button" title="元に戻す" onClick$={() => command$({ type: "undo" })}>
-              ↶
+          <div class="editor-dock-head">
+            <button type="button" class="editor-done" onClick$={enterView$}>
+              完了
             </button>
-            <button type="button" title="やり直す" onClick$={() => command$({ type: "redo" })}>
-              ↷
-            </button>
-            <button type="button" onClick$={() => command$({ type: "paragraph" })}>
-              本文
-            </button>
-            <button type="button" onClick$={() => command$({ type: "heading", level: 2 })}>
-              見出し
-            </button>
-            <button type="button" onClick$={() => command$({ type: "heading", level: 3 })}>
-              小見出し
-            </button>
-            <button type="button" aria-label="太字" onClick$={() => command$({ type: "bold" })}>
-              <b>B</b>
-            </button>
-            <button type="button" aria-label="斜体" onClick$={() => command$({ type: "italic" })}>
-              <i>I</i>
-            </button>
-            <button
-              type="button"
-              aria-label="打ち消し線"
-              onClick$={() => command$({ type: "strike" })}
-            >
-              <s>S</s>
-            </button>
-            <button type="button" onClick$={() => command$({ type: "bulletList" })}>
-              箇条書き
-            </button>
-            <button type="button" onClick$={() => command$({ type: "orderedList" })}>
-              番号
-            </button>
-            <button type="button" onClick$={() => command$({ type: "taskList" })}>
-              ToDo
-            </button>
-            <button type="button" onClick$={() => command$({ type: "blockquote" })}>
-              引用
-            </button>
-            <button type="button" onClick$={() => command$({ type: "codeBlock" })}>
-              コード
-            </button>
-            <button type="button" onClick$={() => command$({ type: "table" })}>
-              表
-            </button>
-            <button type="button" onClick$={() => command$({ type: "horizontalRule" })}>
-              区切り
-            </button>
-            <button type="button" onClick$={() => command$({ type: "inlineMath" })}>
-              文中数式
-            </button>
-            <button type="button" onClick$={() => command$({ type: "blockMath" })}>
-              別行数式
-            </button>
-            <button type="button" onClick$={() => command$({ type: "callout", label: "補足" })}>
-              補足
-            </button>
-          </div>
-
-          <details class="editor-panel">
-            <summary>リンク・画像・折りたたみ</summary>
-            <div class="editor-fields">
-              <label class="wide">
-                リンクURL
-                <input value={ui.link} onInput$={(_, el) => (ui.link = el.value)} />
-              </label>
-              <button type="button" onClick$={() => command$({ type: "link", href: ui.link })}>
-                選択範囲へリンク
+            <div class="editor-dock-row editor-formatting" role="toolbar" aria-label="本文の書式">
+              <button type="button" title="元に戻す" onClick$={() => command$({ type: "undo" })}>
+                ↶
               </button>
-              <label>
-                画像URL
-                <input value={ui.imageUrl} onInput$={(_, el) => (ui.imageUrl = el.value)} />
-              </label>
-              <label>
-                代替テキスト
-                <input value={ui.imageAlt} onInput$={(_, el) => (ui.imageAlt = el.value)} />
-              </label>
+              <button type="button" title="やり直す" onClick$={() => command$({ type: "redo" })}>
+                ↷
+              </button>
+              <button type="button" onClick$={() => command$({ type: "paragraph" })}>
+                本文
+              </button>
+              <button type="button" onClick$={() => command$({ type: "heading", level: 2 })}>
+                見出し
+              </button>
+              <button type="button" onClick$={() => command$({ type: "heading", level: 3 })}>
+                小見出し
+              </button>
+              <button type="button" aria-label="太字" onClick$={() => command$({ type: "bold" })}>
+                <b>B</b>
+              </button>
+              <button type="button" aria-label="斜体" onClick$={() => command$({ type: "italic" })}>
+                <i>I</i>
+              </button>
               <button
                 type="button"
-                disabled={!ui.imageUrl}
-                onClick$={() => command$({ type: "image", src: ui.imageUrl, alt: ui.imageAlt })}
+                aria-label="打ち消し線"
+                onClick$={() => command$({ type: "strike" })}
               >
-                画像を挿入
+                <s>S</s>
               </button>
-              <label>
-                折りたたみ見出し
-                <input
-                  value={ui.detailsSummary}
-                  onInput$={(_, el) => (ui.detailsSummary = el.value)}
-                />
-              </label>
-              <label class="wide">
-                折りたたみ本文
-                <input value={ui.detailsBody} onInput$={(_, el) => (ui.detailsBody = el.value)} />
-              </label>
-              <button
-                type="button"
-                onClick$={() =>
-                  command$({ type: "details", summary: ui.detailsSummary, body: ui.detailsBody })
-                }
-              >
-                折りたたみを挿入
+              <button type="button" onClick$={() => command$({ type: "bulletList" })}>
+                箇条書き
+              </button>
+              <button type="button" onClick$={() => command$({ type: "orderedList" })}>
+                番号
+              </button>
+              <button type="button" onClick$={() => command$({ type: "taskList" })}>
+                ToDo
+              </button>
+              <button type="button" onClick$={() => command$({ type: "blockquote" })}>
+                引用
+              </button>
+              <button type="button" onClick$={() => command$({ type: "codeBlock" })}>
+                コード
+              </button>
+              <button type="button" onClick$={() => command$({ type: "table" })}>
+                表
+              </button>
+              <button type="button" onClick$={() => command$({ type: "horizontalRule" })}>
+                区切り
+              </button>
+              <button type="button" onClick$={() => command$({ type: "inlineMath" })}>
+                文中数式
+              </button>
+              <button type="button" onClick$={() => command$({ type: "blockMath" })}>
+                別行数式
+              </button>
+              <button type="button" onClick$={() => command$({ type: "callout", label: "補足" })}>
+                補足
               </button>
             </div>
-          </details>
+
+            <details class="editor-panel">
+              <summary title="リンク・画像・折りたたみ">挿入</summary>
+              <div class="editor-fields">
+                <label class="wide">
+                  リンクURL
+                  <input value={ui.link} onInput$={(_, el) => (ui.link = el.value)} />
+                </label>
+                <button type="button" onClick$={() => command$({ type: "link", href: ui.link })}>
+                  選択範囲へリンク
+                </button>
+                <label>
+                  画像URL
+                  <input value={ui.imageUrl} onInput$={(_, el) => (ui.imageUrl = el.value)} />
+                </label>
+                <label>
+                  代替テキスト
+                  <input value={ui.imageAlt} onInput$={(_, el) => (ui.imageAlt = el.value)} />
+                </label>
+                <button
+                  type="button"
+                  disabled={!ui.imageUrl}
+                  onClick$={() => command$({ type: "image", src: ui.imageUrl, alt: ui.imageAlt })}
+                >
+                  画像を挿入
+                </button>
+                <label>
+                  折りたたみ見出し
+                  <input
+                    value={ui.detailsSummary}
+                    onInput$={(_, el) => (ui.detailsSummary = el.value)}
+                  />
+                </label>
+                <label class="wide">
+                  折りたたみ本文
+                  <input value={ui.detailsBody} onInput$={(_, el) => (ui.detailsBody = el.value)} />
+                </label>
+                <button
+                  type="button"
+                  onClick$={() =>
+                    command$({ type: "details", summary: ui.detailsSummary, body: ui.detailsBody })
+                  }
+                >
+                  折りたたみを挿入
+                </button>
+              </div>
+            </details>
+          </div>
         </aside>
       )}
 

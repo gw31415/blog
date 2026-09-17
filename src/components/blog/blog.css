@@ -231,6 +231,7 @@
     }
 
     .meta {
+      position: relative;
       display: flex;
       align-items: center;
       gap: 0.9em;
@@ -242,6 +243,67 @@
       line-height: 1.3;
 
       letter-spacing: 0.09em;
+    }
+
+    .article-edit-action {
+      position: fixed;
+      z-index: 30;
+      top: 50%;
+      left: max(0px, calc((100vw - 760px) / 2));
+      display: grid;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      align-items: center;
+      justify-items: start;
+      color: var(--faint);
+      border: 0;
+      background: transparent;
+      font: inherit;
+      font-size: 10px;
+      cursor: pointer;
+      transform: translateY(-50%);
+    }
+
+    .article-edit-label {
+      display: grid;
+      width: 24px;
+      height: 44px;
+      margin-left: 4px;
+      padding: 5px 4px;
+      place-items: center;
+      border: 0;
+      background: rgb(242 234 213 / 92%);
+      box-shadow:
+        inset 0 0 0 1px var(--line-soft),
+        3px 3px 10px rgb(40 30 20 / 6%);
+      letter-spacing: 0.18em;
+      line-height: 1;
+      writing-mode: vertical-rl;
+    }
+
+    .article-edit-action:hover .article-edit-label {
+      color: var(--link);
+      background: var(--highlight);
+    }
+
+    .article-edit-action:focus-visible {
+      outline: 0;
+    }
+
+    .article-edit-action:focus-visible .article-edit-label {
+      outline: 1px solid var(--red);
+      outline-offset: -5px;
+    }
+
+    .article-edit-action:disabled {
+      cursor: wait;
+      opacity: 0.58;
+    }
+
+    .article-edit-action.is-hidden {
+      visibility: hidden;
+      pointer-events: none;
     }
 
     .meta-category {
@@ -1403,7 +1465,6 @@
        Fixed overlays keep the paper geometry identical in both modes.
        ───────────────────────────── */
 
-    .mode-switch,
     .editor-dock,
     .editor-error,
     .math-dialog {
@@ -1413,118 +1474,35 @@
       text-align: start;
     }
 
-    .mode-switch {
-      position: fixed;
-      z-index: 40;
-      top: 14px;
-      right: 14px;
-
-      display: flex;
-      gap: 3px;
-      padding: 4px;
-
-      border: 1px solid var(--line-soft);
-      border-radius: 4px 6px 5px 3px;
-      background: rgb(242 234 213 / 94%);
-      box-shadow: 0 3px 12px rgb(40 30 20 / 10%);
-      transform: rotate(0.2deg);
-    }
-
-    .mode-switch button,
     .editor-dock button,
     .math-dialog button {
-      min-height: 30px;
-      padding: 5px 9px;
+      min-height: 28px;
+      padding: 2px 6px;
 
       color: inherit;
       border: 0;
-      border-radius: 5px;
+      border-radius: 0;
       background: transparent;
       font: inherit;
-      font-size: 12px;
+      font-size: 11px;
       cursor: pointer;
     }
 
-    .mode-switch button {
-      position: relative;
-      display: grid;
-      width: 34px;
-      height: 32px;
-      padding: 5px;
-      place-items: center;
-      border-radius: 2px;
-    }
-
-    .mode-switch button:hover {
-      background: var(--highlight);
-    }
-
-    .mode-switch button.active {
-      color: var(--ink);
+    .editor-dock button:hover,
+    .editor-panel > summary:hover {
+      color: var(--link);
       background: transparent;
     }
 
-    .mode-switch button.active::after {
-      position: absolute;
-      inset: 2px 1px 1px 2px;
-      content: "";
-      pointer-events: none;
-      border: 1.5px solid var(--red);
-      border-radius: 49% 54% 47% 52%;
-      opacity: 0.82;
-      transform: rotate(-4deg);
-    }
-
-    .mode-switch button:focus-visible {
-      outline: 2px solid var(--red);
-      outline-offset: 2px;
-    }
-
-    .mode-symbol {
-      width: 22px;
-      height: 22px;
-      overflow: visible;
-      fill: none;
-      stroke: currentcolor;
-      stroke-width: 1.25;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-
-    .mode-symbol circle {
-      fill: currentcolor;
-      stroke: none;
-    }
-
-    .edit-toggle.active .mode-symbol-pencil-mark {
-      stroke: var(--red);
-    }
-
-    .editor-dock button:hover,
     .math-dialog button:last-child {
       background: #352f25;
       color: #fffaf0;
     }
 
-    .mode-switch button:disabled,
     .editor-dock button:disabled,
     .math-dialog button:disabled {
       cursor: wait;
       opacity: 0.48;
-    }
-
-    .edit-symbol-loading {
-      display: none;
-    }
-
-    .edit-toggle:not(.active):active .edit-symbol-idle,
-    .edit-toggle[aria-busy="true"] .edit-symbol-idle {
-      display: none;
-    }
-
-    .edit-toggle:not(.active):active .edit-symbol-loading,
-    .edit-toggle[aria-busy="true"] .edit-symbol-loading {
-      display: block;
     }
 
     .editor-error {
@@ -1543,28 +1521,48 @@
     .editor-dock {
       position: fixed;
       z-index: 35;
-      right: 14px;
-      bottom: 14px;
-      left: 14px;
+      top: 0;
+      right: 0;
+      left: 0;
 
-      width: min(920px, calc(100vw - 28px));
+      width: min(760px, 100vw);
       max-height: min(52vh, 420px);
       margin-inline: auto;
-      overflow: auto;
+      padding-top: env(safe-area-inset-top);
+      overflow: visible;
 
-      border: 1px solid rgb(86 70 55 / 25%);
-      border-radius: 10px;
-      background: rgb(255 253 247 / 96%);
-      box-shadow: 0 12px 42px rgb(40 30 20 / 20%);
-      backdrop-filter: blur(16px);
+      border: 1px solid var(--line-soft);
+      border-top: 0;
+      border-radius: 0;
+      background: rgb(242 234 213 / 98%);
+      box-shadow: none;
+    }
+
+    .editor-dock-head {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      height: 32px;
+      border-bottom: 1px solid rgb(86 70 55 / 14%);
     }
 
     .editor-dock-row {
+      grid-row: 1;
+      grid-column: 1;
+      min-width: 0;
       display: flex;
-      gap: 2px;
-      padding: 7px;
+      gap: 0;
+      padding: 2px 4px;
       overflow-x: auto;
-      border-bottom: 1px solid rgb(86 70 55 / 14%);
+    }
+
+    .editor-done {
+      grid-row: 1;
+      grid-column: 3;
+      min-width: 44px;
+      border-left: 1px solid rgb(86 70 55 / 14%);
+      border-radius: 0;
+      color: var(--link);
     }
 
     .editor-formatting button {
@@ -1572,21 +1570,52 @@
     }
 
     .editor-panel {
+      grid-row: 1;
+      grid-column: 2;
+      align-self: stretch;
       margin: 0;
       border: 0;
-      border-bottom: 1px solid rgb(86 70 55 / 14%);
+      border-left: 1px solid rgb(86 70 55 / 14%);
     }
 
     .editor-panel > summary {
-      padding: 7px 10px;
-      font-size: 11px;
+      display: grid;
+      height: 100%;
+      padding: 0 8px;
+      place-items: center;
+      color: var(--faint);
+      font-size: 10px;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .editor-panel > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .editor-panel[open] > summary {
+      color: var(--link);
     }
 
     .editor-fields {
+      position: absolute;
+      z-index: 1;
+      top: calc(100% + 1px);
+      right: -1px;
+      left: -1px;
       display: grid;
       grid-template-columns: repeat(2, minmax(160px, 1fr));
       gap: 8px;
       padding: 4px 10px 10px;
+      max-height: min(52vh, 388px);
+      overflow: auto;
+      border: 1px solid var(--line-soft);
+      border-top: 0;
+      background: rgb(242 234 213 / 98%);
+    }
+
+    .editor-panel:not([open]) > .editor-fields {
+      display: none;
     }
 
     .editor-fields label,
@@ -1678,7 +1707,7 @@
         width: 100%;
 
         padding:
-          38px
+          calc(env(safe-area-inset-top) + 41px)
           max(22px, env(safe-area-inset-right))
           64px
           max(22px, env(safe-area-inset-left));
@@ -1686,16 +1715,18 @@
         box-shadow: none;
       }
 
-      .mode-switch {
-        top: 8px;
-        right: 8px;
+      .article-edit-action {
+        top: 68%;
+      }
+
+      .article-edit-label {
+        width: 16px;
+        height: 36px;
+        padding: 1px;
       }
 
       .editor-dock {
-        right: 8px;
-        bottom: 8px;
-        left: 8px;
-        width: calc(100vw - 16px);
+        width: 100vw;
       }
 
       .editor-fields {
