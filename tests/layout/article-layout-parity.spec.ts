@@ -288,3 +288,42 @@ test("round-trips a shared code block through clipboard HTML", async ({ page }) 
     { language: "html", code: originalCode, nestedControlCount: 0 },
   ]);
 });
+
+test("pastes a bare pre element as plaintext without crashing", async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集" }).click();
+  await waitForEditShell(page);
+
+  const editorRoot = page.locator(".ProseMirror");
+  const codeBlocks = editorRoot.locator("pre.code-block");
+  const originalCount = await codeBlocks.count();
+  await editorRoot.click();
+  await page.keyboard.press("Control+End");
+  await editorRoot.evaluate((editorElement) => {
+    const clipboardData = new DataTransfer();
+    clipboardData.setData("text/html", "<pre>const b = 2;</pre>");
+    clipboardData.setData("text/plain", "clipboard fallback must not win");
+    editorElement.dispatchEvent(
+      new ClipboardEvent("paste", {
+        bubbles: true,
+        cancelable: true,
+        clipboardData,
+      }),
+    );
+  });
+
+  await expect(codeBlocks).toHaveCount(originalCount + 1);
+  const pastedBarePreBlocks = await codeBlocks.evaluateAll((blocks) =>
+    blocks
+      .map((block) => ({
+        language: block.getAttribute("data-code-language"),
+        code: block.querySelector(":scope > code")?.textContent,
+      }))
+      .filter(({ code }) => code === "const b = 2;"),
+  );
+  expect(pastedBarePreBlocks).toEqual([{ language: "plaintext", code: "const b = 2;" }]);
+  expect(pageErrors).toEqual([]);
+});

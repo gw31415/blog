@@ -268,7 +268,8 @@ const SharedCodeBlock = CodeBlock.extend({
       {
         tag: "pre",
         preserveWhitespace: "full",
-        contentElement: "code",
+        contentElement: (element: HTMLElement) =>
+          element.querySelector<HTMLElement>(":scope > code") ?? element,
       },
     ];
   },
