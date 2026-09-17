@@ -51,8 +51,12 @@ export default defineConfig({
     // wrangler types による生成物はフォーマット対象外
     ignorePatterns: [
       "worker-configuration.d.ts",
+      // vite-plus test がテスト実行時に作る ESM 判定用ディレクトリ
+      "dummy-non-existing-folder",
       // MathJax/highlight.js のプリレンダー生成物
       "src/components/blog/rendered.ts",
+      // Markdown から生成した初期記事の JSON / HTML
+      "src/content/initial-article.generated.ts",
       // sample.html 起源の記事スタイル (整形対象外。罫線色のみ濃度調整済み)
       "src/components/blog/blog.css",
       // 移植元のソースアーティファクト
