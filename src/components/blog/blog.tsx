@@ -36,16 +36,16 @@ export const GridLayer = component$(() => {
           <path
             d="M 9.75 0 V 39"
             fill="none"
-            stroke="rgb(135 76 68 / 10%)"
-            stroke-width="1.2"
+            stroke="rgb(135 76 68 / 20%)"
+            stroke-width=".6"
             stroke-dasharray="1.5 2.7"
           />
 
           <path
             d="M 19.5 0 V 39"
             fill="none"
-            stroke="rgb(128 71 65 / 8%)"
-            stroke-width="1.24"
+            stroke="rgb(128 71 65 / 16%)"
+            stroke-width=".62"
             stroke-dasharray="2.1 2.4"
             stroke-dashoffset=".8"
           />
@@ -53,8 +53,8 @@ export const GridLayer = component$(() => {
           <path
             d="M 29.25 0 V 39"
             fill="none"
-            stroke="rgb(139 79 69 / 9%)"
-            stroke-width="1.16"
+            stroke="rgb(139 79 69 / 18%)"
+            stroke-width=".58"
             stroke-dasharray="1.3 2.9"
             stroke-dashoffset="1.1"
           />
@@ -62,8 +62,8 @@ export const GridLayer = component$(() => {
           <path
             d="M 0 9.75 H 39"
             fill="none"
-            stroke="rgb(135 76 68 / 10%)"
-            stroke-width="1.2"
+            stroke="rgb(135 76 68 / 20%)"
+            stroke-width=".6"
             stroke-dasharray="2.2 2.8"
             stroke-dashoffset=".4"
           />
@@ -71,8 +71,8 @@ export const GridLayer = component$(() => {
           <path
             d="M 0 19.5 H 39"
             fill="none"
-            stroke="rgb(128 71 65 / 8%)"
-            stroke-width="1.24"
+            stroke="rgb(128 71 65 / 16%)"
+            stroke-width=".62"
             stroke-dasharray="1.6 2.5"
             stroke-dashoffset="1.2"
           />
@@ -80,8 +80,8 @@ export const GridLayer = component$(() => {
           <path
             d="M 0 29.25 H 39"
             fill="none"
-            stroke="rgb(139 79 69 / 9%)"
-            stroke-width="1.16"
+            stroke="rgb(139 79 69 / 18%)"
+            stroke-width=".58"
             stroke-dasharray="2.3 3.1"
             stroke-dashoffset=".6"
           />
@@ -89,16 +89,16 @@ export const GridLayer = component$(() => {
           <path
             d="M 0 0 H 39"
             fill="none"
-            stroke="rgb(119 64 58 / 16%)"
-            stroke-width="1.56"
+            stroke="rgb(119 64 58 / 32%)"
+            stroke-width=".78"
             stroke-dasharray="14 .8 8 1.3 12 .9"
           />
 
           <path
             d="M 0 0 V 39"
             fill="none"
-            stroke="rgb(119 64 58 / 16%)"
-            stroke-width="1.56"
+            stroke="rgb(119 64 58 / 32%)"
+            stroke-width=".78"
             stroke-dasharray="9 .7 15 1.1 11 .8"
             stroke-dashoffset="3"
           />
@@ -109,8 +109,8 @@ export const GridLayer = component$(() => {
               M .27 .18 V 39
             "
             fill="none"
-            stroke="rgb(151 83 72 / 5%)"
-            stroke-width="1.4"
+            stroke="rgb(151 83 72 / 10%)"
+            stroke-width=".7"
             stroke-dasharray="11 1 16 2 7 1"
           />
 
