@@ -53,8 +53,6 @@ export default defineConfig({
       "worker-configuration.d.ts",
       // vite-plus test がテスト実行時に作る ESM 判定用ディレクトリ
       "dummy-non-existing-folder",
-      // MathJax/highlight.js のプリレンダー生成物
-      "src/components/blog/rendered.ts",
       // Markdown から生成した初期記事の JSON / HTML
       "src/content/initial-article.generated.ts",
       // 移植元のソースアーティファクト

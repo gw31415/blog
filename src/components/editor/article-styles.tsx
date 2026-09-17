@@ -571,6 +571,25 @@ const articleShellStyles = css`
     text-shadow: none !important;
   }
 
+  & mjx-assistive-mml {
+    position: absolute !important;
+
+    width: 1px !important;
+    height: 1px !important;
+
+    padding: 0 !important;
+    margin: -1px !important;
+
+    overflow: hidden !important;
+
+    clip: rect(0 0 0 0) !important;
+    clip-path: inset(50%) !important;
+
+    white-space: nowrap !important;
+
+    border: 0 !important;
+  }
+
   & mjx-container:not([display="true"]) {
     margin-inline: 0.045em !important;
 
@@ -598,7 +617,7 @@ const articleShellStyles = css`
   }
 
   & .math-block mjx-container[display="true"],
-  & .tiptap-mathematics-render[data-type="block-math"] .katex-display {
+  & .tiptap-mathematics-render[data-type="block-math"] mjx-container[display="true"] {
     margin: 0.5em 0 !important;
 
     font-size: 112% !important;

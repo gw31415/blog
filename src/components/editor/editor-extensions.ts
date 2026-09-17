@@ -1,24 +1,26 @@
 import CodeBlock from "@tiptap/extension-code-block";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
-import { BlockMath, InlineMath } from "@tiptap/extension-mathematics";
 import Placeholder from "@tiptap/extension-placeholder";
 import { TableKit } from "@tiptap/extension-table";
 import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
 import {
   type AnyExtension,
+  InputRule,
   type MarkdownToken,
   Node,
   type NodeViewRendererProps,
   mergeAttributes,
 } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
-import katex from "katex";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 
 import { codeBlockDOMSpec, createCodeBlockControl } from "./code-block-view.ts";
 import { codeLanguage, replaceCodeLanguage } from "./code-language.ts";
+import { renderMathContentHTML } from "./mathjax-renderer.ts";
+
+export { renderMathContentHTML } from "./mathjax-renderer.ts";
 
 type DirectiveAttributes = Record<string, string>;
 
@@ -330,14 +332,6 @@ const SharedCodeBlock = CodeBlock.extend({
   },
 });
 
-export function renderMathContentHTML(latex: string): string {
-  return katex.renderToString(latex, {
-    displayMode: false,
-    throwOnError: false,
-    output: "htmlAndMathml",
-  });
-}
-
 function sharedMathNodeView(displayMode: boolean) {
   return function addNodeView(this: {
     options: { onClick?: (node: ProseMirrorNode, position: number) => void };
@@ -357,10 +351,10 @@ function sharedMathNodeView(displayMode: boolean) {
         if (displayMode) {
           const inner = ownerDocument.createElement("div");
           inner.className = "block-math-inner";
-          inner.innerHTML = renderMathContentHTML(latex);
+          inner.innerHTML = renderMathContentHTML(latex, true);
           dom.replaceChildren(inner);
         } else {
-          dom.innerHTML = renderMathContentHTML(latex);
+          dom.innerHTML = renderMathContentHTML(latex, false);
         }
       };
       render();
@@ -382,11 +376,139 @@ function sharedMathNodeView(displayMode: boolean) {
   };
 }
 
-const SharedInlineMath = InlineMath.extend({
+interface MathNodeOptions {
+  onClick?: (node: ProseMirrorNode, position: number) => void;
+}
+
+const SharedInlineMath = Node.create<MathNodeOptions>({
+  name: "inlineMath",
+  group: "inline",
+  inline: true,
+  atom: true,
+
+  addOptions() {
+    return { onClick: undefined };
+  },
+
+  addAttributes() {
+    return {
+      latex: {
+        default: "",
+        parseHTML: (element) => element.getAttribute("data-latex"),
+        renderHTML: ({ latex }) => ({ "data-latex": latex }),
+      },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: 'span[data-type="inline-math"]' }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ["span", mergeAttributes(HTMLAttributes, { "data-type": "inline-math" })];
+  },
+
+  markdownTokenizer: {
+    name: "inlineMath",
+    level: "inline",
+    start: (source: string) => source.indexOf("$"),
+    tokenize: (source: string) => {
+      const match = /^\$([^$]+)\$(?!\$)/.exec(source);
+      if (!match) return undefined;
+      return { type: "inlineMath", raw: match[0], latex: match[1].trim() };
+    },
+  },
+
+  parseMarkdown: (token) => ({
+    type: "inlineMath",
+    attrs: { latex: (token as MarkdownToken & { latex?: string }).latex ?? "" },
+  }),
+
+  renderMarkdown: (node) => `$${String(node.attrs?.latex ?? "")}$`,
+
+  addInputRules() {
+    return [
+      new InputRule({
+        find: /(?<!\$)(\$\$([^$\n]+?)\$\$)(?!\$)/,
+        handler: ({ state, range, match }) => {
+          state.tr.replaceWith(range.from, range.to, this.type.create({ latex: match[2] }));
+        },
+      }),
+    ];
+  },
+
   addNodeView: sharedMathNodeView(false),
 });
 
-const SharedBlockMath = BlockMath.extend({
+const SharedBlockMath = Node.create<MathNodeOptions>({
+  name: "blockMath",
+  group: "block",
+  atom: true,
+
+  addOptions() {
+    return { onClick: undefined };
+  },
+
+  addAttributes() {
+    return {
+      latex: {
+        default: "",
+        parseHTML: (element) => element.getAttribute("data-latex"),
+        renderHTML: ({ latex }) => ({ "data-latex": latex }),
+      },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: 'div[data-type="block-math"]' }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ["div", mergeAttributes(HTMLAttributes, { "data-type": "block-math" })];
+  },
+
+  markdownTokenizer: {
+    name: "blockMath",
+    level: "block",
+    start: (source: string) => source.indexOf("$$"),
+    tokenize: (source: string) => {
+      const match = /^\$\$([^$]+)\$\$/.exec(source);
+      if (!match) return undefined;
+      return { type: "blockMath", raw: match[0], latex: match[1].trim() };
+    },
+  },
+
+  parseMarkdown: (token) => ({
+    type: "blockMath",
+    attrs: { latex: (token as MarkdownToken & { latex?: string }).latex ?? "" },
+  }),
+
+  renderMarkdown: (node) => ["$$", String(node.attrs?.latex ?? ""), "$$"].join("\n"),
+
+  addInputRules() {
+    return [
+      new InputRule({
+        find: /^\$\$\$([^$]+)\$\$\$$/,
+        handler: ({ state, range, match }) => {
+          const $from = state.doc.resolve(range.from);
+          const replacementRange =
+            $from.depth > 0 &&
+            $from.parent.isTextblock &&
+            range.from === $from.start() &&
+            range.to === $from.end() &&
+            $from.node(-1).canReplaceWith($from.index(-1), $from.indexAfter(-1), this.type)
+              ? { from: $from.before(), to: $from.after() }
+              : range;
+          state.tr.replaceWith(
+            replacementRange.from,
+            replacementRange.to,
+            this.type.create({ latex: match[1] }),
+          );
+        },
+      }),
+    ];
+  },
+
   addNodeView: sharedMathNodeView(true),
 });
 
@@ -411,12 +533,10 @@ export function createEditorExtensions(options: EditorExtensionOptions = {}): An
     TaskItem.configure({ nested: true }),
     Image.configure({ inline: false, allowBase64: false }),
     SharedInlineMath.configure({
-      katexOptions: { throwOnError: false },
       onClick: (node, position) =>
         options.onMathEdit?.({ kind: "inline", latex: String(node.attrs.latex), position }),
     }),
     SharedBlockMath.configure({
-      katexOptions: { throwOnError: false },
       onClick: (node, position) =>
         options.onMathEdit?.({ kind: "block", latex: String(node.attrs.latex), position }),
     }),

@@ -5,8 +5,8 @@
  * 記事ページは BlogPaper を土台に、BlogHeader / SectionHeading /
  * InlineMath / MathBlock / CodeBlock などを組み立てて作る。
  *
- * 数式・コードの HTML は SSR 済み (scripts/prerender-blog.mjs の生成物
- * rendered.ts) を dangerouslySetInnerHTML で埋め込む。クライアント側の
+ * 数式・コードの HTML はサーバー側の生成処理で組版・強調済みにし、
+ * dangerouslySetInnerHTML で埋め込む。初期表示でクライアント側の
  * MathJax / highlight.js 実行や CDN スクリプトは不要。
  */
 import { Slot, component$, type QRL } from "@qwik.dev/core";
@@ -242,7 +242,7 @@ export const BlogArticle = component$(() => {
 });
 
 interface InlineMathProps {
-  /** prerender-blog.mjs 生成の SSR 済み HTML (mjx-container を含む) */
+  /** SSR 済み HTML (mjx-container を含む) */
   html: string;
 }
 
@@ -252,7 +252,7 @@ export const InlineMath = component$((props: InlineMathProps) => {
 });
 
 interface MathBlockProps {
-  /** prerender-blog.mjs 生成の SSR 済み HTML (display="true" の mjx-container) */
+  /** SSR 済み HTML (display="true" の mjx-container) */
   html: string;
   caption?: string;
 }

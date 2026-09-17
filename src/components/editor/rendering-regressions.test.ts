@@ -19,6 +19,13 @@ describe("editor rendering regressions", () => {
     expect(INITIAL_ARTICLE_HTML).toMatch(/class="hljs-[^"]+"/);
   });
 
+  it("ships MathJax SVG in the server-rendered article HTML", () => {
+    expect(INITIAL_ARTICLE_HTML).toContain('<mjx-container class="MathJax" jax="SVG"');
+    expect(INITIAL_ARTICLE_HTML).toContain("<svg");
+    expect(INITIAL_ARTICLE_HTML).not.toContain('class="katex"');
+    expect(INITIAL_ARTICLE_HTML).not.toContain("data-mjx-error");
+  });
+
   it("labels code blocks with their language in the upper-right control", () => {
     expect(INITIAL_ARTICLE_HTML).toContain('data-code-language="html"');
     expect(INITIAL_ARTICLE_HTML).toMatch(
@@ -29,9 +36,12 @@ describe("editor rendering regressions", () => {
   it.each([
     [String.raw`\texttt{hello} + x`, "hello"],
     [String.raw`\text{hello world}`, "hello(?: |\\u00a0)world"],
-  ])("preserves MathML text structure for %s", (latex, textPattern) => {
-    expect(renderMathContentHTML(latex)).toMatch(
-      new RegExp(`<mtext(?: [^>]*)?>${textPattern}</mtext>`),
-    );
+  ])("renders MathJax SVG text for %s", (latex, textPattern) => {
+    const html = renderMathContentHTML(latex, false);
+
+    expect(html).toContain('<mjx-container class="MathJax" jax="SVG"');
+    expect(html).toContain("<svg");
+    expect(html).toContain("<mjx-assistive-mml");
+    expect(html).toMatch(new RegExp(`<mtext(?: [^>]*)?>${textPattern}</mtext>`));
   });
 });

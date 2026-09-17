@@ -1,8 +1,6 @@
 import { component$ } from "@qwik.dev/core";
 import { DocumentHeadTags, RouterOutlet, useLocation, useQwikRouter } from "@qwik.dev/router";
 
-import "katex/dist/katex.min.css";
-
 export default component$(() => {
   useQwikRouter();
   const { url } = useLocation();

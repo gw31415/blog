@@ -139,9 +139,9 @@ function runCommand(editor: Editor, command: EditorCommand): boolean {
     case "table":
       return chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
     case "inlineMath":
-      return chain.insertInlineMath({ latex: "x^2" }).run();
+      return chain.insertContent({ type: "inlineMath", attrs: { latex: "x^2" } }).run();
     case "blockMath":
-      return chain.insertBlockMath({ latex: "y = x + 1" }).run();
+      return chain.insertContent({ type: "blockMath", attrs: { latex: "y = x + 1" } }).run();
     case "link":
       return chain.extendMarkRange("link").setLink({ href: command.href }).run();
     case "image":

@@ -12,7 +12,6 @@
     "check.fmt": "vp fmt --check",
     "deploy": "pnpm run build && wrangler deploy",
     "dev": "vp dev -c adapters/cloudflare-workers/vite.config.ts --mode ssr",
-    "prerender:blog": "node scripts/prerender-blog.mjs",
     "fmt": "vp fmt",
     "generate:article": "node scripts/render-initial-article.mjs",
     "lint": "vp lint",
@@ -25,7 +24,6 @@
     "@tiptap/extension-code-block": "3.31.3",
     "@tiptap/extension-image": "3.31.3",
     "@tiptap/extension-link": "3.31.3",
-    "@tiptap/extension-mathematics": "3.31.3",
     "@tiptap/extension-placeholder": "3.31.3",
     "@tiptap/extension-table": "3.31.3",
     "@tiptap/extension-task-item": "3.31.3",
@@ -34,7 +32,6 @@
     "@tiptap/pm": "3.31.3",
     "@tiptap/starter-kit": "3.31.3",
     "@tiptap/static-renderer": "3.31.3",
-    "katex": "0.18.7",
     "lowlight": "3.3.0"
   },
   "devDependencies": {

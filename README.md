@@ -21,9 +21,9 @@ vite-plus が dev / build / lint / fmt を兼ねるため、専用の ESLint・P
 
 編集内容はブラウザのメモリだけに保持され、再読み込みすると初期状態へ戻ります。DB、API、localStorageへの保存は行いません。フッターの年号は公開日から生成する表示項目なので直接編集しません。
 
-初期表示はSSR済みHTMLです。TipTap、ProseMirror、編集用KaTeXランタイムは最初に「編集」を押したときだけ動的に読み込み、その後は同じエディターインスタンスのeditable状態だけを切り替えます。静的表示とエディターは同じDOM構造・CSSを使うため、モード切替だけでは紙面の座標と寸法が変わりません。
+初期表示は、MathJaxでTeXからSVGと支援技術向けMathMLを生成したSSR済みHTMLです。TipTap、ProseMirror、編集用MathJaxランタイムは最初に「編集」を押したときだけ動的に読み込み、その後は同じエディターインスタンスのeditable状態だけを切り替えます。静的表示とエディターは同じDOM構造・CSSを使うため、モード切替だけでは紙面の座標と寸法が変わりません。
 
-アプリ固有のスタイルは `src/components/editor/article-styles.tsx` の module-local な qstyle tagged template で管理し、同一モジュールの `css` prop から適用します。外部配布物であるKaTeXのCSSだけはパッケージから直接importします。
+アプリ固有のスタイルは `src/components/editor/article-styles.tsx` の module-local な qstyle tagged template で管理し、同一モジュールの `css` prop から適用します。MathJaxは自己完結したSVGを出力するため、数式用の外部CSSやWebフォントは読み込みません。
 
 ## プロジェクト構成
 
