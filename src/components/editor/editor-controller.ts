@@ -9,6 +9,7 @@ export type EditorCommand =
   | { type: "image"; src: string; alt: string; caption?: string }
   | { type: "callout"; label: string }
   | { type: "details"; summary: string; body: string }
+  | { type: "setCodeLanguage"; position: number; language: string }
   | { type: "updateMath"; kind: "inline" | "block"; position: number; latex: string };
 
 export interface ToolbarState {

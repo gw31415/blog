@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
+import { readFileSync } from "node:fs";
 
 import { INITIAL_ARTICLE } from "~/content/initial-article";
 import { INITIAL_ARTICLE_HTML } from "~/content/initial-article.generated";
@@ -28,5 +29,24 @@ describe("article shell", () => {
   it("keeps section numbers out of generated article content", () => {
     expect(INITIAL_ARTICLE_HTML).not.toContain('class="section-number"');
     expect(INITIAL_ARTICLE_HTML.match(/<h2(?:\s|>)/g)).toHaveLength(4);
+  });
+
+  it("edits article metadata in place instead of an editor panel", () => {
+    const source = readFileSync(new URL("./article-shell.tsx", import.meta.url), "utf8");
+    const headerSource = readFileSync(new URL("../blog/blog.tsx", import.meta.url), "utf8");
+
+    expect(source).not.toContain("<summary>記事情報</summary>");
+    expect(source).toContain('editable={ui.mode === "edit"}');
+    expect(headerSource).toContain('type="date"');
+    expect(headerSource).toContain('class="article-date-input"');
+  });
+
+  it("provides immediate pressed feedback and intent-based editor preloading", () => {
+    const source = readFileSync(new URL("./article-shell.tsx", import.meta.url), "utf8");
+
+    expect(source).toContain("preloadEditor$");
+    expect(source).toContain("onPointerEnter$={preloadEditor$}");
+    expect(source).toContain("onFocus$={preloadEditor$}");
+    expect(source).toContain('class="edit-label-loading"');
   });
 });

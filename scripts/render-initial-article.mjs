@@ -6,6 +6,7 @@ import hljs from "highlight.js";
 import katex from "katex";
 
 import { createEditorExtensions } from "../src/components/editor/editor-extensions.ts";
+import { codeLanguage } from "../src/components/editor/code-language.ts";
 import { parseArticleMarkdown } from "../src/components/editor/markdown.ts";
 import { INITIAL_ARTICLE } from "../src/content/initial-article.ts";
 
@@ -26,16 +27,14 @@ function mathHtml(node, displayMode) {
 
 function codeBlockHtml(node) {
   const languageInfo = String(node.attrs.language ?? "");
-  const language = languageInfo.split(/\s+/, 1)[0];
+  const language = codeLanguage(languageInfo);
   const source = node.textContent;
   const highlighted =
     language && hljs.getLanguage(language)
       ? hljs.highlight(source, { language }).value
       : hljs.highlightAuto(source).value;
-  const className = languageInfo
-    ? ` class="language-${languageInfo.replaceAll('"', "&quot;")}"`
-    : "";
-  return `<pre class="code-block"><code${className}>${highlighted}</code></pre>`;
+  const className = language === "plaintext" ? "" : ` class="language-${language}"`;
+  return `<pre class="code-block" data-code-language="${language}"><span class="code-language-control" contenteditable="false"><span class="code-language-label">${language}</span></span><code${className}>${highlighted}</code></pre>`;
 }
 
 const bodyHtml = renderToHTMLString({

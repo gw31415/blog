@@ -1,8 +1,21 @@
+import bash from "highlight.js/lib/languages/bash";
 import css from "highlight.js/lib/languages/css";
+import javascript from "highlight.js/lib/languages/javascript";
+import json from "highlight.js/lib/languages/json";
+import markdown from "highlight.js/lib/languages/markdown";
+import typescript from "highlight.js/lib/languages/typescript";
 import xml from "highlight.js/lib/languages/xml";
 import { createLowlight } from "lowlight";
 
-const lowlight = createLowlight({ css, html: xml });
+const lowlight = createLowlight({
+  bash,
+  css,
+  html: xml,
+  javascript,
+  json,
+  markdown,
+  typescript,
+});
 
 export interface HighlightSpan {
   classes: string[];

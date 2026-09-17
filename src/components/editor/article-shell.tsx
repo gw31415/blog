@@ -20,6 +20,13 @@ import {
   type MathEditRequest,
 } from "./editor-controller";
 
+let editorRuntimePromise: Promise<typeof import("./editor-runtime")> | undefined;
+
+export function loadEditorRuntime() {
+  editorRuntimePromise ??= import("./editor-runtime");
+  return editorRuntimePromise;
+}
+
 export function createArticlePresentation(article: Pick<ArticleDraft, "publishedAt">) {
   if (article.publishedAt === "") {
     return { dateLabel: "公開日未設定", footerRight: "年未設定" };
@@ -78,6 +85,9 @@ export const ArticleShell = component$(() => {
   });
 
   const command$ = $((command: EditorCommand) => controller.value?.run(command));
+  const preloadEditor$ = $(() => {
+    void loadEditorRuntime();
+  });
 
   const openMathEditor$ = $(async (request: MathEditRequest) => {
     const { validateLatex } = await import("./math-dialog");
@@ -95,9 +105,7 @@ export const ArticleShell = component$(() => {
     ui.error = "";
     try {
       if (!controller.value) {
-        controller.value = noSerialize(
-          createEditorController(async () => await import("./editor-runtime")),
-        );
+        controller.value = noSerialize(createEditorController(loadEditorRuntime));
       }
       await controller.value?.enterEdit(editorMount.value, {
         content: INITIAL_ARTICLE_JSON,
@@ -155,6 +163,11 @@ export const ArticleShell = component$(() => {
           dateLabel={presentation.dateLabel}
           title={ui.title}
           subtitle={ui.subtitle}
+          editable={ui.mode === "edit"}
+          onCategoryInput$={$((value) => (ui.category = value))}
+          onDateInput$={$((value) => (ui.publishedAt = value))}
+          onTitleInput$={$((value) => (ui.title = value))}
+          onSubtitleInput$={$((value) => (ui.subtitle = value))}
         />
         <article
           class="article-content"
@@ -178,12 +191,16 @@ export const ArticleShell = component$(() => {
         </button>
         <button
           type="button"
-          class={{ active: ui.mode === "edit" }}
+          class={{ "edit-toggle": true, active: ui.mode === "edit" }}
           aria-pressed={ui.mode === "edit"}
+          aria-busy={ui.mode === "loading"}
           disabled={ui.mode === "loading"}
+          onPointerEnter$={preloadEditor$}
+          onFocus$={preloadEditor$}
           onClick$={enterEdit$}
         >
-          {ui.mode === "loading" ? "読込中…" : "編集"}
+          <span class="edit-label-idle">{ui.mode === "loading" ? "" : "編集"}</span>
+          <span class="edit-label-loading">読込中…</span>
         </button>
       </div>
 
@@ -255,32 +272,6 @@ export const ArticleShell = component$(() => {
               補足
             </button>
           </div>
-
-          <details class="editor-panel">
-            <summary>記事情報</summary>
-            <div class="editor-fields">
-              <label>
-                カテゴリ
-                <input value={ui.category} onInput$={(_, el) => (ui.category = el.value)} />
-              </label>
-              <label>
-                公開日
-                <input
-                  type="date"
-                  value={ui.publishedAt}
-                  onInput$={(_, el) => (ui.publishedAt = el.value)}
-                />
-              </label>
-              <label class="wide">
-                タイトル
-                <input value={ui.title} onInput$={(_, el) => (ui.title = el.value)} />
-              </label>
-              <label class="wide">
-                副題
-                <input value={ui.subtitle} onInput$={(_, el) => (ui.subtitle = el.value)} />
-              </label>
-            </div>
-          </details>
 
           <details class="editor-panel">
             <summary>リンク・画像・折りたたみ</summary>

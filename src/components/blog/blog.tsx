@@ -9,7 +9,7 @@
  * rendered.ts) を dangerouslySetInnerHTML で埋め込む。クライアント側の
  * MathJax / highlight.js 実行や CDN スクリプトは不要。
  */
-import { Slot, component$, useStyles$ } from "@qwik.dev/core";
+import { Slot, component$, useStyles$, type QRL } from "@qwik.dev/core";
 
 import blogCss from "./blog.css?inline";
 
@@ -135,6 +135,11 @@ interface BlogHeaderProps {
   dateLabel: string;
   title: string;
   subtitle?: string;
+  editable?: boolean;
+  onCategoryInput$?: QRL<(value: string) => void>;
+  onDateInput$?: QRL<(value: string) => void>;
+  onTitleInput$?: QRL<(value: string) => void>;
+  onSubtitleInput$?: QRL<(value: string) => void>;
 }
 
 /** 記事ヘッダー (カテゴリ・日付・題・副題)。 */
@@ -142,23 +147,49 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
   return (
     <header data-layout-key="header">
       <div class="meta">
-        <span class="meta-category" data-article-field="category">
+        <span
+          class="meta-category"
+          data-article-field="category"
+          contentEditable={props.editable ? "true" : undefined}
+          onInput$={(_, element) => props.onCategoryInput$?.(element.textContent ?? "")}
+        >
           {props.category}
         </span>
 
         <span class="meta-separator" aria-hidden="true"></span>
 
-        <time class="ink ink-muted" dateTime={props.dateTime} data-article-field="publishedAt">
-          {props.dateLabel}
-        </time>
+        <span class="article-date-control">
+          <time class="ink ink-muted" dateTime={props.dateTime} data-article-field="publishedAt">
+            {props.dateLabel}
+          </time>
+          {props.editable && (
+            <input
+              class="article-date-input"
+              type="date"
+              aria-label="公開日"
+              value={props.dateTime}
+              onInput$={(_, element) => props.onDateInput$?.(element.value)}
+            />
+          )}
+        </span>
       </div>
 
-      <h1 class="ink" data-article-field="title">
+      <h1
+        class="ink"
+        data-article-field="title"
+        contentEditable={props.editable ? "true" : undefined}
+        onInput$={(_, element) => props.onTitleInput$?.(element.textContent ?? "")}
+      >
         {props.title}
       </h1>
 
       {props.subtitle && (
-        <p class="subtitle ink ink-muted" data-article-field="subtitle">
+        <p
+          class="subtitle ink ink-muted"
+          data-article-field="subtitle"
+          contentEditable={props.editable ? "true" : undefined}
+          onInput$={(_, element) => props.onSubtitleInput$?.(element.textContent ?? "")}
+        >
           {props.subtitle}
         </p>
       )}
