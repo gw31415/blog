@@ -229,6 +229,7 @@ const Details = Node.create({
 });
 
 interface EditorExtensionOptions {
+  additionalExtensions?: AnyExtension[];
   onMathEdit?: (request: { kind: "inline" | "block"; latex: string; position: number }) => void;
 }
 
@@ -240,6 +241,7 @@ export function createEditorExtensions(options: EditorExtensionOptions = {}): An
       paragraph: { HTMLAttributes: { class: "ink" } },
       heading: { HTMLAttributes: { class: "ink" } },
     }),
+    ...(options.additionalExtensions ?? []),
     Link.configure({ openOnClick: false, autolink: true }),
     TableKit.configure({ table: { resizable: false } }),
     TaskList,

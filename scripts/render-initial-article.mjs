@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
+import hljs from "highlight.js";
 import katex from "katex";
 
 import { createEditorExtensions } from "../src/components/editor/editor-extensions.ts";
@@ -23,6 +24,20 @@ function mathHtml(node, displayMode) {
   return `<${tag} class="tiptap-mathematics-render" data-type="${displayMode ? "block-math" : "inline-math"}" data-latex="${latex.replaceAll('"', "&quot;")}" contenteditable="false">${mathContent}</${tag}>`;
 }
 
+function codeBlockHtml(node) {
+  const languageInfo = String(node.attrs.language ?? "");
+  const language = languageInfo.split(/\s+/, 1)[0];
+  const source = node.textContent;
+  const highlighted =
+    language && hljs.getLanguage(language)
+      ? hljs.highlight(source, { language }).value
+      : hljs.highlightAuto(source).value;
+  const className = languageInfo
+    ? ` class="language-${languageInfo.replaceAll('"', "&quot;")}"`
+    : "";
+  return `<pre class="code-block"><code${className}>${highlighted}</code></pre>`;
+}
+
 const bodyHtml = renderToHTMLString({
   content,
   extensions,
@@ -30,6 +45,7 @@ const bodyHtml = renderToHTMLString({
     nodeMapping: {
       inlineMath: ({ node }) => mathHtml(node, false),
       blockMath: ({ node }) => mathHtml(node, true),
+      codeBlock: ({ node }) => codeBlockHtml(node),
     },
   },
 });

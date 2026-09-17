@@ -972,6 +972,18 @@
         1px solid var(--rule);
     }
 
+    .article-content table {
+      margin:
+        calc(var(--body-leading) * 2)
+        0;
+
+      border-top:
+        1px solid var(--rule);
+
+      border-bottom:
+        1px solid var(--rule);
+    }
+
     table {
       width: 100%;
       min-width: 430px;

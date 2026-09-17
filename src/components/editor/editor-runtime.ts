@@ -1,4 +1,6 @@
-import { Editor } from "@tiptap/core";
+import { Editor, Extension, findChildren } from "@tiptap/core";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import katex from "katex";
 
 import { createEditorExtensions } from "./editor-extensions";
@@ -9,6 +11,60 @@ import type {
   ToolbarState,
 } from "./editor-controller";
 import { serializeArticleMarkdown } from "./markdown";
+
+interface MathEditRequest {
+  kind: "inline" | "block";
+  latex: string;
+  position: number;
+}
+
+type HighlightCode = typeof import("./editor-syntax-highlighting").highlightCode;
+
+function createSyntaxHighlighting(highlightCode: HighlightCode): Extension {
+  return Extension.create({
+    name: "articleSyntaxHighlighting",
+    addProseMirrorPlugins() {
+      const key = new PluginKey<DecorationSet>("articleSyntaxHighlighting");
+      const decorations = (doc: Parameters<typeof DecorationSet.create>[0]) => {
+        const ranges: Decoration[] = [];
+        for (const block of findChildren(doc, (node) => node.type.name === "codeBlock")) {
+          let from = block.pos + 1;
+          const language = String(block.node.attrs.language ?? "");
+          for (const span of highlightCode(language, block.node.textContent)) {
+            const to = from + span.text.length;
+            if (span.classes.length > 0) {
+              ranges.push(Decoration.inline(from, to, { class: span.classes.join(" ") }));
+            }
+            from = to;
+          }
+        }
+        return DecorationSet.create(doc, ranges);
+      };
+
+      return [
+        new Plugin({
+          key,
+          state: {
+            init: (_, state) => decorations(state.doc),
+            apply: (transaction, current) =>
+              transaction.docChanged
+                ? decorations(transaction.doc)
+                : current.map(transaction.mapping, transaction.doc),
+          },
+          props: { decorations: (state) => key.getState(state) ?? null },
+        }),
+      ];
+    },
+  });
+}
+
+export function requestMathEditWhenEditable(
+  editable: boolean,
+  request: MathEditRequest,
+  onMathEdit: (request: MathEditRequest) => void,
+): void {
+  if (editable) onMathEdit(request);
+}
 
 function toolbarState(editor: Editor): ToolbarState {
   const heading = editor.isActive("heading", { level: 2 })
@@ -108,18 +164,26 @@ function runCommand(editor: Editor, command: EditorCommand): boolean {
   return false;
 }
 
-export function mountArticleEditor(options: MountArticleEditorOptions): EditorHandle {
+export async function mountArticleEditor(
+  options: MountArticleEditorOptions,
+): Promise<EditorHandle> {
+  const { highlightCode } = await import("./editor-syntax-highlighting");
   let lastMarkdown = serializeArticleMarkdown(options.content);
   let editor: Editor;
   editor = new Editor({
     element: null,
     extensions: createEditorExtensions({
+      additionalExtensions: [createSyntaxHighlighting(highlightCode)],
       onMathEdit: (request) => {
         const current = editor.state.doc.nodeAt(request.position);
-        options.onMathEdit({
-          ...request,
-          latex: String(current?.attrs.latex ?? request.latex),
-        });
+        requestMathEditWhenEditable(
+          editor.isEditable,
+          {
+            ...request,
+            latex: String(current?.attrs.latex ?? request.latex),
+          },
+          (currentRequest) => options.onMathEdit(currentRequest),
+        );
       },
     }),
     content: options.content,

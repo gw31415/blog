@@ -32,7 +32,8 @@
     "@tiptap/pm": "3.31.3",
     "@tiptap/starter-kit": "3.31.3",
     "@tiptap/static-renderer": "3.31.3",
-    "katex": "0.18.7"
+    "katex": "0.18.7",
+    "lowlight": "3.3.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.54.3",

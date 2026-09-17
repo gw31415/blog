@@ -3,6 +3,18 @@ import { readFileSync } from "node:fs";
 const manifest = JSON.parse(readFileSync("dist/q-manifest.json", "utf8"));
 const html = readFileSync("dist/index.html", "utf8");
 const bundles = Object.entries(manifest.bundles);
+const initialBundles = bundles.filter(([name]) => html.includes(name)).map(([name]) => name);
+
+const staticallyReachable = new Set(initialBundles);
+const queue = [...initialBundles];
+while (queue.length > 0) {
+  const name = queue.pop();
+  for (const imported of manifest.bundles[name]?.imports ?? []) {
+    if (staticallyReachable.has(imported)) continue;
+    staticallyReachable.add(imported);
+    queue.push(imported);
+  }
+}
 const editorBundles = bundles.filter(([, bundle]) =>
   (bundle.origins ?? []).some((origin) =>
     origin.includes("src/components/editor/editor-runtime.ts"),
@@ -18,13 +30,12 @@ for (const [name] of editorBundles) {
     throw new Error(`Editor runtime ${name} is referenced by the initial HTML.`);
   }
 
-  const staticImporters = bundles.filter(([, bundle]) => (bundle.imports ?? []).includes(name));
   const dynamicImporters = bundles.filter(([, bundle]) =>
     (bundle.dynamicImports ?? []).includes(name),
   );
-  if (staticImporters.length > 0 || dynamicImporters.length === 0) {
+  if (staticallyReachable.has(name) || dynamicImporters.length === 0) {
     throw new Error(
-      `Editor runtime ${name} must be reachable only through a dynamic import (static=${staticImporters.length}, dynamic=${dynamicImporters.length}).`,
+      `Editor runtime ${name} must be absent from the initial static graph and reachable through a dynamic import.`,
     );
   }
 

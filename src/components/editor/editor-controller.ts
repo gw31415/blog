@@ -42,7 +42,7 @@ export interface MountArticleEditorOptions {
 }
 
 export interface EditorRuntimeModule {
-  mountArticleEditor(options: MountArticleEditorOptions): EditorHandle;
+  mountArticleEditor(options: MountArticleEditorOptions): EditorHandle | Promise<EditorHandle>;
 }
 
 export type EditorRuntimeLoader = () => Promise<EditorRuntimeModule>;
@@ -79,7 +79,7 @@ export function createEditorController(loadRuntime: EditorRuntimeLoader): Editor
       const staticHtml = element.innerHTML;
       try {
         const runtime = await loadRuntime();
-        handle = runtime.mountArticleEditor({
+        handle = await runtime.mountArticleEditor({
           element,
           content: options?.content ?? EMPTY_DOCUMENT,
           onUpdate: options?.onUpdate ?? NOOP,
