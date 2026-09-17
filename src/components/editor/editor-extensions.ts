@@ -230,7 +230,11 @@ const Details = Node.create({
 
 export function createEditorExtensions(): AnyExtension[] {
   return [
-    StarterKit.configure({ link: false }),
+    StarterKit.configure({
+      link: false,
+      paragraph: { HTMLAttributes: { class: "ink" } },
+      heading: { HTMLAttributes: { class: "ink" } },
+    }),
     Link.configure({ openOnClick: false, autolink: true }),
     TableKit.configure({ table: { resizable: false } }),
     TaskList,

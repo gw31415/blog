@@ -326,6 +326,10 @@
         last allow-end;
     }
 
+    .article-content {
+      counter-reset: section;
+    }
+
     @supports (text-spacing-trim: trim-start) {
       article,
       blockquote {
@@ -521,7 +525,8 @@
        MathJax
        ───────────────────────────── */
 
-    .math-tex {
+    .math-tex,
+    .tiptap-mathematics-render[data-type="inline-math"] {
       color: var(--ink) !important;
 
       -webkit-text-fill-color:
@@ -555,7 +560,8 @@
         101% !important;
     }
 
-    .math-block {
+    .math-block,
+    .tiptap-mathematics-render[data-type="block-math"] {
       margin:
         calc(var(--body-leading) * 2)
         0;
@@ -583,7 +589,8 @@
         no-autospace;
     }
 
-    .math-block mjx-container[display="true"] {
+    .math-block mjx-container[display="true"],
+    .tiptap-mathematics-render[data-type="block-math"] .katex-display {
       margin:
         0.5em 0 !important;
 
@@ -608,7 +615,8 @@
        見出し
        ───────────────────────────── */
 
-    .section-heading {
+    .section-heading,
+    .article-content > h2 {
       margin:
         calc(var(--body-leading) * 3)
         0
@@ -617,7 +625,8 @@
       text-align: start;
     }
 
-    .section-number {
+    .section-number,
+    .article-content > h2::before {
       display: block;
 
       margin-bottom: 0.65em;
@@ -626,6 +635,20 @@
       font-size: 10px;
 
       letter-spacing: 0.12em;
+    }
+
+    .article-content > h2 {
+      counter-increment: section;
+    }
+
+    .article-content > h2::before {
+      content: counter(section, cjk-ideographic);
+
+      color: var(--faint);
+      -webkit-text-fill-color: var(--faint);
+
+      pointer-events: none;
+      user-select: none;
     }
 
     h2 {
