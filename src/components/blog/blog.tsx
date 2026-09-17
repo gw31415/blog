@@ -17,7 +17,7 @@ import blogCss from "./blog.css?inline";
 export const BlogPaper = component$(() => {
   useStyles$(blogCss);
   return (
-    <main class="paper">
+    <main class="paper" data-layout-key="paper">
       <GridLayer />
       <div class="paper-texture" aria-hidden="true"></div>
       <div class="content">
@@ -140,39 +140,39 @@ interface BlogHeaderProps {
 /** 記事ヘッダー (カテゴリ・日付・題・副題)。 */
 export const BlogHeader = component$((props: BlogHeaderProps) => {
   return (
-    <header>
+    <header data-layout-key="header">
       <div class="meta">
-        <span class="meta-category">{props.category}</span>
+        <span class="meta-category" data-article-field="category">
+          {props.category}
+        </span>
 
         <span class="meta-separator" aria-hidden="true"></span>
 
-        <time class="ink ink-muted" dateTime={props.dateTime}>
+        <time class="ink ink-muted" dateTime={props.dateTime} data-article-field="publishedAt">
           {props.dateLabel}
         </time>
       </div>
 
-      <h1 class="ink">{props.title}</h1>
+      <h1 class="ink" data-article-field="title">
+        {props.title}
+      </h1>
 
-      {props.subtitle && <p class="subtitle ink ink-muted">{props.subtitle}</p>}
+      {props.subtitle && (
+        <p class="subtitle ink ink-muted" data-article-field="subtitle">
+          {props.subtitle}
+        </p>
+      )}
     </header>
   );
 });
 
 interface SectionHeadingProps {
-  /** 節番号の表示 (例: "一", "二") */
-  number: string;
   title: string;
 }
 
-/** 節見出し (番号 + h2)。 */
+/** 節見出し。番号は CSS counter から自動生成する。 */
 export const SectionHeading = component$((props: SectionHeadingProps) => {
-  return (
-    <div class="section-heading">
-      <span class="section-number ink ink-faint">{props.number}</span>
-
-      <h2 class="ink">{props.title}</h2>
-    </div>
-  );
+  return <h2 class="ink">{props.title}</h2>;
 });
 
 /** 本文段落。 */
@@ -334,7 +334,7 @@ interface BlogFooterProps {
 /** 記事末フッター。 */
 export const BlogFooter = component$((props: BlogFooterProps) => {
   return (
-    <footer class="page-footer ink ink-muted">
+    <footer class="page-footer ink ink-muted" data-layout-key="footer">
       <span>{props.left}</span>
       <span>{props.right}</span>
     </footer>

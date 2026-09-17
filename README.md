@@ -13,6 +13,15 @@ vite-plus が dev / build / lint / fmt を兼ねるため、専用の ESLint・P
 - 指紋付きアセットの長期キャッシュ（`public/_headers`）で初期表示を高速化
 - 設定ファイルは `vite.config.ts`（lint・fmt 設定含む）と `tsconfig.json` のみ
 - Node 26 / pnpm 12
+- トップページを、その場で編集できる一時保存のWYSIWYGデモ
+
+## WYSIWYGデモ
+
+右上の「編集」で、カテゴリ・公開日・タイトル・副題とMarkdown本文を編集できます。本文は見出し、各種リスト、引用、コード、表、リンク、画像、折りたたみ、補足、インライン／ブロック数式に対応します。見出し番号は本文データに持たず、見出しからCSS counterで自動生成されます。
+
+編集内容はブラウザのメモリだけに保持され、再読み込みすると初期状態へ戻ります。DB、API、localStorageへの保存は行いません。フッターの年号は公開日から生成する表示項目なので直接編集しません。
+
+初期表示はSSR済みHTMLです。TipTap、ProseMirror、編集用KaTeXランタイムは最初に「編集」を押したときだけ動的に読み込み、その後は同じエディターインスタンスのeditable状態だけを切り替えます。静的表示とエディターは同じDOM構造・CSSを使うため、モード切替だけでは紙面の座標と寸法が変わりません。
 
 ## プロジェクト構成
 
@@ -40,6 +49,7 @@ pnpm preview        # 本番ビルドのローカルプレビュー（wrangler d
 pnpm deploy         # 本番ビルド + wrangler deploy
 
 pnpm check          # lint（oxlint + eslint-plugin-qwik）
+pnpm check:editor-chunk # TipTapが初期HTMLから参照されず動的chunkであることを検証
 pnpm build.types    # TypeScript の型チェック（wrangler types 生成付き）
 pnpm check.fmt      # フォーマットチェック
 pnpm fmt            # フォーマット

@@ -9,6 +9,7 @@ node_modules
 .env
 .planning
 .worktrees
+dummy-non-existing-folder
 *.local
 
 # Cache
