@@ -1,5 +1,6 @@
 import { getSchema } from "@tiptap/core";
 import type { Node as ProseMirrorNode, Schema } from "@tiptap/pm/model";
+import { TableMap } from "@tiptap/pm/tables";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createEditorExtensions } from "./editor-extensions";
@@ -270,4 +271,48 @@ describe("transformTable", () => {
   it("allows reordering a rectangular table whose cells all span one slot", () => {
     expect(canReorderTable(mixedTable())).toBe(true);
   });
+
+  it.each(["rowspan", "colspan"] as const)(
+    "rejects every structural action on a valid %s table without changing its map or data",
+    (span) => {
+      const cells = (text: string, attrs: Record<string, unknown> = {}) =>
+        cell(schema, "tableCell", text, attrs);
+      const rows =
+        span === "rowspan"
+          ? [
+              [cells("A", { rowspan: 2 }), cells("B", { colspan: 2 })],
+              [cells("C"), cells("D")],
+            ]
+          : [
+              [cells("A", { colspan: 2 }), cells("B")],
+              [cells("C"), cells("D", { colspan: 2 })],
+            ];
+      const source = schema.nodes.table.create(
+        null,
+        rows.map((items) => schema.nodes.tableRow.create(null, items)),
+      );
+      const original = source.toJSON();
+      const map = TableMap.get(source);
+      expect(map.problems).toBeNull();
+      expect([map.width, map.height]).toEqual([3, 2]);
+      for (const axis of ["row", "column"] as const) {
+        for (const type of [
+          "insertBefore",
+          "insertAfter",
+          "duplicate",
+          "delete",
+          "move",
+        ] as const) {
+          const action: TableAction =
+            type === "move" ? { type, axis, from: 0, to: 1 } : { type, axis, index: 0 };
+          expect(transformTable(source, action), `${span} ${axis} ${type}`).toEqual({
+            ok: false,
+            reason: "merged-cells",
+          });
+          expect(source.toJSON()).toEqual(original);
+          expect(TableMap.get(source).problems).toBeNull();
+        }
+      }
+    },
+  );
 });

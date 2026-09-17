@@ -2,9 +2,9 @@
 
 ## Status and ownership
 
-VERIFIED, pending controller review and integration. Starting commit was `ce5dabfec43afbf82d106f150a4acfff5c2277e4` on `codex/layout-parity-table-handles`. This report accompanies the commit `fix(editor): close layout parity regressions`. No merge, push, main modification, or subagent delegation was performed.
+VERIFIED, pending controller review and integration. Starting commit was `ce5dabfec43afbf82d106f150a4acfff5c2277e4` on `codex/layout-parity-table-handles`. Initial verification fixes were committed as `b5325073efd47d420f14d473e20311ca944679ec` (`fix(editor): close layout parity regressions`). The final-review follow-up below supersedes the initial verification totals: **83 unit tests and 22 browser tests pass**. No merge, push, main modification, or subagent delegation was performed.
 
-The exact `owned_path_allowlist` for the final fix commit is:
+The exact `owned_path_allowlist` for the initial fix commit was:
 
 - `src/components/editor/article-shell.tsx`
 - `src/components/editor/article-shell.test.ts`
@@ -36,9 +36,9 @@ The reproducible sequence was edit → open/cancel the block-math dialog → vie
 
 The systematic-debugging, test-driven-development, verification-before-completion, and archive-commit skills were used. No feature or data-model expansion was introduced.
 
-## Complete verification matrix
+## Initial verification matrix
 
-The exact ordered matrix below was run on the final production/test changes on 2026-09-17. All commands exited 0. The chained run ended successfully, so no downstream command was skipped.
+The exact ordered matrix below was run on the initial verification fixes on 2026-09-17. All commands exited 0. The chained run ended successfully, so no downstream command was skipped. The final-review follow-up matrix appears below.
 
 | Command | Final result |
 | --- | --- |
@@ -101,7 +101,62 @@ Compared all paths against `5d1c249` (approved-plan baseline) and the Task 6 sta
 - Editor shell/metadata: `src/components/editor/article-shell.tsx`, `article-shell.test.ts`.
 - Table implementation and behavioral tests: editor `table-controls.ts`, `table-controls.test.ts`, `table-transforms.ts`, `table-transforms.test.ts`.
 
-The Task 6 commit changes only the five allowlisted paths. No generated/dependency changes were needed for the final fixes. The index was empty before staging. Staged path names and `git diff --cached --check` are reviewed before commit; post-commit Git readback is required before handoff.
+The initial Task 6 commit changed only the five allowlisted paths. No generated/dependency changes were needed. The index was empty before staging. Staged path names and `git diff --cached --check` were reviewed before commit; post-commit Git readback confirmed the expected commit and clean worktree.
+
+## Final-review follow-up: merged safety, horizontal access, and deletion focus
+
+The controller identified three additional blockers. All were reproduced with failing behavioral tests before implementation. The minimal safe policy explicitly rejects all contextual structural actions on any table containing `rowspan` or `colspan`; fully span-aware editing is not introduced.
+
+### RED/GREEN and acceptance evidence
+
+| Review blocker | Failing evidence before fix | Implemented result and verification |
+| --- | --- | --- |
+| Structural actions could corrupt a valid merged table | Three new unit cases failed: transforms returned success or a document transaction for valid merged fixtures. Fixtures have equal physical-cell counts but valid, different logical `TableMap` geometry. Browser checks found enabled structural menu actions. | All insert-before, insert-after, duplicate, delete, and move actions for both axes are rejected before physical indexing. Unit fixtures cover rowspan and colspan with `TableMap.problems === null` before/after. Transaction test returns null and retains document identity. Browser fixture has valid combined row/column spans; all six menu items on both axes are disabled, programmatic clicks cause zero document-changing transactions, and JSON stays identical. Drag remains disabled. Handles remain focusable only to expose the disabled menu and explanatory text. |
+| Wide tables were inaccessible at 390px | New browser test expected actual `.tableWrapper` overflow `auto`, received `visible`. | Shared CSS targets the real static/runtime wrapper and transfers existing vertical margin to it. The 12-column mobile test scrolls to column 12, verifies offscreen handles are hidden and visible handles remain inside the viewport, opens its menu, and duplicates it. Scrolling 16px moves the cell and handle exactly 16px while the menu tracks its viewport-clamped anchor. Wrapper/paper/footer coordinates stay equal; full article/line snapshots remain equal during menu display and edit/view transition. Page scroll width stays exactly 390px. Row handles and insertion overlays are clipped to the visible wrapper too. |
+| Deleting the last row/column focused BODY | Both viewport tests failed the surviving-handle focus assertion. | After dispatch, focus targets the requested index clamped to the nearest remaining index. Desktop and mobile keyboard tests delete the bottom row and rightmost column, verify the surviving handle is focused, and reopen/close its menu with keyboard input. |
+
+The targeted RED run had 3 failures/42 passes in unit tests and 4 browser failures. Targeted GREEN passed all 45 relevant unit tests and all 4 added browser cases. No tolerances or rounding were introduced: an interim test that tried to reconstruct a browser-quantized center coordinate was replaced with the exact 16px cell/handle displacement invariant. Whole-layout equality remains exact.
+
+### Final complete matrix
+
+Executed in this exact order on the final production/test changes, in one successful chained run on 2026-09-17:
+
+```sh
+pnpm generate:article && pnpm fmt && pnpm test && pnpm test:layout && pnpm check && pnpm build && pnpm check:editor-chunk && git diff --check
+```
+
+| Command | Final result |
+| --- | --- |
+| `pnpm generate:article` | Exit 0; no tracked generated-content changes. |
+| `pnpm fmt` | Exit 0; 50 files formatted. |
+| `pnpm test` | Exit 0; 11 files, 83 tests passed; started 17:36:09 JST, 635ms. |
+| `pnpm test:layout` | Exit 0; 22 tests passed in 18.0 seconds. |
+| `pnpm check` | Exit 0; formatting, lint and types passed. |
+| `pnpm build` | Exit 0; client/server/types/lint/SSG succeeded, one page generated. |
+| `pnpm check:editor-chunk` | Exit 0; `editor runtime: q-C1oiP2eO.js (517252 bytes), dynamically imported by q-ptARagos.js`. |
+| `git diff --check` | Exit 0; no whitespace errors. |
+
+The non-fatal toolchain/bundle warnings listed above remain unchanged. There was no generated/dependency change and no weakened check.
+
+### Independent interaction and visual rerun
+
+After final fixes, `node .cache/task6-manual.mjs && node .cache/task6-wide-review.mjs` exited 0. The desktop/mobile scenario described above again reported PASS with zero page errors, including both mouse and CDP touch-hold row/column drags, keyboard moves, details search/open/close, code language changes, math selection/read-only behavior, and exact underlying block geometry.
+
+The additional 390px scenario scrolled a 12-column table to its last column, displayed the last-column menu, deleted the rightmost column, and verified focus on surviving column 11. Its output was `PASS: wide mobile last column/menu visible, last-column deletion focuses surviving column 11` and `Current visible paper width 390`. Manually inspected `.cache/task6-visual/390-wide-last-column.png` and `390-wide-last-menu.png`: the last column and its handle are visible, the menu stays within the right edge, row handles remain accessible, and article prose is not horizontally shifted. Screenshots use `caret: 'initial'` as documented above. These ignored local artifacts are not committed; physical device/Safari testing remains unperformed.
+
+### Follow-up scope and delivery state
+
+The exact `owned_path_allowlist` for the separate final-verification commit is:
+
+- `src/components/blog/blog.css`
+- `src/components/editor/table-controls.ts`
+- `src/components/editor/table-controls.test.ts`
+- `src/components/editor/table-transforms.ts`
+- `src/components/editor/table-transforms.test.ts`
+- `tests/layout/article-layout-parity.spec.ts`
+- `.superpowers/sdd/2026-09-17-layout-parity-table-handles/task-6-report.md`
+
+All changed production paths implement one of the three review fixes; all changed test paths add their regression evidence. Other agents' edits, the plan, and ledger are preserved. The initial acceptance mapping remains valid and is strengthened by this section's merged-table, wide-table, and focus coverage. This report accompanies `fix(editor): guard merged tables and preserve table navigation`; staged paths and whitespace are checked before commit, and the resulting hash/clean-state readback is supplied in the controller handoff. Integration and push remain exclusively with the controller.
 
 ## Remaining concerns and delivery boundary
 

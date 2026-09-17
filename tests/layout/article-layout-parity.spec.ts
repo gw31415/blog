@@ -1,4 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
+import { getSchema, type Editor } from "@tiptap/core";
+import { TableMap } from "@tiptap/pm/tables";
+import { createEditorExtensions } from "../../src/components/editor/editor-extensions";
 
 // Chromium exposes native find-in-page beyond the standard DOM typings.
 declare global {
@@ -364,7 +367,191 @@ for (const viewport of [
     await waitForEditShell(page);
     expectLayoutEqual(view, await captureArticleLayout(page));
   });
+
+  test(`returns keyboard focus to the nearest handle after deleting the last item on ${viewport.name}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto("/");
+    await page.getByRole("button", { name: "編集" }).click();
+    await waitForEditShell(page);
+    await page.locator(".ProseMirror table").first().scrollIntoViewIfNeeded();
+    for (const axis of ["row", "column"] as const) {
+      const handles = page.locator(`button[data-table-axis="${axis}"]`);
+      const count = await handles.count();
+      await handles.last().press("Enter");
+      await page.keyboard.press("Home");
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("ArrowDown");
+      await expect(
+        page.getByRole("menuitem", { name: axis === "row" ? "行を削除" : "列を削除", exact: true }),
+      ).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(handles).toHaveCount(count - 1);
+      await expect(handles.last()).toBeFocused();
+      await handles.last().press("Enter");
+      await expect(page.getByRole("menu")).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(handles.last()).toBeFocused();
+    }
+  });
 }
+
+test("scrolls a wide mobile table to the last column and operates its visible handle without layout shifts", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  expect(
+    await page
+      .locator(".tableWrapper")
+      .first()
+      .evaluate((el) => getComputedStyle(el).overflowX),
+  ).toBe("auto");
+  await page.getByRole("button", { name: "編集" }).click();
+  await waitForEditShell(page);
+  const editor = page.locator(".ProseMirror");
+  await editor.locator("p").first().click();
+  await page.keyboard.press("Control+End");
+  await editor.evaluate((element) => {
+    const clipboardData = new DataTransfer();
+    const headers = Array.from({ length: 12 }, (_, i) => `<th><p>Column${i + 1}</p></th>`).join("");
+    const cells = Array.from({ length: 12 }, (_, i) => `<td><p>Value${i + 1}</p></td>`).join("");
+    clipboardData.setData("text/html", `<table><tr>${headers}</tr><tr>${cells}</tr></table>`);
+    element.dispatchEvent(
+      new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData }),
+    );
+  });
+  const table = editor.locator("table").filter({ hasText: "Column12" });
+  const wrapper = table.locator("..");
+  await table.scrollIntoViewIfNeeded();
+  expect(await wrapper.evaluate((el) => getComputedStyle(el).overflowX)).toBe("auto");
+  expect(await wrapper.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+  const last = page.getByRole("button", { name: "12列目の操作", exact: true });
+  await expect(last).toBeHidden();
+  const flow = await page
+    .locator('[data-layout-key="paper"], [data-layout-key="footer"], .tableWrapper')
+    .evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const r = node.getBoundingClientRect();
+        return { x: r.x, y: r.y, width: r.width, height: r.height };
+      }),
+    );
+  await wrapper.evaluate((el) => {
+    el.scrollLeft = el.scrollWidth;
+  });
+  await expect(last).toBeVisible();
+  const rect = (await last.boundingBox())!;
+  expect(rect.x).toBeGreaterThanOrEqual(0);
+  expect(rect.x + rect.width).toBeLessThanOrEqual(390);
+  expect(
+    await page
+      .locator('[data-layout-key="paper"], [data-layout-key="footer"], .tableWrapper')
+      .evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const r = node.getBoundingClientRect();
+          return { x: r.x, y: r.y, width: r.width, height: r.height };
+        }),
+      ),
+  ).toEqual(flow);
+  const before = await captureArticleLayout(page);
+  await last.click();
+  const menu = page.getByRole("menu", { name: "12列目の操作", exact: true });
+  await expect(menu).toBeVisible();
+  expectLayoutEqual(before, await captureArticleLayout(page));
+  const cellBeforeScroll = (await table
+    .locator("tr")
+    .first()
+    .locator("th,td")
+    .last()
+    .boundingBox())!;
+  await wrapper.evaluate((el) => {
+    el.scrollLeft -= 16;
+  });
+  await expect
+    .poll(async () => {
+      const cell = (await table.locator("tr").first().locator("th,td").last().boundingBox())!;
+      const handle = (await last.boundingBox())!;
+      return [handle.x - rect.x, cell.x - cellBeforeScroll.x];
+    })
+    .toEqual([16, 16]);
+  const anchor = (await last.boundingBox())!;
+  const menuRect = (await menu.boundingBox())!;
+  expect(menuRect.x).toBe(Math.max(4, Math.min(anchor.x, 390 - menuRect.width - 4)));
+  await page.getByRole("menuitem", { name: "列を複製", exact: true }).click();
+  await expect(table.locator("tr").first().locator("th,td")).toHaveCount(13);
+  await expect(table.locator("tr").first().locator("th,td").last()).toHaveText("Column12");
+  await wrapper.evaluate((el) => {
+    el.scrollLeft = el.scrollWidth;
+  });
+  const after = await captureArticleLayout(page);
+  await page.getByRole("button", { name: "閲覧" }).click();
+  await waitForViewShell(page);
+  expectLayoutEqual(after, await captureArticleLayout(page));
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+});
+
+test("keeps every structural menu action disabled for a valid merged table without document transactions", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集" }).click();
+  await waitForEditShell(page);
+  const editor = page.locator(".ProseMirror");
+  await editor.locator("p").first().click();
+  await page.keyboard.press("Control+End");
+  await editor.evaluate((element) => {
+    const clipboardData = new DataTransfer();
+    clipboardData.setData(
+      "text/html",
+      "<table><tr><td rowspan='2' colspan='2'>merged A</td><td>B</td></tr><tr><td>C</td></tr><tr><td>D</td><td>E</td><td>F</td></tr></table>",
+    );
+    element.dispatchEvent(
+      new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData }),
+    );
+  });
+  const table = editor.locator("table").filter({ hasText: "merged A" });
+  await table.scrollIntoViewIfNeeded();
+  const original = await editor.evaluate((element: HTMLElement & { editor: Editor }) => {
+    const instance = element.editor;
+    element.dataset.testDocChanges = "0";
+    instance.on("transaction", ({ transaction }) => {
+      if (transaction.docChanged)
+        element.dataset.testDocChanges = String(Number(element.dataset.testDocChanges) + 1);
+    });
+    return instance.getJSON();
+  });
+  const doc = getSchema(createEditorExtensions()).nodeFromJSON(original);
+  let checked = false;
+  doc.descendants((node) => {
+    if (node.type.name === "table" && node.textContent.includes("merged A")) {
+      expect(TableMap.get(node).problems).toBeNull();
+      expect([TableMap.get(node).width, TableMap.get(node).height]).toEqual([3, 3]);
+      checked = true;
+      return false;
+    }
+    return true;
+  });
+  expect(checked).toBe(true);
+  for (const axis of ["row", "column"] as const) {
+    const handle = page
+      .locator(`button[data-reorder-disabled="merged-cells"][data-table-axis="${axis}"]`)
+      .first();
+    await expect(handle).toHaveAttribute("aria-description", /結合セル/);
+    await handle.press("Enter");
+    await expect(page.getByRole("menuitem")).toHaveCount(6);
+    for (const item of await page.getByRole("menuitem").all()) {
+      await expect(item).toBeDisabled();
+      await item.evaluate((element: HTMLButtonElement) => element.click());
+    }
+    await page.keyboard.press("Escape");
+  }
+  expect(
+    await editor.evaluate((element: HTMLElement & { editor: Editor }) => element.editor.getJSON()),
+  ).toEqual(original);
+  await expect(editor).toHaveAttribute("data-test-doc-changes", "0");
+});
 
 test("table contextual actions target their row and column and protect the last axis", async ({
   page,

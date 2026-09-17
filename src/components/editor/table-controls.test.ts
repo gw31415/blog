@@ -1,5 +1,6 @@
 import { getSchema } from "@tiptap/core";
 import { EditorState } from "@tiptap/pm/state";
+import { TableMap } from "@tiptap/pm/tables";
 import { describe, expect, it } from "vite-plus/test";
 import { createEditorExtensions } from "./editor-extensions";
 import {
@@ -109,6 +110,32 @@ const source = schema.nodes.table.create(null, [
 const state = EditorState.create({ schema, doc: schema.nodes.doc.create(null, source) });
 
 describe("table action transaction", () => {
+  it("does not create any structural transaction for a valid merged table", () => {
+    const merged = schema.nodes.table.create(null, [
+      schema.nodes.tableRow.create(null, [
+        schema.nodes.tableCell.create({ colspan: 2 }, paragraph("A")),
+        schema.nodes.tableCell.create(null, paragraph("B")),
+      ]),
+      schema.nodes.tableRow.create(null, [
+        schema.nodes.tableCell.create(null, paragraph("C")),
+        schema.nodes.tableCell.create({ colspan: 2 }, paragraph("D")),
+      ]),
+    ]);
+    const mergedState = EditorState.create({ schema, doc: schema.nodes.doc.create(null, merged) });
+    expect(TableMap.get(merged).problems).toBeNull();
+    for (const axis of ["row", "column"] as const) {
+      for (const action of ["before", "after", "duplicate", "delete", "next"] as const) {
+        expect(
+          tableActionTransaction(
+            mergedState,
+            { position: 0, table: merged },
+            menuAction(axis, 0, action),
+          ),
+        ).toBeNull();
+        expect(mergedState.doc.firstChild).toBe(merged);
+      }
+    }
+  });
   it("rejects merged-cell drags before activation and mutation", () => {
     const merged = schema.nodes.table.create(null, [
       schema.nodes.tableRow.create(null, [

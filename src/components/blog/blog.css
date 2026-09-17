@@ -1166,6 +1166,15 @@
         1px solid var(--rule);
     }
 
+    .tableWrapper {
+      margin: calc(var(--body-leading) * 2) 0;
+      overflow-x: auto;
+    }
+
+    .article-content .tableWrapper table {
+      margin: 0;
+    }
+
     table {
       width: 100%;
       min-width: 430px;

@@ -73,6 +73,11 @@ export function canReorderTable(table: ProseMirrorNode): boolean {
 }
 
 export function transformTable(table: ProseMirrorNode, action: TableAction): TableTransformResult {
+  // These transforms address physical cells, which only match logical columns
+  // in an unmerged table. Reject every structural operation before indexing.
+  if (!canReorderTable(table)) {
+    return { ok: false, reason: "merged-cells" };
+  }
   const rows = childNodes(table);
   const columnCount = rows[0]?.childCount ?? 0;
   const axisLength = action.axis === "row" ? rows.length : columnCount;
@@ -84,10 +89,6 @@ export function transformTable(table: ProseMirrorNode, action: TableAction): Tab
       : !isIndexInRange(action.index, axisLength))
   ) {
     return { ok: false, reason: "out-of-range" };
-  }
-
-  if (action.type === "move" && !canReorderTable(table)) {
-    return { ok: false, reason: "merged-cells" };
   }
 
   if (action.type === "delete" && axisLength === 1) {

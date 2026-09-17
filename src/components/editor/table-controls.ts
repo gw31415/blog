@@ -218,13 +218,12 @@ class TableControls {
         item.setAttribute("role", "menuitem");
         item.textContent = labels[index];
         item.disabled =
+          !!reorderDisabledReason(handle.table) ||
           (action === "delete" && length === 1) ||
-          (action === "previous" &&
-            (handle.index === 0 || !!reorderDisabledReason(handle.table))) ||
-          (action === "next" &&
-            (handle.index === length - 1 || !!reorderDisabledReason(handle.table)));
-        if ((action === "previous" || action === "next") && reorderDisabledReason(handle.table)) {
-          item.title = "結合セルがある表は並べ替えできません。";
+          (action === "previous" && handle.index === 0) ||
+          (action === "next" && handle.index === length - 1);
+        if (reorderDisabledReason(handle.table)) {
+          item.title = "結合セルがある表の行・列は追加・複製・削除・移動できません。";
         }
         item.addEventListener("click", () =>
           this.apply(handle, menuAction(handle.axis, handle.index, action)),
@@ -255,13 +254,15 @@ class TableControls {
       return;
     }
     this.view.dispatch(transaction);
-    this.handles
-      .find(
-        (current) =>
-          current.position === handle.position &&
-          current.axis === handle.axis &&
-          current.index === (action.type === "move" ? action.to : handle.index),
-      )
+    const remaining = this.handles.filter(
+      (current) => current.position === handle.position && current.axis === handle.axis,
+    );
+    const destination = Math.min(
+      action.type === "move" ? action.to : handle.index,
+      remaining.length - 1,
+    );
+    remaining
+      .find((current) => current.index === destination)
       ?.button.focus({ preventScroll: true });
   }
 
@@ -297,7 +298,7 @@ class TableControls {
           const handle = { table, position, axis, index, button, tableDOM, itemDOM };
           const disabledReason = reorderDisabledReason(table);
           button.title = disabledReason
-            ? "結合セルがある表は並べ替えできません。クリックで操作メニューを開きます。"
+            ? "結合セルがある表の行・列は追加・複製・削除・移動できません。クリックで制限を確認できます。"
             : "ドラッグ（タッチは長押し）で移動。クリックまたは Enter で操作メニューを開きます。";
           button.setAttribute("aria-description", button.title);
           if (disabledReason) button.dataset.reorderDisabled = disabledReason;
@@ -326,11 +327,32 @@ class TableControls {
     for (const handle of this.handles) {
       const table = handle.tableDOM.getBoundingClientRect();
       const item = handle.itemDOM.getBoundingClientRect();
-      const point = handlePosition(mount, table, item, handle.axis, window.innerWidth);
-      handle.button.hidden = table.width === 0 || table.height === 0;
+      const clip = (
+        handle.tableDOM.closest(".tableWrapper") ?? handle.tableDOM
+      ).getBoundingClientRect();
+      const left = Math.max(0, clip.left);
+      const right = Math.min(window.innerWidth, clip.right);
+      const point = handlePosition(
+        mount,
+        { x: left, y: table.y, width: table.width, height: table.height },
+        item,
+        handle.axis,
+        window.innerWidth,
+      );
+      handle.button.hidden =
+        table.width === 0 ||
+        table.height === 0 ||
+        right <= left ||
+        (handle.axis === "column" && (item.right <= left || item.left >= right));
+      if (handle.axis === "column") {
+        // Keep partially visible columns reachable while offscreen handles stay
+        // out of the viewport and do not create page-level horizontal overflow.
+        point.x = Math.max(left + 16, Math.min(item.x + item.width / 2, right - 16)) - mount.x;
+      }
       handle.button.style.left = `${point.x}px`;
       handle.button.style.top = `${point.y}px`;
     }
+    if (this.active?.button.hidden) this.close(false);
     if (this.menu && this.active) {
       const anchor = this.active.button.getBoundingClientRect();
       const menu = this.menu.getBoundingClientRect();
@@ -421,13 +443,18 @@ class TableControls {
     const target = bounds[gesture.to];
     const boundary = gesture.to > handle.index ? target.end : target.start;
     const table = handle.tableDOM.getBoundingClientRect();
+    const clip = (
+      handle.tableDOM.closest(".tableWrapper") ?? handle.tableDOM
+    ).getBoundingClientRect();
+    const left = Math.max(0, clip.left);
+    const right = Math.min(window.innerWidth, clip.right);
     this.ghost.textContent = `${handle.index + 1}${row ? "行" : "列"}目 → ${gesture.to + 1}${row ? "行" : "列"}目`;
     const ghost = this.ghost.getBoundingClientRect();
     this.ghost.style.left = `${Math.max(4, Math.min(gesture.x + 16, window.innerWidth - ghost.width - 4))}px`;
     this.ghost.style.top = `${Math.max(4, Math.min(gesture.y + 16, window.innerHeight - ghost.height - 4))}px`;
-    this.dropLine.style.left = `${Math.max(0, row ? table.left : boundary - 1)}px`;
+    this.dropLine.style.left = `${Math.max(left, Math.min(row ? table.left : boundary - 1, right - 2))}px`;
     this.dropLine.style.top = `${Math.max(0, row ? boundary - 1 : table.top)}px`;
-    this.dropLine.style.width = `${row ? Math.max(0, Math.min(table.right, window.innerWidth) - Math.max(0, table.left)) : 2}px`;
+    this.dropLine.style.width = `${row ? Math.max(0, right - left) : 2}px`;
     this.dropLine.style.height = `${row ? 2 : Math.max(0, Math.min(table.bottom, window.innerHeight) - Math.max(0, table.top))}px`;
   }
 
