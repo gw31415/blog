@@ -246,3 +246,45 @@ for (const viewport of [
     expectLayoutEqual(initialView, finalView);
   });
 }
+
+test("round-trips a shared code block through clipboard HTML", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集" }).click();
+  await waitForEditShell(page);
+
+  const codeBlocks = page.locator(".ProseMirror pre.code-block");
+  const originalCount = await codeBlocks.count();
+  const original = codeBlocks.first();
+  const originalCode = await original.locator(":scope > code").textContent();
+  const originalHTML = await original.evaluate((element) => element.outerHTML);
+
+  const editorRoot = page.locator(".ProseMirror");
+  await editorRoot.click();
+  await page.keyboard.press("Control+End");
+  await editorRoot.evaluate((editorElement, html) => {
+    const clipboardData = new DataTransfer();
+    clipboardData.setData("text/html", html);
+    clipboardData.setData("text/plain", "clipboard fallback must not win");
+    editorElement.dispatchEvent(
+      new ClipboardEvent("paste", {
+        bubbles: true,
+        cancelable: true,
+        clipboardData,
+      }),
+    );
+  }, originalHTML);
+
+  await expect(codeBlocks).toHaveCount(originalCount + 1);
+  const codeBlockSnapshots = await codeBlocks.evaluateAll((blocks) =>
+    blocks.map((block) => ({
+      language: block.getAttribute("data-code-language"),
+      code: block.querySelector(":scope > code")?.textContent,
+      nestedControlCount: block.querySelectorAll(":scope > code .code-language-control").length,
+    })),
+  );
+  const matchingCodeBlocks = codeBlockSnapshots.filter(({ code }) => code === originalCode);
+  expect(matchingCodeBlocks, JSON.stringify(codeBlockSnapshots, null, 2)).toEqual([
+    { language: "html", code: originalCode, nestedControlCount: 0 },
+    { language: "html", code: originalCode, nestedControlCount: 0 },
+  ]);
+});

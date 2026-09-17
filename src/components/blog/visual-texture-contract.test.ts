@@ -44,6 +44,6 @@ describe("paper visual texture", () => {
   });
 
   it("prefixes automatic kanji section numbers so 一 cannot read as a rule", () => {
-    expect(css).toContain('content: "第" counter(section, cjk-ideographic);');
+    expect(css).toContain('content: "第" counter(section, cjk-ideographic) "節";');
   });
 });

@@ -241,6 +241,38 @@ const Details = Node.create({
 });
 
 const SharedCodeBlock = CodeBlock.extend({
+  addAttributes() {
+    return {
+      language: {
+        default: this.options.defaultLanguage,
+        parseHTML: (element: HTMLElement) => {
+          const explicitLanguage = element.dataset.codeLanguage?.trim();
+          if (explicitLanguage) return explicitLanguage;
+
+          const code = element.querySelector(":scope > code");
+          const languageClassPrefix = this.options.languageClassPrefix;
+          if (!code || !languageClassPrefix) return null;
+
+          const languageClass = [...code.classList].find((className) =>
+            className.startsWith(languageClassPrefix),
+          );
+          return languageClass?.slice(languageClassPrefix.length) || null;
+        },
+        rendered: false,
+      },
+    };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: "pre",
+        preserveWhitespace: "full",
+        contentElement: "code",
+      },
+    ];
+  },
+
   renderHTML({ node }) {
     return codeBlockDOMSpec(String(node.attrs.language ?? ""));
   },
@@ -269,7 +301,8 @@ const SharedCodeBlock = CodeBlock.extend({
         },
         ownerDocument,
       );
-      dom.append(control.control, contentDOM);
+      dom.appendChild(control.control);
+      dom.appendChild(contentDOM);
 
       const updateDOM = () => {
         const languageInfo = String(currentNode.attrs.language ?? "");
@@ -297,14 +330,11 @@ const SharedCodeBlock = CodeBlock.extend({
 });
 
 export function renderMathContentHTML(latex: string): string {
-  return katex
-    .renderToString(latex, {
-      displayMode: false,
-      throwOnError: false,
-      output: "htmlAndMathml",
-    })
-    .replaceAll("<mtext>", "")
-    .replaceAll("</mtext>", "");
+  return katex.renderToString(latex, {
+    displayMode: false,
+    throwOnError: false,
+    output: "htmlAndMathml",
+  });
 }
 
 function sharedMathNodeView(displayMode: boolean) {

@@ -66,7 +66,7 @@ export default defineConfig({
   test: {
     // Local feature worktrees live under the repository root but are separate projects.
     // Setting this list replaces Vitest defaults, so keep dependency/build exclusions explicit.
-    exclude: ["**/node_modules/**", "**/dist/**", "**/.git/**", ".worktrees/**"],
+    exclude: ["**/node_modules/**", "**/dist/**", "**/.git/**", ".worktrees/**", "tests/layout/**"],
   },
   server: {
     allowedHosts: true,

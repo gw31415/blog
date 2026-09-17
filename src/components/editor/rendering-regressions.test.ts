@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vite-plus/test";
 
 import { INITIAL_ARTICLE_HTML } from "~/content/initial-article.generated";
 
+import { renderMathContentHTML } from "./editor-extensions";
 import { requestMathEditWhenEditable } from "./editor-runtime";
 
 describe("editor rendering regressions", () => {
@@ -45,6 +46,15 @@ describe("editor rendering regressions", () => {
     expect(selectRule).toMatch(/position\s*:\s*absolute/);
     expect(editLabelRule).toMatch(/visibility\s*:\s*hidden/);
     expect(editLabelRule).toMatch(/pointer-events\s*:\s*none/);
+  });
+
+  it.each([
+    [String.raw`\texttt{hello} + x`, "hello"],
+    [String.raw`\text{hello world}`, "hello(?: |\\u00a0)world"],
+  ])("preserves MathML text structure for %s", (latex, textPattern) => {
+    expect(renderMathContentHTML(latex)).toMatch(
+      new RegExp(`<mtext(?: [^>]*)?>${textPattern}</mtext>`),
+    );
   });
 
   it("only shows node-selection outlines while editing and excludes math and details", () => {
