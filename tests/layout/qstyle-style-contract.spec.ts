@@ -8,6 +8,7 @@ test("delivers application styles through qstyle", async ({ page }) => {
   await expect(boundary).toHaveClass(/(?:^|\s)q(?:d)?_[a-z0-9_]+(?:\s|$)/);
 
   const contract = await page.evaluate(() => {
+    // oxlint-disable-next-line unicorn/consistent-function-scoping -- runs in the browser context
     const style = (selector: string, pseudo?: string) => {
       const element = document.querySelector(selector);
       if (!(element instanceof HTMLElement)) throw new Error(`Missing ${selector}`);
@@ -21,6 +22,8 @@ test("delivers application styles through qstyle", async ({ page }) => {
     const selection = getComputedStyle(document.body, "::selection");
     const ink = style(".ink");
     const texture = style(".paper-texture");
+    const codeBlock = style(".code-block");
+    const horizontalRule = style(".article-content hr");
 
     return {
       bodyBackground: getComputedStyle(document.body).backgroundColor,
@@ -34,6 +37,8 @@ test("delivers application styles through qstyle", async ({ page }) => {
       selectionBackground: selection.backgroundColor,
       inkTileCount: (ink.backgroundImage.match(/url\(/g) ?? []).length,
       textureHasEmbeddedSvg: texture.backgroundImage.includes("data:image/svg+xml"),
+      codeBorderLeft: `${codeBlock.borderLeftWidth} ${codeBlock.borderLeftStyle}`,
+      horizontalRuleTop: `${horizontalRule.borderTopWidth} ${horizontalRule.borderTopStyle}`,
     };
   });
 
@@ -49,13 +54,27 @@ test("delivers application styles through qstyle", async ({ page }) => {
     selectionBackground: "rgba(135, 89, 79, 0.28)",
     inkTileCount: 2,
     textureHasEmbeddedSvg: true,
+    codeBorderLeft: "3px double",
+    horizontalRuleTop: "1px dashed",
   });
 });
 
-test("keeps code-language controls measurable while editing", async ({ page }) => {
+test("preserves editor control styles while editing", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "編集", exact: true }).click();
+  const editAction = page.getByRole("button", { name: "編集", exact: true });
+  await expect(editAction).toHaveCSS("font-size", "10px");
+  await expect(editAction).toHaveCSS("line-height", "13px");
+  await editAction.click();
   await expect(page.locator('[data-editor-mode="edit"]')).toBeVisible();
+  await expect(page.locator(".editor-dock")).toHaveCSS("border-top-width", "0px");
+  await expect(page.getByRole("button", { name: "本文", exact: true })).toHaveCSS(
+    "font-size",
+    "11px",
+  );
+  await expect(page.locator(".editor-panel")).toHaveCSS("border-left-width", "1px");
+
+  await page.locator(".editor-panel > summary").click();
+  await expect(page.locator(".editor-fields")).toHaveCSS("border-top-width", "0px");
 
   const control = page.locator(".code-language-control").first();
   const label = control.locator(".code-language-label");
@@ -67,7 +86,11 @@ test("keeps code-language controls measurable while editing", async ({ page }) =
   await expect(label).toHaveCSS("visibility", "hidden");
   await expect(label).toHaveCSS("pointer-events", "none");
 
-  const boxes = await Promise.all([control.boundingBox(), label.boundingBox(), select.boundingBox()]);
+  const boxes = await Promise.all([
+    control.boundingBox(),
+    label.boundingBox(),
+    select.boundingBox(),
+  ]);
   expect(boxes[0]).not.toBeNull();
   expect(boxes[1]).toStrictEqual(boxes[0]);
   expect(boxes[2]).toStrictEqual(boxes[0]);

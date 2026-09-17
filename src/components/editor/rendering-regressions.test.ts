@@ -34,5 +34,4 @@ describe("editor rendering regressions", () => {
       new RegExp(`<mtext(?: [^>]*)?>${textPattern}</mtext>`),
     );
   });
-
 });
