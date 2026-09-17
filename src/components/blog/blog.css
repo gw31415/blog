@@ -330,6 +330,28 @@
       counter-reset: section;
     }
 
+    .article-content > .ProseMirror {
+      outline: none;
+    }
+
+    .article-content > .ProseMirror[contenteditable="true"] {
+      caret-color: var(--red);
+    }
+
+    .article-content > .ProseMirror[contenteditable="true"] > * {
+      border-radius: 2px;
+    }
+
+    .article-content > .ProseMirror[contenteditable="true"] > *:hover {
+      outline: 1px dashed rgb(135 89 79 / 20%);
+      outline-offset: 4px;
+    }
+
+    .article-content .ProseMirror-selectednode {
+      outline: 2px solid rgb(135 89 79 / 45%);
+      outline-offset: 3px;
+    }
+
     @supports (text-spacing-trim: trim-start) {
       article,
       blockquote {
@@ -338,7 +360,8 @@
       }
     }
 
-    article > p {
+    article > p,
+    .article-content > .tiptap > p {
       margin: 0;
 
       text-indent: 1em;
@@ -616,7 +639,8 @@
        ───────────────────────────── */
 
     .section-heading,
-    .article-content > h2 {
+    .article-content > h2,
+    .article-content > .tiptap > h2 {
       margin:
         calc(var(--body-leading) * 3)
         0
@@ -626,7 +650,8 @@
     }
 
     .section-number,
-    .article-content > h2::before {
+    .article-content > h2::before,
+    .article-content > .tiptap > h2::before {
       display: block;
 
       margin-bottom: 0.65em;
@@ -637,11 +662,13 @@
       letter-spacing: 0.12em;
     }
 
-    .article-content > h2 {
+    .article-content > h2,
+    .article-content > .tiptap > h2 {
       counter-increment: section;
     }
 
-    .article-content > h2::before {
+    .article-content > h2::before,
+    .article-content > .tiptap > h2::before {
       content: counter(section, cjk-ideographic);
 
       color: var(--faint);
@@ -1169,6 +1196,203 @@
     }
 
     /* ─────────────────────────────
+       Transient editor controls
+       Fixed overlays keep the paper geometry identical in both modes.
+       ───────────────────────────── */
+
+    .mode-switch,
+    .editor-dock,
+    .editor-error,
+    .math-dialog {
+      color: #322b22;
+      -webkit-text-fill-color: currentcolor;
+      font-family: var(--sans);
+      text-align: start;
+    }
+
+    .mode-switch {
+      position: fixed;
+      z-index: 40;
+      top: 14px;
+      right: 14px;
+
+      display: flex;
+      gap: 2px;
+      padding: 3px;
+
+      border: 1px solid rgb(86 70 55 / 22%);
+      border-radius: 8px;
+      background: rgb(255 253 247 / 92%);
+      box-shadow: 0 6px 24px rgb(40 30 20 / 14%);
+      backdrop-filter: blur(12px);
+    }
+
+    .mode-switch button,
+    .editor-dock button,
+    .math-dialog button {
+      min-height: 30px;
+      padding: 5px 9px;
+
+      color: inherit;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .mode-switch button.active,
+    .editor-dock button:hover,
+    .math-dialog button:last-child {
+      background: #352f25;
+      color: #fffaf0;
+    }
+
+    .mode-switch button:disabled,
+    .editor-dock button:disabled,
+    .math-dialog button:disabled {
+      cursor: wait;
+      opacity: 0.48;
+    }
+
+    .editor-error {
+      position: fixed;
+      z-index: 45;
+      top: 58px;
+      right: 14px;
+      max-width: min(360px, calc(100vw - 28px));
+      margin: 0;
+      padding: 9px 12px;
+      border: 1px solid #a35d51;
+      background: #fff8ed;
+      font-size: 12px;
+    }
+
+    .editor-dock {
+      position: fixed;
+      z-index: 35;
+      right: 14px;
+      bottom: 14px;
+      left: 14px;
+
+      width: min(920px, calc(100vw - 28px));
+      max-height: min(52vh, 420px);
+      margin-inline: auto;
+      overflow: auto;
+
+      border: 1px solid rgb(86 70 55 / 25%);
+      border-radius: 10px;
+      background: rgb(255 253 247 / 96%);
+      box-shadow: 0 12px 42px rgb(40 30 20 / 20%);
+      backdrop-filter: blur(16px);
+    }
+
+    .editor-dock-row {
+      display: flex;
+      gap: 2px;
+      padding: 7px;
+      overflow-x: auto;
+      border-bottom: 1px solid rgb(86 70 55 / 14%);
+    }
+
+    .editor-formatting button {
+      flex: 0 0 auto;
+    }
+
+    .editor-panel {
+      margin: 0;
+      border: 0;
+      border-bottom: 1px solid rgb(86 70 55 / 14%);
+    }
+
+    .editor-panel > summary {
+      padding: 7px 10px;
+      font-size: 11px;
+    }
+
+    .editor-fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(160px, 1fr));
+      gap: 8px;
+      padding: 4px 10px 10px;
+    }
+
+    .editor-fields label,
+    .math-dialog label {
+      display: grid;
+      gap: 3px;
+      color: #74685b;
+      font-size: 10px;
+      letter-spacing: 0.05em;
+    }
+
+    .editor-fields label.wide {
+      grid-column: 1 / -1;
+    }
+
+    .editor-fields input,
+    .math-dialog textarea {
+      width: 100%;
+      min-height: 32px;
+      padding: 6px 8px;
+      color: #352f25;
+      border: 1px solid rgb(86 70 55 / 25%);
+      border-radius: 4px;
+      background: #fffdf7;
+      font: 13px/1.35 var(--sans);
+    }
+
+    .math-dialog-backdrop {
+      position: fixed;
+      z-index: 60;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgb(30 25 20 / 38%);
+    }
+
+    .math-dialog {
+      width: min(560px, 100%);
+      padding: 20px;
+      border-radius: 10px;
+      background: #fffdf7;
+      box-shadow: 0 20px 70px rgb(20 15 10 / 28%);
+    }
+
+    .math-dialog h2 {
+      margin: 0 0 14px;
+      font-size: 17px;
+    }
+
+    .math-dialog textarea {
+      resize: vertical;
+      font-family: var(--mono);
+    }
+
+    .math-dialog-preview {
+      min-height: 64px;
+      margin-top: 12px;
+      padding: 12px;
+      overflow-x: auto;
+      border: 1px dashed rgb(86 70 55 / 25%);
+      text-align: center;
+    }
+
+    .math-dialog-error {
+      color: #8c4037;
+      font-size: 11px;
+    }
+
+    .math-dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 14px;
+    }
+
+    /* ─────────────────────────────
        Smartphone
        ───────────────────────────── */
 
@@ -1189,6 +1413,26 @@
           max(22px, env(safe-area-inset-left));
 
         box-shadow: none;
+      }
+
+      .mode-switch {
+        top: 8px;
+        right: 8px;
+      }
+
+      .editor-dock {
+        right: 8px;
+        bottom: 8px;
+        left: 8px;
+        width: calc(100vw - 16px);
+      }
+
+      .editor-fields {
+        grid-template-columns: 1fr;
+      }
+
+      .editor-fields label.wide {
+        grid-column: auto;
       }
 
       .content {

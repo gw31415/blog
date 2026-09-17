@@ -228,10 +228,15 @@ const Details = Node.create({
     `:::details{summary="${quoteAttribute(String(node.attrs?.summary ?? ""))}"}\n${String(node.attrs?.body ?? "")}\n:::`,
 });
 
-export function createEditorExtensions(): AnyExtension[] {
+interface EditorExtensionOptions {
+  onMathEdit?: (request: { kind: "inline" | "block"; latex: string; position: number }) => void;
+}
+
+export function createEditorExtensions(options: EditorExtensionOptions = {}): AnyExtension[] {
   return [
     StarterKit.configure({
       link: false,
+      codeBlock: { HTMLAttributes: { class: "code-block" } },
       paragraph: { HTMLAttributes: { class: "ink" } },
       heading: { HTMLAttributes: { class: "ink" } },
     }),
@@ -240,8 +245,16 @@ export function createEditorExtensions(): AnyExtension[] {
     TaskList,
     TaskItem.configure({ nested: true }),
     Image.configure({ inline: false, allowBase64: false }),
-    InlineMath.configure({ katexOptions: { throwOnError: false } }),
-    BlockMath.configure({ katexOptions: { throwOnError: false } }),
+    InlineMath.configure({
+      katexOptions: { throwOnError: false },
+      onClick: (node, position) =>
+        options.onMathEdit?.({ kind: "inline", latex: String(node.attrs.latex), position }),
+    }),
+    BlockMath.configure({
+      katexOptions: { throwOnError: false },
+      onClick: (node, position) =>
+        options.onMathEdit?.({ kind: "block", latex: String(node.attrs.latex), position }),
+    }),
     Placeholder.configure({ placeholder: "ここに書き始めます…" }),
     Callout,
     Figure,

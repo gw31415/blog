@@ -2,7 +2,6 @@ import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
-import hljs from "highlight.js";
 import katex from "katex";
 
 import { createEditorExtensions } from "../src/components/editor/editor-extensions.ts";
@@ -15,14 +14,13 @@ const extensions = createEditorExtensions();
 function mathHtml(node, displayMode) {
   const latex = String(node.attrs.latex ?? "");
   const tag = displayMode ? "div" : "span";
-  return `<${tag} class="tiptap-mathematics-render" data-type="${displayMode ? "block-math" : "inline-math"}" data-latex="${latex.replaceAll('"', "&quot;")}">${katex.renderToString(
-    latex,
-    {
-      displayMode,
-      throwOnError: false,
-      output: "htmlAndMathml",
-    },
-  )}</${tag}>`;
+  const inner = katex.renderToString(latex, {
+    displayMode: false,
+    throwOnError: false,
+    output: "htmlAndMathml",
+  });
+  const mathContent = displayMode ? `<div class="block-math-inner">${inner}</div>` : inner;
+  return `<${tag} class="tiptap-mathematics-render" data-type="${displayMode ? "block-math" : "inline-math"}" data-latex="${latex.replaceAll('"', "&quot;")}" contenteditable="false">${mathContent}</${tag}>`;
 }
 
 const bodyHtml = renderToHTMLString({
@@ -32,19 +30,11 @@ const bodyHtml = renderToHTMLString({
     nodeMapping: {
       inlineMath: ({ node }) => mathHtml(node, false),
       blockMath: ({ node }) => mathHtml(node, true),
-      codeBlock: ({ node }) => {
-        const info = String(node.attrs.language ?? "").trim();
-        const [language = "plaintext", ...captionParts] = info.split(/\s+/);
-        const caption = captionParts.join(" ");
-        const code = node.textContent;
-        const highlighted = hljs.getLanguage(language)
-          ? hljs.highlight(code, { language }).value
-          : hljs.highlightAuto(code).value;
-        return `<div class="code-block"><div class="code-caption"><span>${caption}</span><span>${language.toUpperCase()}</span></div><pre><code class="language-${language}">${highlighted}</code></pre></div>`;
-      },
     },
   },
 });
+
+const initialHtml = `<div class="tiptap ProseMirror">${bodyHtml}</div>`;
 
 const target = fileURLToPath(
   new URL("../src/content/initial-article.generated.ts", import.meta.url),
@@ -56,7 +46,7 @@ import type { JSONContent } from "@tiptap/core";
 
 export const INITIAL_ARTICLE_JSON = ${JSON.stringify(content, null, 2)} satisfies JSONContent;
 
-export const INITIAL_ARTICLE_HTML = ${JSON.stringify(bodyHtml)};
+export const INITIAL_ARTICLE_HTML = ${JSON.stringify(initialHtml)};
 `;
 
 writeFileSync(target, source);

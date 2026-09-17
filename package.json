@@ -8,6 +8,7 @@
     "build.server": "qwik check-client src dist && vp build -c adapters/cloudflare-workers/vite.config.ts",
     "build.types": "wrangler types && tsc --incremental --noEmit",
     "check": "vp check",
+    "check:editor-chunk": "node scripts/check-editor-chunk.mjs",
     "check.fmt": "vp fmt --check",
     "deploy": "pnpm run build && wrangler deploy",
     "dev": "vp dev -c adapters/cloudflare-workers/vite.config.ts --mode ssr",
