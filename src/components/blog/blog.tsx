@@ -1,7 +1,7 @@
 /**
  * ブログ記事コンポーネント群。
  *
- * sample.html のスタイリング (blog.css) を前提とした再利用部品。
+ * ArticleStyleBoundary の qstyle スタイリングを前提とした再利用部品。
  * 記事ページは BlogPaper を土台に、BlogHeader / SectionHeading /
  * InlineMath / MathBlock / CodeBlock などを組み立てて作る。
  *
@@ -9,13 +9,10 @@
  * rendered.ts) を dangerouslySetInnerHTML で埋め込む。クライアント側の
  * MathJax / highlight.js 実行や CDN スクリプトは不要。
  */
-import { Slot, component$, useStyles$, type QRL } from "@qwik.dev/core";
-
-import blogCss from "./blog.css?inline";
+import { Slot, component$, type QRL } from "@qwik.dev/core";
 
 /** 紙面の土台。方眼・紙テクスチャ・本文カラムを提供する。 */
 export const BlogPaper = component$(() => {
-  useStyles$(blogCss);
   return (
     <main class="paper" data-layout-key="paper">
       <GridLayer />

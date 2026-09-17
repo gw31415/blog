@@ -20,6 +20,7 @@ import {
   type EditorController,
   type MathEditRequest,
 } from "./editor-controller";
+import { ArticleStyleBoundary } from "./article-styles";
 
 let editorRuntimePromise: Promise<typeof import("./editor-runtime")> | undefined;
 
@@ -157,7 +158,7 @@ export const ArticleShell = component$(() => {
   });
 
   return (
-    <>
+    <ArticleStyleBoundary>
       <BlogPaper>
         <BlogHeader
           category={ui.category}
@@ -356,6 +357,6 @@ export const ArticleShell = component$(() => {
           </form>
         </div>
       )}
-    </>
+    </ArticleStyleBoundary>
   );
 });

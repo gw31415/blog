@@ -44,7 +44,7 @@
 
 **Interfaces:**
 - Consumes: the existing page at `/`, current class names, and the existing Playwright web server.
-- Produces: a browser contract requiring `[data-qstyle-boundary]`, a generated `q_` class, and preserved computed styles.
+- Produces: a browser contract requiring `[data-qstyle-boundary]`, a generated qstyle class (`qd_` in development or `q_` in production), and preserved computed styles.
 
 - [x] **Step 1: Add the failing qstyle delivery test**
 
@@ -58,7 +58,7 @@ test("delivers application styles through qstyle", async ({ page }) => {
   await page.goto("/");
 
   const boundary = page.locator("[data-qstyle-boundary]");
-  await expect(boundary).toHaveClass(/(?:^|\s)q_[a-z0-9]+(?:\s|$)/);
+  await expect(boundary).toHaveClass(/(?:^|\s)q(?:d)?_[a-z0-9_]+(?:\s|$)/);
 
   const contract = await page.evaluate(() => {
     const style = (selector: string, pseudo?: string) => {
@@ -154,7 +154,7 @@ git commit -m "test: define qstyle style delivery contract"
 - Consumes: all declarations and selector order from `blog.css` plus the `css` prop augmentation in `src/qstyle.d.ts`.
 - Produces: `ArticleStyleBoundary`, a Qwik component with no layout box and `data-qstyle-boundary` on its root element.
 
-- [ ] **Step 1: Add document-level body CSS-in-JS**
+- [x] **Step 1: Add document-level body CSS-in-JS**
 
 Remove `import "./global.css"` from `root.tsx`, retain the KaTeX import, and apply the document declarations directly:
 
@@ -179,7 +179,7 @@ Remove `import "./global.css"` from `root.tsx`, retain the KaTeX import, and app
 >
 ```
 
-- [ ] **Step 2: Create the module-local style boundary**
+- [x] **Step 2: Create the module-local style boundary**
 
 Create `article-styles.tsx` with the handle and its use co-located:
 
@@ -217,7 +217,7 @@ The final responsive rule remains exactly:
 }
 ```
 
-- [ ] **Step 3: Apply the boundary around the complete shell**
+- [x] **Step 3: Apply the boundary around the complete shell**
 
 Import the boundary into `article-shell.tsx`:
 
@@ -229,11 +229,11 @@ Change the opening return fragment from `<>` to `<ArticleStyleBoundary>` and its
 
 The wrapper must enclose every existing sibling so fixed editor UI and dialogs remain in the scoped selector tree.
 
-- [ ] **Step 4: Remove legacy stylesheet injection and files**
+- [x] **Step 4: Remove legacy stylesheet injection and files**
 
 In `blog.tsx`, remove `useStyles$`, the `blog.css?inline` import, and the `useStyles$(blogCss)` call. Update the file comment to say the components rely on the qstyle boundary. Delete `blog.css` and the empty `global.css`.
 
-- [ ] **Step 5: Run the focused browser test and verify GREEN**
+- [x] **Step 5: Run the focused browser test and verify GREEN**
 
 Run:
 
@@ -241,9 +241,9 @@ Run:
 pnpm exec playwright test tests/layout/qstyle-style-contract.spec.ts
 ```
 
-Expected: PASS with a generated `q_` class and every computed-style value equal to the pre-migration contract.
+Expected: PASS with a generated qstyle class and every computed-style value equal to the pre-migration contract.
 
-- [ ] **Step 6: Run the production qstyle compiler path**
+- [x] **Step 6: Run the production qstyle compiler path**
 
 Run:
 
@@ -253,7 +253,7 @@ pnpm build
 
 Expected: PASS with no qstyle residual diagnostic. Inspect `dist/` for a content-hashed CSS asset and confirm no `blog.css` or `global.css` import remains in application source.
 
-- [ ] **Step 7: Commit the migration**
+- [x] **Step 7: Commit the migration**
 
 ```bash
 git add src/root.tsx src/components/editor/article-styles.tsx src/components/editor/article-shell.tsx src/components/blog/blog.tsx src/components/blog/blog.css src/global.css

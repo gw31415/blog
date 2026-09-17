@@ -1,7 +1,6 @@
 import { component$ } from "@qwik.dev/core";
 import { DocumentHeadTags, RouterOutlet, useLocation, useQwikRouter } from "@qwik.dev/router";
 
-import "./global.css";
 import "katex/dist/katex.min.css";
 
 export default component$(() => {
@@ -21,7 +20,26 @@ export default component$(() => {
         <DocumentHeadTags />
         <link rel="canonical" href={url.href} />
       </head>
-      <body>
+      <body
+        css={{
+          minHeight: "100%",
+          margin: 0,
+          color: "#352f25",
+          fontFamily:
+            '"Times New Roman", Times, "Nimbus Roman No9 L", "Liberation Serif", "DejaVu Serif", Georgia, "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", "Noto Serif CJK JP", serif',
+          fontKerning: "normal",
+          fontSynthesis: "none",
+          textAutospace: "normal",
+          background: "#ded8ca",
+          "&::selection, & ::selection": {
+            color: "#352f25",
+            background: "rgb(135 89 79 / 28%)",
+          },
+          "@media (max-width: 600px)": {
+            background: "#f2ead5",
+          },
+        }}
+      >
         <RouterOutlet />
       </body>
     </>

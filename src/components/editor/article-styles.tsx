@@ -1,4 +1,8 @@
-:root {
+import { Slot, component$ } from "@qwik.dev/core";
+import { css } from "@qstyle/qwik";
+
+const articleShellStyles = css`
+  display: contents;
       --paper: #f2ead5;
       --paper-deep: #e9dfc7;
 
@@ -80,39 +84,11 @@
       --syn-pink: #984e68;
       --syn-teal: #47716d;
       --syn-punctuation: #74685b;
-    }
 
-    * {
+    & * {
       box-sizing: border-box;
     }
-
-    ::selection {
-      color: var(--ink);
-      background: rgb(135 89 79 / 28%);
-    }
-
-    html {
-      background: #ded8ca;
-    }
-
-    html,
-    body {
-      min-height: 100%;
-    }
-
-    body {
-      margin: 0;
-
-      color: var(--ink);
-      font-family: var(--serif);
-
-      font-kerning: normal;
-      font-synthesis: none;
-
-      text-autospace: normal;
-    }
-
-    .paper {
+    & .paper {
       position: relative;
       isolation: isolate;
 
@@ -138,7 +114,7 @@
        方眼
        ───────────────────────────── */
 
-    .grid-layer {
+    & .grid-layer {
       position: absolute;
       inset: 0;
       z-index: 0;
@@ -149,7 +125,7 @@
       pointer-events: none;
     }
 
-    .paper-texture {
+    & .paper-texture {
       position: absolute;
       inset: 0;
       z-index: 1;
@@ -163,7 +139,7 @@
       opacity: 0.85;
     }
 
-    .content {
+    & .content {
       position: relative;
       z-index: 2;
 
@@ -175,7 +151,7 @@
        ピクセル欠け
        ───────────────────────────── */
 
-    .ink {
+    & .ink {
       --ink-color: var(--ink);
 
       color: transparent;
@@ -210,15 +186,15 @@
       -webkit-background-clip: text;
     }
 
-    .ink-muted {
+    & .ink-muted {
       --ink-color: var(--muted);
     }
 
-    .ink-faint {
+    & .ink-faint {
       --ink-color: var(--faint);
     }
 
-    .ink-quote {
+    & .ink-quote {
       --ink-color: #51493d;
     }
 
@@ -226,11 +202,11 @@
        Header
        ───────────────────────────── */
 
-    header {
+    & header {
       margin-bottom: 3rem;
     }
 
-    .meta {
+    & .meta {
       position: relative;
       display: flex;
       align-items: center;
@@ -245,7 +221,7 @@
       letter-spacing: 0.09em;
     }
 
-    .article-edit-action {
+    & .article-edit-action {
       position: fixed;
       z-index: 30;
       top: 50%;
@@ -265,7 +241,7 @@
       transform: translateY(-50%);
     }
 
-    .article-edit-label {
+    & .article-edit-label {
       display: grid;
       width: 24px;
       height: 44px;
@@ -282,31 +258,31 @@
       writing-mode: vertical-rl;
     }
 
-    .article-edit-action:hover .article-edit-label {
+    & .article-edit-action:hover .article-edit-label {
       color: var(--link);
       background: var(--highlight);
     }
 
-    .article-edit-action:focus-visible {
+    & .article-edit-action:focus-visible {
       outline: 0;
     }
 
-    .article-edit-action:focus-visible .article-edit-label {
+    & .article-edit-action:focus-visible .article-edit-label {
       outline: 1px solid var(--red);
       outline-offset: -5px;
     }
 
-    .article-edit-action:disabled {
+    & .article-edit-action:disabled {
       cursor: wait;
       opacity: 0.58;
     }
 
-    .article-edit-action.is-hidden {
+    & .article-edit-action.is-hidden {
       visibility: hidden;
       pointer-events: none;
     }
 
-    .meta-category {
+    & .meta-category {
       padding: 0.24em 0.58em;
 
       border:
@@ -316,26 +292,26 @@
       letter-spacing: 0.12em;
     }
 
-    [data-article-field][contenteditable="true"] {
+    & [data-article-field][contenteditable="true"] {
       outline: 0;
       cursor: text;
     }
 
-    [data-article-field][contenteditable="true"]:focus-visible {
+    & [data-article-field][contenteditable="true"]:focus-visible {
       box-shadow: 0 1px 0 var(--red);
     }
 
-    .article-date-control {
+    & .article-date-control {
       position: relative;
       display: inline-grid;
       vertical-align: baseline;
     }
 
-    .article-date-control > * {
+    & .article-date-control > * {
       grid-area: 1 / 1;
     }
 
-    .article-date-input {
+    & .article-date-input {
       position: absolute;
       inset: 0;
       width: 100%;
@@ -345,7 +321,7 @@
       cursor: pointer;
     }
 
-    .meta-separator {
+    & .meta-separator {
       width: 18px;
       height: 1px;
 
@@ -353,7 +329,7 @@
         var(--line);
     }
 
-    h1 {
+    & h1 {
       margin: 0;
 
       font-family: var(--serif);
@@ -370,7 +346,7 @@
         "pkna" 1;
     }
 
-    .subtitle {
+    & .subtitle {
       margin: 0.9rem 0 0;
 
       font-size: 14px;
@@ -383,7 +359,7 @@
        本文
        ───────────────────────────── */
 
-    article {
+    & article {
       font-family: var(--serif);
 
       font-size: var(--body-size);
@@ -412,46 +388,46 @@
         last allow-end;
     }
 
-    .article-content {
+    & .article-content {
       position: relative;
       counter-reset: section;
     }
 
-    .article-content > .ProseMirror {
+    & .article-content > .ProseMirror {
       outline: none;
     }
 
-    .article-content > .ProseMirror[contenteditable="true"] {
+    & .article-content > .ProseMirror[contenteditable="true"] {
       caret-color: var(--red);
     }
 
-    .article-content > .ProseMirror[contenteditable="true"] > *:hover {
+    & .article-content > .ProseMirror[contenteditable="true"] > *:hover {
       outline: 1px dashed rgb(135 89 79 / 20%);
       outline-offset: 4px;
     }
 
-    .article-content [data-editor-mode="edit"]
+    & .article-content [data-editor-mode="edit"]
       .ProseMirror-selectednode:not(.tiptap-mathematics-render):not(details) {
       outline: 2px solid rgb(135 89 79 / 45%);
       outline-offset: 3px;
     }
 
     @supports (text-spacing-trim: trim-start) {
-      article,
-      blockquote {
+      & article,
+      & blockquote {
         text-spacing-trim:
           trim-start;
       }
     }
 
-    article > p,
-    .article-content > .tiptap > p {
+    & article > p,
+    & .article-content > .tiptap > p {
       margin: 0;
 
       text-indent: 1em;
     }
 
-    strong {
+    & strong {
       font-family: var(--sans);
 
       font-weight: 600;
@@ -459,11 +435,11 @@
       letter-spacing: 0.01em;
     }
 
-    em {
+    & em {
       font-style: italic;
     }
 
-    mark {
+    & mark {
       color: inherit;
 
       background:
@@ -482,9 +458,9 @@
        .ink の transparent fill を上書きする。
        ───────────────────────────── */
 
-    a,
-    a:link,
-    a:visited {
+    & a,
+    & a:link,
+    & a:visited {
       color: var(--link);
 
       /*
@@ -529,13 +505,13 @@
      * 通常のリンクにも、
      * URL直書きと同じ視認性を持たせる。
      */
-    article a:not(.url-link) {
+    & article a:not(.url-link) {
       padding-inline:
         0.04em;
     }
 
     @media (hover: hover) and (pointer: fine) {
-      a:hover {
+      & a:hover {
         color:
           var(--link-hover);
 
@@ -550,7 +526,7 @@
       }
     }
 
-    a:focus-visible {
+    & a:focus-visible {
       color:
         var(--link-hover);
 
@@ -571,7 +547,7 @@
     /*
      * URLそのものを表示する場合。
      */
-    .url-link {
+    & .url-link {
       font-family:
         var(--latin-serif);
 
@@ -597,7 +573,7 @@
         "kern" 1;
     }
 
-    .link-list {
+    & .link-list {
       margin:
         var(--body-leading)
         0
@@ -611,7 +587,7 @@
       line-height: 1.45;
     }
 
-    .link-list li {
+    & .link-list li {
       position: relative;
 
       margin: 0.8em 0;
@@ -619,7 +595,7 @@
       padding-left: 1.25em;
     }
 
-    .link-list li::before {
+    & .link-list li::before {
       content: "※";
 
       position: absolute;
@@ -632,8 +608,8 @@
        MathJax
        ───────────────────────────── */
 
-    .math-tex,
-    .tiptap-mathematics-render[data-type="inline-math"] {
+    & .math-tex,
+    & .tiptap-mathematics-render[data-type="inline-math"] {
       color: var(--ink) !important;
 
       -webkit-text-fill-color:
@@ -646,8 +622,8 @@
         no-autospace;
     }
 
-    mjx-container,
-    mjx-container * {
+    & mjx-container,
+    & mjx-container * {
       color: #45392f !important;
 
       -webkit-text-fill-color:
@@ -659,7 +635,7 @@
       text-shadow: none !important;
     }
 
-    mjx-container:not([display="true"]) {
+    & mjx-container:not([display="true"]) {
       margin-inline:
         0.045em !important;
 
@@ -667,8 +643,8 @@
         101% !important;
     }
 
-    .math-block,
-    .tiptap-mathematics-render[data-type="block-math"] {
+    & .math-block,
+    & .tiptap-mathematics-render[data-type="block-math"] {
       margin:
         calc(var(--body-leading) * 2)
         0;
@@ -696,8 +672,8 @@
         no-autospace;
     }
 
-    .math-block mjx-container[display="true"],
-    .tiptap-mathematics-render[data-type="block-math"] .katex-display {
+    & .math-block mjx-container[display="true"],
+    & .tiptap-mathematics-render[data-type="block-math"] .katex-display {
       margin:
         0.5em 0 !important;
 
@@ -705,7 +681,7 @@
         112% !important;
     }
 
-    .math-caption {
+    & .math-caption {
       margin-top: 0.65em;
 
       color: var(--muted);
@@ -722,9 +698,9 @@
        見出し
        ───────────────────────────── */
 
-    .section-heading,
-    .article-content > h2,
-    .article-content > .tiptap > h2 {
+    & .section-heading,
+    & .article-content > h2,
+    & .article-content > .tiptap > h2 {
       margin:
         calc(var(--body-leading) * 3)
         0
@@ -733,9 +709,9 @@
       text-align: start;
     }
 
-    .section-number,
-    .article-content > h2::before,
-    .article-content > .tiptap > h2::before {
+    & .section-number,
+    & .article-content > h2::before,
+    & .article-content > .tiptap > h2::before {
       display: block;
 
       margin-bottom: 0.65em;
@@ -746,13 +722,13 @@
       letter-spacing: 0.12em;
     }
 
-    .article-content > h2,
-    .article-content > .tiptap > h2 {
+    & .article-content > h2,
+    & .article-content > .tiptap > h2 {
       counter-increment: section;
     }
 
-    .article-content > h2::before,
-    .article-content > .tiptap > h2::before {
+    & .article-content > h2::before,
+    & .article-content > .tiptap > h2::before {
       content: "第" counter(section, cjk-ideographic) "節";
 
       color: var(--faint);
@@ -762,7 +738,7 @@
       user-select: none;
     }
 
-    h2 {
+    & h2 {
       margin: 0;
 
       font-size: 18px;
@@ -776,7 +752,7 @@
        引用
        ───────────────────────────── */
 
-    blockquote {
+    & blockquote {
       margin:
         calc(var(--body-leading) * 2)
         0;
@@ -803,7 +779,7 @@
        Inline code
        ───────────────────────────── */
 
-    :not(pre) > code {
+    & :not(pre) > code {
       padding:
         0.1em
         0.32em;
@@ -835,7 +811,7 @@
        Highlight.js
        ───────────────────────────── */
 
-    .code-block {
+    & .code-block {
       position: relative;
 
       margin:
@@ -856,11 +832,11 @@
         var(--line-strong);
     }
 
-    pre.code-block {
+    & pre.code-block {
       padding-top: 34px;
     }
 
-    .code-language-control {
+    & .code-language-control {
       position: absolute;
       z-index: 1;
       top: 7px;
@@ -877,21 +853,21 @@
       text-transform: lowercase;
     }
 
-    .code-language-label,
-    .code-language-select {
+    & .code-language-label,
+    & .code-language-select {
       position: absolute;
       inset: 0;
       inline-size: 100%;
       block-size: 100%;
     }
 
-    .code-language-label {
+    & .code-language-label {
       display: flex;
       align-items: center;
       justify-content: flex-end;
     }
 
-    .code-language-select {
+    & .code-language-select {
       padding: 1px 20px 1px 6px;
       color: var(--muted);
       border: 1px solid var(--line-soft);
@@ -904,19 +880,19 @@
       pointer-events: none;
     }
 
-    [data-editor-mode="edit"] .code-language-label {
+    & [data-editor-mode="edit"] .code-language-label {
       visibility: hidden;
       opacity: 0;
       pointer-events: none;
     }
 
-    [data-editor-mode="edit"] .code-language-select {
+    & [data-editor-mode="edit"] .code-language-select {
       visibility: visible;
       opacity: 1;
       pointer-events: auto;
     }
 
-    .code-caption {
+    & .code-caption {
       display: flex;
 
       justify-content:
@@ -939,7 +915,7 @@
       letter-spacing: 0.08em;
     }
 
-    pre {
+    & pre {
       margin: 0;
 
       padding:
@@ -962,8 +938,8 @@
       scrollbar-width: thin;
     }
 
-    pre code,
-    pre code.hljs {
+    & pre code,
+    & pre code.hljs {
       display: block;
 
       padding: 0;
@@ -978,8 +954,8 @@
       font: inherit;
     }
 
-    .hljs-comment,
-    .hljs-quote {
+    & .hljs-comment,
+    & .hljs-quote {
       color:
         var(--syn-comment) !important;
 
@@ -989,9 +965,9 @@
       font-style: italic;
     }
 
-    .hljs-keyword,
-    .hljs-selector-tag,
-    .hljs-doctag {
+    & .hljs-keyword,
+    & .hljs-selector-tag,
+    & .hljs-doctag {
       color:
         var(--syn-red) !important;
 
@@ -1001,8 +977,8 @@
       font-weight: 600;
     }
 
-    .hljs-built_in,
-    .hljs-type {
+    & .hljs-built_in,
+    & .hljs-type {
       color:
         var(--syn-purple) !important;
 
@@ -1010,9 +986,9 @@
         var(--syn-purple) !important;
     }
 
-    .hljs-title,
-    .hljs-title.function_,
-    .hljs-section {
+    & .hljs-title,
+    & .hljs-title.function_,
+    & .hljs-section {
       color:
         var(--syn-blue) !important;
 
@@ -1020,8 +996,8 @@
         var(--syn-blue) !important;
     }
 
-    .hljs-string,
-    .hljs-regexp {
+    & .hljs-string,
+    & .hljs-regexp {
       color:
         var(--syn-green) !important;
 
@@ -1029,7 +1005,7 @@
         var(--syn-green) !important;
     }
 
-    .hljs-number {
+    & .hljs-number {
       color:
         var(--syn-orange) !important;
 
@@ -1037,8 +1013,8 @@
         var(--syn-orange) !important;
     }
 
-    .hljs-attribute,
-    .hljs-attr {
+    & .hljs-attribute,
+    & .hljs-attr {
       color:
         var(--syn-gold) !important;
 
@@ -1046,8 +1022,8 @@
         var(--syn-gold) !important;
     }
 
-    .hljs-tag,
-    .hljs-name {
+    & .hljs-tag,
+    & .hljs-name {
       color:
         var(--syn-red) !important;
 
@@ -1055,9 +1031,9 @@
         var(--syn-red) !important;
     }
 
-    .hljs-variable,
-    .hljs-template-variable,
-    .hljs-params {
+    & .hljs-variable,
+    & .hljs-template-variable,
+    & .hljs-params {
       color:
         var(--syn-purple) !important;
 
@@ -1065,9 +1041,9 @@
         var(--syn-purple) !important;
     }
 
-    .hljs-literal,
-    .hljs-symbol,
-    .hljs-bullet {
+    & .hljs-literal,
+    & .hljs-symbol,
+    & .hljs-bullet {
       color:
         var(--syn-pink) !important;
 
@@ -1075,7 +1051,7 @@
         var(--syn-pink) !important;
     }
 
-    .hljs-meta {
+    & .hljs-meta {
       color:
         var(--syn-orange) !important;
 
@@ -1083,9 +1059,9 @@
         var(--syn-orange) !important;
     }
 
-    .hljs-selector-class,
-    .hljs-selector-id,
-    .hljs-selector-attr {
+    & .hljs-selector-class,
+    & .hljs-selector-id,
+    & .hljs-selector-attr {
       color:
         var(--syn-teal) !important;
 
@@ -1093,7 +1069,7 @@
         var(--syn-teal) !important;
     }
 
-    .hljs-property {
+    & .hljs-property {
       color: #61713d !important;
 
       -webkit-text-fill-color:
@@ -1104,7 +1080,7 @@
        Table
        ───────────────────────────── */
 
-    .table-controls {
+    & .table-controls {
       position: absolute;
       inset: 0;
       z-index: 20;
@@ -1115,11 +1091,11 @@
       text-align: left;
     }
 
-    .table-controls[hidden], .table-handle[hidden] {
+    & .table-controls[hidden], .table-handle[hidden] {
       display: none;
     }
 
-    .table-handle {
+    & .table-handle {
       position: absolute;
       transform: translate(-50%, -50%);
       width: 24px;
@@ -1137,19 +1113,19 @@
       -webkit-touch-callout: none;
     }
 
-    .table-handle[data-dragging] {
+    & .table-handle[data-dragging] {
       cursor: grabbing;
       outline: 2px solid var(--red);
       outline-offset: 2px;
     }
 
-    .table-drag-ghost, .table-drop-line {
+    & .table-drag-ghost, .table-drop-line {
       position: fixed;
       z-index: 2;
       pointer-events: none;
     }
 
-    .table-drag-ghost {
+    & .table-drag-ghost {
       padding: 6px 10px;
       border: 1px solid var(--red);
       border-radius: 6px;
@@ -1160,16 +1136,16 @@
       box-shadow: 0 4px 16px rgb(0 0 0 / 15%);
     }
 
-    .table-drop-line {
+    & .table-drop-line {
       background: var(--red);
     }
 
-    .table-handle:focus-visible, .table-controls-menu button:focus-visible {
+    & .table-handle:focus-visible, .table-controls-menu button:focus-visible {
       outline: 2px solid var(--red);
       outline-offset: 2px;
     }
 
-    .table-controls-menu, .table-controls-error {
+    & .table-controls-menu, .table-controls-error {
       position: absolute;
       z-index: 1;
       padding: 4px;
@@ -1180,7 +1156,7 @@
       pointer-events: auto;
     }
 
-    .table-controls-menu button {
+    & .table-controls-menu button {
       display: block;
       width: 100%;
       padding: 8px 16px;
@@ -1193,16 +1169,16 @@
       cursor: pointer;
     }
 
-    .table-controls-menu button:disabled {
+    & .table-controls-menu button:disabled {
       opacity: 0.4;
       cursor: default;
     }
 
-    .table-controls-menu button:not(:disabled):hover {
+    & .table-controls-menu button:not(:disabled):hover {
       background: rgb(135 89 79 / 10%);
     }
 
-    .table-wrap {
+    & .table-wrap {
       margin:
         calc(var(--body-leading) * 2)
         0;
@@ -1216,7 +1192,7 @@
         1px solid var(--rule);
     }
 
-    .article-content table {
+    & .article-content table {
       margin:
         calc(var(--body-leading) * 2)
         0;
@@ -1228,16 +1204,16 @@
         1px solid var(--rule);
     }
 
-    .tableWrapper {
+    & .tableWrapper {
       margin: calc(var(--body-leading) * 2) 0;
       overflow-x: auto;
     }
 
-    .article-content .tableWrapper table {
+    & .article-content .tableWrapper table {
       margin: 0;
     }
 
-    table {
+    & table {
       width: 100%;
       min-width: 430px;
 
@@ -1252,8 +1228,8 @@
       text-autospace: normal;
     }
 
-    th,
-    td {
+    & th,
+    & td {
       padding: 8px 10px;
 
       text-align: start;
@@ -1264,12 +1240,12 @@
         var(--line-soft);
     }
 
-    th {
+    & th {
       font-family: var(--sans);
       font-weight: 500;
     }
 
-    tbody tr:last-child td {
+    & tbody tr:last-child td {
       border-bottom: 0;
     }
 
@@ -1277,13 +1253,13 @@
        Figure / Caption
        ───────────────────────────── */
 
-    figure {
+    & figure {
       margin:
         calc(var(--body-leading) * 2)
         0;
     }
 
-    .figure-field {
+    & .figure-field {
       min-height: 120px;
 
       display: grid;
@@ -1305,7 +1281,7 @@
         var(--line-soft);
     }
 
-    .figure-mark {
+    & .figure-mark {
       width: 68px;
       aspect-ratio: 1;
 
@@ -1329,7 +1305,7 @@
     /*
      * 写真は紙面に馴染むよう彩度を落とし、わずかに暖色へ寄せる。
      */
-    .figure-field img {
+    & .figure-field img {
       display: block;
 
       width: 100%;
@@ -1342,7 +1318,7 @@
         brightness(102%);
     }
 
-    figcaption {
+    & figcaption {
       margin-top: 0.55em;
 
       color: var(--muted);
@@ -1360,7 +1336,7 @@
        Aside / details
        ───────────────────────────── */
 
-    .aside {
+    & .aside {
       margin:
         calc(var(--body-leading) * 2)
         0;
@@ -1382,7 +1358,7 @@
       line-height: 1.55;
     }
 
-    .aside-label {
+    & .aside-label {
       margin-right: 0.85em;
 
       font-size: 10px;
@@ -1390,7 +1366,7 @@
       letter-spacing: 0.1em;
     }
 
-    details {
+    & details {
       margin:
         calc(var(--body-leading) * 2)
         0;
@@ -1404,7 +1380,7 @@
         var(--line);
     }
 
-    summary {
+    & summary {
       padding: 10px 2px;
 
       cursor: pointer;
@@ -1415,7 +1391,7 @@
       font-weight: 500;
     }
 
-    .details-body {
+    & .details-body {
       padding:
         0 0 12px 1.5em;
 
@@ -1423,7 +1399,7 @@
       line-height: 1.5;
     }
 
-    hr {
+    & hr {
       margin:
         calc(var(--body-leading) * 3)
         auto;
@@ -1437,7 +1413,7 @@
         var(--line);
     }
 
-    .page-footer {
+    & .page-footer {
       display: flex;
 
       justify-content:
@@ -1465,17 +1441,17 @@
        Fixed overlays keep the paper geometry identical in both modes.
        ───────────────────────────── */
 
-    .editor-dock,
-    .editor-error,
-    .math-dialog {
+    & .editor-dock,
+    & .editor-error,
+    & .math-dialog {
       color: #322b22;
       -webkit-text-fill-color: currentcolor;
       font-family: var(--sans);
       text-align: start;
     }
 
-    .editor-dock button,
-    .math-dialog button {
+    & .editor-dock button,
+    & .math-dialog button {
       min-height: 28px;
       padding: 2px 6px;
 
@@ -1488,24 +1464,24 @@
       cursor: pointer;
     }
 
-    .editor-dock button:hover,
-    .editor-panel > summary:hover {
+    & .editor-dock button:hover,
+    & .editor-panel > summary:hover {
       color: var(--link);
       background: transparent;
     }
 
-    .math-dialog button:last-child {
+    & .math-dialog button:last-child {
       background: #352f25;
       color: #fffaf0;
     }
 
-    .editor-dock button:disabled,
-    .math-dialog button:disabled {
+    & .editor-dock button:disabled,
+    & .math-dialog button:disabled {
       cursor: wait;
       opacity: 0.48;
     }
 
-    .editor-error {
+    & .editor-error {
       position: fixed;
       z-index: 45;
       top: 58px;
@@ -1518,7 +1494,7 @@
       font-size: 12px;
     }
 
-    .editor-dock {
+    & .editor-dock {
       position: fixed;
       z-index: 35;
       top: 0;
@@ -1538,7 +1514,7 @@
       box-shadow: none;
     }
 
-    .editor-dock-head {
+    & .editor-dock-head {
       position: relative;
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto auto;
@@ -1546,7 +1522,7 @@
       border-bottom: 1px solid rgb(86 70 55 / 14%);
     }
 
-    .editor-dock-row {
+    & .editor-dock-row {
       grid-row: 1;
       grid-column: 1;
       min-width: 0;
@@ -1556,7 +1532,7 @@
       overflow-x: auto;
     }
 
-    .editor-done {
+    & .editor-done {
       grid-row: 1;
       grid-column: 3;
       min-width: 44px;
@@ -1565,11 +1541,11 @@
       color: var(--link);
     }
 
-    .editor-formatting button {
+    & .editor-formatting button {
       flex: 0 0 auto;
     }
 
-    .editor-panel {
+    & .editor-panel {
       grid-row: 1;
       grid-column: 2;
       align-self: stretch;
@@ -1578,7 +1554,7 @@
       border-left: 1px solid rgb(86 70 55 / 14%);
     }
 
-    .editor-panel > summary {
+    & .editor-panel > summary {
       display: grid;
       height: 100%;
       padding: 0 8px;
@@ -1589,15 +1565,15 @@
       list-style: none;
     }
 
-    .editor-panel > summary::-webkit-details-marker {
+    & .editor-panel > summary::-webkit-details-marker {
       display: none;
     }
 
-    .editor-panel[open] > summary {
+    & .editor-panel[open] > summary {
       color: var(--link);
     }
 
-    .editor-fields {
+    & .editor-fields {
       position: absolute;
       z-index: 1;
       top: calc(100% + 1px);
@@ -1614,12 +1590,12 @@
       background: rgb(242 234 213 / 98%);
     }
 
-    .editor-panel:not([open]) > .editor-fields {
+    & .editor-panel:not([open]) > .editor-fields {
       display: none;
     }
 
-    .editor-fields label,
-    .math-dialog label {
+    & .editor-fields label,
+    & .math-dialog label {
       display: grid;
       gap: 3px;
       color: #74685b;
@@ -1627,12 +1603,12 @@
       letter-spacing: 0.05em;
     }
 
-    .editor-fields label.wide {
+    & .editor-fields label.wide {
       grid-column: 1 / -1;
     }
 
-    .editor-fields input,
-    .math-dialog textarea {
+    & .editor-fields input,
+    & .math-dialog textarea {
       width: 100%;
       min-height: 32px;
       padding: 6px 8px;
@@ -1643,7 +1619,7 @@
       font: 13px/1.35 var(--sans);
     }
 
-    .math-dialog-backdrop {
+    & .math-dialog-backdrop {
       position: fixed;
       z-index: 60;
       inset: 0;
@@ -1653,7 +1629,7 @@
       background: rgb(30 25 20 / 38%);
     }
 
-    .math-dialog {
+    & .math-dialog {
       width: min(560px, 100%);
       padding: 20px;
       border-radius: 10px;
@@ -1661,17 +1637,17 @@
       box-shadow: 0 20px 70px rgb(20 15 10 / 28%);
     }
 
-    .math-dialog h2 {
+    & .math-dialog h2 {
       margin: 0 0 14px;
       font-size: 17px;
     }
 
-    .math-dialog textarea {
+    & .math-dialog textarea {
       resize: vertical;
       font-family: var(--mono);
     }
 
-    .math-dialog-preview {
+    & .math-dialog-preview {
       min-height: 64px;
       margin-top: 12px;
       padding: 12px;
@@ -1680,12 +1656,12 @@
       text-align: center;
     }
 
-    .math-dialog-error {
+    & .math-dialog-error {
       color: #8c4037;
       font-size: 11px;
     }
 
-    .math-dialog-actions {
+    & .math-dialog-actions {
       display: flex;
       justify-content: flex-end;
       gap: 6px;
@@ -1697,13 +1673,7 @@
        ───────────────────────────── */
 
     @media (max-width: 600px) {
-      html,
-      body {
-        background:
-          var(--paper);
-      }
-
-      .paper {
+      & .paper {
         width: 100%;
 
         padding:
@@ -1715,37 +1685,44 @@
         box-shadow: none;
       }
 
-      .article-edit-action {
+      & .article-edit-action {
         top: 68%;
       }
 
-      .article-edit-label {
+      & .article-edit-label {
         width: 16px;
         height: 36px;
         padding: 1px;
       }
 
-      .editor-dock {
+      & .editor-dock {
         width: 100vw;
       }
 
-      .editor-fields {
+      & .editor-fields {
         grid-template-columns: 1fr;
       }
 
-      .editor-fields label.wide {
+      & .editor-fields label.wide {
         grid-column: auto;
       }
 
-      .content {
+      & .content {
         max-width: none;
       }
 
-      header {
+      & header {
         margin-bottom: 2.6rem;
       }
 
-      .math-block {
+      & .math-block {
         margin-inline: -4px;
       }
     }
+`;
+
+export const ArticleStyleBoundary = component$(() => (
+  <div css={articleShellStyles} data-qstyle-boundary>
+    <Slot />
+  </div>
+));

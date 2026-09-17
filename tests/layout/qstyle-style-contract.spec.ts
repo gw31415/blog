@@ -5,7 +5,7 @@ test("delivers application styles through qstyle", async ({ page }) => {
   await page.goto("/");
 
   const boundary = page.locator("[data-qstyle-boundary]");
-  await expect(boundary).toHaveClass(/(?:^|\s)q_[a-z0-9]+(?:\s|$)/);
+  await expect(boundary).toHaveClass(/(?:^|\s)q(?:d)?_[a-z0-9_]+(?:\s|$)/);
 
   const contract = await page.evaluate(() => {
     const style = (selector: string, pseudo?: string) => {
