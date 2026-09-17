@@ -688,7 +688,7 @@
 
     .article-content > h2::before,
     .article-content > .tiptap > h2::before {
-      content: "第" counter(section, cjk-ideographic);
+      content: "第" counter(section, cjk-ideographic) "節";
 
       color: var(--faint);
       -webkit-text-fill-color: var(--faint);

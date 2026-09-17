@@ -27,6 +27,10 @@ describe("article shell", () => {
   });
 
   it("keeps section numbers out of generated article content", () => {
+    const css = readFileSync(new URL("../blog/blog.css", import.meta.url), "utf8");
+
+    expect(css).toMatch(/content:\s*"第"\s+counter\(section, cjk-ideographic\)\s+"節"/);
+    expect(INITIAL_ARTICLE_HTML).not.toMatch(/第[一二三四五六七八九十]+節/);
     expect(INITIAL_ARTICLE_HTML).not.toContain('class="section-number"');
     expect(INITIAL_ARTICLE_HTML.match(/<h2(?:\s|>)/g)).toHaveLength(4);
   });

@@ -17,7 +17,8 @@
     "generate:article": "node scripts/render-initial-article.mjs",
     "lint": "vp lint",
     "preview": "pnpm run build && wrangler dev",
-    "test": "vp test run"
+    "test": "vp test run",
+    "test:layout": "playwright test tests/layout/article-layout-parity.spec.ts"
   },
   "dependencies": {
     "@tiptap/core": "3.31.3",
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.54.3",
+    "@playwright/test": "^1.63.0",
     "@qstyle/qwik": "^0.2.0",
     "@qstyle/vite": "^0.2.0",
     "@qwik.dev/core": "2.0.0-beta.43",
