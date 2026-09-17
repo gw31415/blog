@@ -24,6 +24,7 @@
 ### Task 1: Section suffix and layout test foundation
 
 **Files:**
+
 - Modify: `src/components/blog/blog.css`
 - Modify: `src/components/editor/article-shell.test.ts`
 - Modify: `package.json`
@@ -32,6 +33,7 @@
 - Create: `tests/layout/article-layout-parity.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `data-layout-key`, `data-article-field`, `data-editor-mount`, and the existing 閲覧/編集 buttons.
 - Produces: `captureArticleLayout(page): Promise<ArticleLayoutSnapshot>` and `expectLayoutEqual(before, after)` for later tasks.
 
@@ -101,6 +103,7 @@ git commit -m "test(editor): measure view and edit layout parity"
 ### Task 2: Shared rendering contract and zero-difference layout
 
 **Files:**
+
 - Create: `src/components/editor/code-block-view.ts`
 - Create: `src/components/editor/code-block-view.test.ts`
 - Modify: `package.json`
@@ -114,6 +117,7 @@ git commit -m "test(editor): measure view and edit layout parity"
 - Test: `tests/layout/article-layout-parity.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `CODE_LANGUAGES`, `codeLanguage`, `replaceCodeLanguage`, and Task 1 layout helpers.
 - Produces: `codeBlockDOMSpec(languageInfo: string): DOMOutputSpec`, `createCodeBlockControl(...)`, and identical `.code-language-control` markup in static/runtime states.
 
@@ -125,9 +129,12 @@ Assert that static HTML and runtime code-block creation use the same classes and
 expect(codeBlockDOMSpec("html caption")).toEqual([
   "pre",
   expect.objectContaining({ class: "code-block", "data-code-language": "html" }),
-  ["span", { class: "code-language-control", contenteditable: "false" },
+  [
+    "span",
+    { class: "code-language-control", contenteditable: "false" },
     ["span", { class: "code-language-label" }, "html"],
-    ["select", expect.objectContaining({ class: "code-language-select" })]],
+    ["select", expect.objectContaining({ class: "code-language-select" })],
+  ],
   ["code", { class: "language-html" }, 0],
 ]);
 ```
@@ -147,11 +154,25 @@ Add `@tiptap/extension-code-block` at version `3.31.3` as a direct dependency. M
 Use a fixed control box in CSS:
 
 ```css
-.code-language-control { inline-size: 108px; block-size: 24px; }
+.code-language-control {
+  inline-size: 108px;
+  block-size: 24px;
+}
 .code-language-label,
-.code-language-select { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
-[data-editor-mode="view"] .code-language-select { visibility: hidden; pointer-events: none; }
-[data-editor-mode="edit"] .code-language-label { visibility: hidden; pointer-events: none; }
+.code-language-select {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+}
+[data-editor-mode="view"] .code-language-select {
+  visibility: hidden;
+  pointer-events: none;
+}
+[data-editor-mode="edit"] .code-language-label {
+  visibility: hidden;
+  pointer-events: none;
+}
 ```
 
 Do not change code-block padding, border, font metrics, or overflow between modes.
@@ -185,17 +206,23 @@ git commit -m "fix(editor): keep view and edit layout identical"
 ### Task 3: Pure rectangular-table transforms
 
 **Files:**
+
 - Create: `src/components/editor/table-transforms.ts`
 - Create: `src/components/editor/table-transforms.test.ts`
 
 **Interfaces:**
+
 - Consumes: ProseMirror `Node`, `Fragment`, and the existing table/tableRow/tableCell/tableHeader schema nodes.
 - Produces:
 
 ```ts
 export type TableAxis = "row" | "column";
 export type TableAction =
-  | { type: "insertBefore" | "insertAfter" | "duplicate" | "delete"; axis: TableAxis; index: number }
+  | {
+      type: "insertBefore" | "insertAfter" | "duplicate" | "delete";
+      axis: TableAxis;
+      index: number;
+    }
   | { type: "move"; axis: TableAxis; from: number; to: number };
 
 export type TableTransformResult =
@@ -247,6 +274,7 @@ git commit -m "feat(editor): add safe table transforms"
 ### Task 4: Per-row and per-column handles with contextual menus
 
 **Files:**
+
 - Create: `src/components/editor/table-controls.ts`
 - Create: `src/components/editor/table-controls.test.ts`
 - Modify: `src/components/editor/editor-runtime.ts`
@@ -254,6 +282,7 @@ git commit -m "feat(editor): add safe table transforms"
 - Test: `tests/layout/article-layout-parity.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `transformTable`, `TableAction`, ProseMirror `EditorView`, and each table DOM node's `getBoundingClientRect()`.
 - Produces: `createTableControlsPlugin(): Plugin`, overlay elements carrying `data-editor-overlay`, `data-table-axis`, and `data-table-index`.
 
@@ -304,12 +333,14 @@ git commit -m "feat(editor): add contextual table handles"
 ### Task 5: Pointer drag reordering and keyboard movement
 
 **Files:**
+
 - Modify: `src/components/editor/table-controls.ts`
 - Modify: `src/components/editor/table-controls.test.ts`
 - Modify: `src/components/blog/blog.css`
 - Modify: `tests/layout/article-layout-parity.spec.ts`
 
 **Interfaces:**
+
 - Consumes: table handle metadata and `{ type: "move", axis, from, to }` transforms.
 - Produces: `TableDragState`, pointer gesture helpers, overlay ghost/insertion line, and keyboard move menu actions.
 
@@ -363,9 +394,11 @@ git commit -m "feat(editor): reorder table rows and columns"
 ### Task 6: Full regression and delivery
 
 **Files:**
+
 - Modify only files required by failures found during final verification.
 
 **Interfaces:**
+
 - Consumes: all prior task outputs.
 - Produces: a verified branch whose article layout is identical across modes and whose table controls meet the spec.
 
