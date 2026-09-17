@@ -12,6 +12,12 @@ export interface ArticleLayoutSnapshot {
   lines: Record<string, LayoutRect[]>;
 }
 
+interface CodeLanguageControlRects {
+  control: LayoutRect;
+  label: LayoutRect;
+  select: LayoutRect;
+}
+
 const EXCLUDED_LAYOUT =
   ".mode-switch, .editor-dock, .editor-error, .math-dialog, [data-editor-overlay]";
 
@@ -113,6 +119,38 @@ export async function captureArticleLayout(page: Page): Promise<ArticleLayoutSna
   }, EXCLUDED_LAYOUT);
 }
 
+async function captureCodeLanguageControlRects(page: Page): Promise<CodeLanguageControlRects[]> {
+  return page.locator(".code-language-control").evaluateAll((controls) =>
+    controls.map((control) => {
+      const label = control.querySelector<HTMLElement>(".code-language-label");
+      const select = control.querySelector<HTMLElement>(".code-language-select");
+      if (!label || !select) throw new Error("Code-language control contract is incomplete");
+
+      // Browser-evaluated helper stays inside this callback so Playwright can serialize it.
+      // oxlint-disable-next-line unicorn/consistent-function-scoping
+      const copyRect = (rect: DOMRect): LayoutRect => ({
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+      });
+      return {
+        control: copyRect(control.getBoundingClientRect()),
+        label: copyRect(label.getBoundingClientRect()),
+        select: copyRect(select.getBoundingClientRect()),
+      };
+    }),
+  );
+}
+
+function expectCodeLanguageControlRectsEqual(controls: CodeLanguageControlRects[]): void {
+  expect(controls.length).toBeGreaterThan(0);
+  for (const { control, label, select } of controls) {
+    expect(label).toStrictEqual(control);
+    expect(select).toStrictEqual(control);
+  }
+}
+
 function firstDifferingKey(
   before: ArticleLayoutSnapshot,
   after: ArticleLayoutSnapshot,
@@ -120,7 +158,23 @@ function firstDifferingKey(
   for (const group of ["elements", "lines"] as const) {
     const keys = new Set([...Object.keys(before[group]), ...Object.keys(after[group])]);
     // oxlint-disable-next-line unicorn/no-array-sort
-    const sortedKeys = [...keys].sort();
+    const sortedKeys = [...keys].sort((left, right) => {
+      const depthDifference = right.split(" > ").length - left.split(" > ").length;
+      return depthDifference || left.localeCompare(right);
+    });
+    const dimensionDifference = sortedKeys.find((key) => {
+      if (group !== "elements") return false;
+      const beforeRect = before.elements[key];
+      const afterRect = after.elements[key];
+      return (
+        !beforeRect ||
+        !afterRect ||
+        beforeRect.width !== afterRect.width ||
+        beforeRect.height !== afterRect.height
+      );
+    });
+    if (dimensionDifference) return { group, key: dimensionDifference };
+
     for (const key of sortedKeys) {
       if (JSON.stringify(before[group][key]) !== JSON.stringify(after[group][key])) {
         return { group, key };
@@ -173,15 +227,21 @@ for (const viewport of [
     await expect(page.locator("[data-editor-mount]")).toBeVisible();
 
     const initialView = await captureArticleLayout(page);
+    const initialCodeControls = await captureCodeLanguageControlRects(page);
 
     await page.getByRole("button", { name: "編集" }).click();
     await waitForEditShell(page);
     const edit = await captureArticleLayout(page);
+    const editCodeControls = await captureCodeLanguageControlRects(page);
 
     await page.getByRole("button", { name: "閲覧" }).click();
     await waitForViewShell(page);
     const finalView = await captureArticleLayout(page);
+    const finalCodeControls = await captureCodeLanguageControlRects(page);
 
+    expectCodeLanguageControlRectsEqual(initialCodeControls);
+    expectCodeLanguageControlRectsEqual(editCodeControls);
+    expectCodeLanguageControlRectsEqual(finalCodeControls);
     expectLayoutEqual(initialView, edit);
     expectLayoutEqual(initialView, finalView);
   });

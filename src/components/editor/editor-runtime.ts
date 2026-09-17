@@ -1,9 +1,7 @@
 import { Editor, Extension, findChildren } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
-import katex from "katex";
-
-import { CODE_LANGUAGES, codeLanguage, replaceCodeLanguage } from "./code-language";
+import { replaceCodeLanguage } from "./code-language";
 import { createEditorExtensions } from "./editor-extensions";
 import type {
   EditorCommand,
@@ -38,50 +36,6 @@ function createSyntaxHighlighting(highlightCode: HighlightCode): Extension {
             }
             from = to;
           }
-
-          ranges.push(
-            Decoration.widget(
-              block.pos + 1,
-              (view) => {
-                const control = document.createElement("span");
-                control.className = "code-language-control";
-                control.contentEditable = "false";
-
-                const label = document.createElement("span");
-                label.className = "code-language-label";
-                label.textContent = codeLanguage(language);
-                control.appendChild(label);
-
-                const select = document.createElement("select");
-                select.className = "code-language-select";
-                select.setAttribute("aria-label", "コード言語");
-                const currentLanguage = codeLanguage(language);
-                for (const optionLanguage of CODE_LANGUAGES) {
-                  const option = document.createElement("option");
-                  option.value = optionLanguage;
-                  option.textContent = optionLanguage;
-                  option.selected = optionLanguage === currentLanguage;
-                  select.appendChild(option);
-                }
-                select.addEventListener("change", () => {
-                  const node = view.state.doc.nodeAt(block.pos);
-                  if (!node || node.type.name !== "codeBlock") return;
-                  view.dispatch(
-                    view.state.tr.setNodeMarkup(block.pos, node.type, {
-                      ...node.attrs,
-                      language: replaceCodeLanguage(
-                        String(node.attrs.language ?? ""),
-                        select.value,
-                      ),
-                    }),
-                  );
-                });
-                control.appendChild(select);
-                return control;
-              },
-              { key: `code-language-${block.pos}-${language}`, side: -1, stopEvent: () => true },
-            ),
-          );
         }
         return DecorationSet.create(doc, ranges);
       };
@@ -150,17 +104,6 @@ function runCommand(editor: Editor, command: EditorCommand): boolean {
         latex: command.latex,
       }),
     );
-    const mathDom = editor.view.nodeDOM(command.position);
-    if (mathDom instanceof HTMLElement) {
-      mathDom.dataset.latex = command.latex;
-      const renderTarget =
-        command.kind === "block"
-          ? mathDom.querySelector<HTMLElement>(".block-math-inner")
-          : mathDom;
-      if (renderTarget) {
-        katex.render(command.latex, renderTarget, { throwOnError: false, displayMode: false });
-      }
-    }
     return true;
   }
 

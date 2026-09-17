@@ -2,11 +2,12 @@ import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
-import hljs from "highlight.js";
-import katex from "katex";
-
-import { createEditorExtensions } from "../src/components/editor/editor-extensions.ts";
-import { codeLanguage } from "../src/components/editor/code-language.ts";
+import {
+  createEditorExtensions,
+  renderMathContentHTML,
+} from "../src/components/editor/editor-extensions.ts";
+import { codeBlockDOMSpec } from "../src/components/editor/code-block-view.ts";
+import { highlightCode } from "../src/components/editor/editor-syntax-highlighting.ts";
 import { parseArticleMarkdown } from "../src/components/editor/markdown.ts";
 import { INITIAL_ARTICLE } from "../src/content/initial-article.ts";
 
@@ -16,28 +17,51 @@ const extensions = createEditorExtensions();
 function mathHtml(node, displayMode) {
   const latex = String(node.attrs.latex ?? "");
   const tag = displayMode ? "div" : "span";
-  const inner = katex.renderToString(latex, {
-    displayMode: false,
-    throwOnError: false,
-    output: "htmlAndMathml",
-  });
+  const inner = renderMathContentHTML(latex);
   const mathContent = displayMode ? `<div class="block-math-inner">${inner}</div>` : inner;
   return `<${tag} class="tiptap-mathematics-render" data-type="${displayMode ? "block-math" : "inline-math"}" data-latex="${latex.replaceAll('"', "&quot;")}" contenteditable="false">${mathContent}</${tag}>`;
 }
 
 function codeBlockHtml(node) {
   const languageInfo = String(node.attrs.language ?? "");
-  const language = codeLanguage(languageInfo);
   const source = node.textContent;
-  const highlighted =
-    language && hljs.getLanguage(language)
-      ? hljs.highlight(source, { language }).value
-      : hljs.highlightAuto(source).value;
-  const className = language === "plaintext" ? "" : ` class="language-${language}"`;
-  return `<pre class="code-block" data-code-language="${language}"><span class="code-language-control" contenteditable="false"><span class="code-language-label">${language}</span></span><code${className}>${highlighted}</code></pre>`;
+  const highlighted = highlightCode(languageInfo, source)
+    .map(({ classes, text }) =>
+      classes.length > 0
+        ? `<span class="${classes.join(" ")}">${escapeHtml(text)}</span>`
+        : escapeHtml(text),
+    )
+    .join("");
+  return renderDOMSpec(codeBlockDOMSpec(languageInfo), highlighted);
 }
 
-const bodyHtml = renderToHTMLString({
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function renderDOMSpec(spec, holeContent) {
+  if (spec === 0) return holeContent;
+  if (typeof spec === "string") return escapeHtml(spec);
+
+  const [tag, attributesOrChild, ...remainingChildren] = spec;
+  const hasAttributes =
+    attributesOrChild && typeof attributesOrChild === "object" && !Array.isArray(attributesOrChild);
+  const attributes = hasAttributes ? attributesOrChild : {};
+  const children = hasAttributes ? remainingChildren : [attributesOrChild, ...remainingChildren];
+  const serializedAttributes = Object.entries(attributes)
+    .map(([name, value]) => ` ${name}="${escapeHtml(value)}"`)
+    .join("");
+  return `<${tag}${serializedAttributes}>${children
+    .filter((child) => child !== undefined)
+    .map((child) => renderDOMSpec(child, holeContent))
+    .join("")}</${tag}>`;
+}
+
+const renderedBodyHtml = renderToHTMLString({
   content,
   extensions,
   options: {
@@ -48,6 +72,10 @@ const bodyHtml = renderToHTMLString({
     },
   },
 });
+const bodyHtml = renderedBodyHtml.replaceAll(
+  /<table\b[\s\S]*?<\/table>/g,
+  '<div class="tableWrapper">$&</div>',
+);
 
 const initialHtml = `<div class="tiptap ProseMirror">${bodyHtml}</div>`;
 

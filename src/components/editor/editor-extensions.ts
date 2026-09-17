@@ -1,3 +1,4 @@
+import CodeBlock from "@tiptap/extension-code-block";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { BlockMath, InlineMath } from "@tiptap/extension-mathematics";
@@ -5,8 +6,19 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { TableKit } from "@tiptap/extension-table";
 import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
-import { type AnyExtension, type MarkdownToken, Node, mergeAttributes } from "@tiptap/core";
+import {
+  type AnyExtension,
+  type MarkdownToken,
+  Node,
+  type NodeViewRendererProps,
+  mergeAttributes,
+} from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
+import katex from "katex";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+
+import { codeBlockDOMSpec, createCodeBlockControl } from "./code-block-view.ts";
+import { codeLanguage, replaceCodeLanguage } from "./code-language.ts";
 
 type DirectiveAttributes = Record<string, string>;
 
@@ -228,6 +240,125 @@ const Details = Node.create({
     `:::details{summary="${quoteAttribute(String(node.attrs?.summary ?? ""))}"}\n${String(node.attrs?.body ?? "")}\n:::`,
 });
 
+const SharedCodeBlock = CodeBlock.extend({
+  renderHTML({ node }) {
+    return codeBlockDOMSpec(String(node.attrs.language ?? ""));
+  },
+
+  addNodeView() {
+    return ({ node: initialNode, view, getPos }) => {
+      let currentNode = initialNode;
+      const ownerDocument = view.dom.ownerDocument;
+      const dom = ownerDocument.createElement("pre");
+      dom.className = "code-block";
+
+      const contentDOM = ownerDocument.createElement("code");
+      const control = createCodeBlockControl(
+        String(currentNode.attrs.language ?? ""),
+        (language) => {
+          const position = getPos();
+          if (typeof position !== "number") return;
+          const node = view.state.doc.nodeAt(position);
+          if (!node || node.type.name !== "codeBlock") return;
+          view.dispatch(
+            view.state.tr.setNodeMarkup(position, node.type, {
+              ...node.attrs,
+              language: replaceCodeLanguage(String(node.attrs.language ?? ""), language),
+            }),
+          );
+        },
+        ownerDocument,
+      );
+      dom.append(control.control, contentDOM);
+
+      const updateDOM = () => {
+        const languageInfo = String(currentNode.attrs.language ?? "");
+        const language = codeLanguage(languageInfo);
+        dom.dataset.codeLanguage = language;
+        contentDOM.className = `language-${language}`;
+        control.update(languageInfo);
+      };
+      updateDOM();
+
+      return {
+        dom,
+        contentDOM,
+        update(node) {
+          if (node.type !== currentNode.type) return false;
+          currentNode = node;
+          updateDOM();
+          return true;
+        },
+        stopEvent: (event) =>
+          event.target instanceof HTMLElement && control.control.contains(event.target),
+      };
+    };
+  },
+});
+
+export function renderMathContentHTML(latex: string): string {
+  return katex
+    .renderToString(latex, {
+      displayMode: false,
+      throwOnError: false,
+      output: "htmlAndMathml",
+    })
+    .replaceAll("<mtext>", "")
+    .replaceAll("</mtext>", "");
+}
+
+function sharedMathNodeView(displayMode: boolean) {
+  return function addNodeView(this: {
+    options: { onClick?: (node: ProseMirrorNode, position: number) => void };
+  }) {
+    const onClick = this.options.onClick;
+    return ({ node: initialNode, view, getPos }: NodeViewRendererProps) => {
+      let currentNode = initialNode;
+      const ownerDocument = view.dom.ownerDocument;
+      const dom = ownerDocument.createElement(displayMode ? "div" : "span");
+      dom.className = "tiptap-mathematics-render";
+      dom.dataset.type = displayMode ? "block-math" : "inline-math";
+      dom.contentEditable = "false";
+
+      const render = () => {
+        const latex = String(currentNode.attrs.latex ?? "");
+        dom.dataset.latex = latex;
+        if (displayMode) {
+          const inner = ownerDocument.createElement("div");
+          inner.className = "block-math-inner";
+          inner.innerHTML = renderMathContentHTML(latex);
+          dom.replaceChildren(inner);
+        } else {
+          dom.innerHTML = renderMathContentHTML(latex);
+        }
+      };
+      render();
+      dom.addEventListener("click", () => {
+        const position = getPos();
+        if (typeof position === "number") onClick?.(currentNode, position);
+      });
+
+      return {
+        dom,
+        update(node: ProseMirrorNode) {
+          if (node.type !== currentNode.type) return false;
+          currentNode = node;
+          render();
+          return true;
+        },
+      };
+    };
+  };
+}
+
+const SharedInlineMath = InlineMath.extend({
+  addNodeView: sharedMathNodeView(false),
+});
+
+const SharedBlockMath = BlockMath.extend({
+  addNodeView: sharedMathNodeView(true),
+});
+
 interface EditorExtensionOptions {
   additionalExtensions?: AnyExtension[];
   onMathEdit?: (request: { kind: "inline" | "block"; latex: string; position: number }) => void;
@@ -237,22 +368,23 @@ export function createEditorExtensions(options: EditorExtensionOptions = {}): An
   return [
     StarterKit.configure({
       link: false,
-      codeBlock: { HTMLAttributes: { class: "code-block" } },
+      codeBlock: false,
       paragraph: { HTMLAttributes: { class: "ink" } },
       heading: { HTMLAttributes: { class: "ink" } },
     }),
+    SharedCodeBlock,
     ...(options.additionalExtensions ?? []),
     Link.configure({ openOnClick: false, autolink: true }),
     TableKit.configure({ table: { resizable: false } }),
     TaskList,
     TaskItem.configure({ nested: true }),
     Image.configure({ inline: false, allowBase64: false }),
-    InlineMath.configure({
+    SharedInlineMath.configure({
       katexOptions: { throwOnError: false },
       onClick: (node, position) =>
         options.onMathEdit?.({ kind: "inline", latex: String(node.attrs.latex), position }),
     }),
-    BlockMath.configure({
+    SharedBlockMath.configure({
       katexOptions: { throwOnError: false },
       onClick: (node, position) =>
         options.onMathEdit?.({ kind: "block", latex: String(node.attrs.latex), position }),

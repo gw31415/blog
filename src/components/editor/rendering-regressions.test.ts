@@ -30,7 +30,21 @@ describe("editor rendering regressions", () => {
 
   it("labels code blocks with their language in the upper-right control", () => {
     expect(INITIAL_ARTICLE_HTML).toContain('data-code-language="html"');
-    expect(INITIAL_ARTICLE_HTML).toContain('class="code-language-label">html</span>');
+    expect(INITIAL_ARTICLE_HTML).toMatch(
+      /<span class="code-language-control" contenteditable="false"><span class="code-language-label">html<\/span><select class="code-language-select" aria-label="コード言語">/,
+    );
+  });
+
+  it("keeps both code-language controls measurable while switching visibility", () => {
+    const css = readFileSync(new URL("../blog/blog.css", import.meta.url), "utf8");
+    const selectRule = css.match(/\.code-language-select\s*\{([\s\S]*?)\}/)?.[1] ?? "";
+    const editLabelRule =
+      css.match(/\[data-editor-mode="edit"\]\s+\.code-language-label\s*\{([\s\S]*?)\}/)?.[1] ?? "";
+
+    expect(selectRule).not.toMatch(/display\s*:\s*none/);
+    expect(selectRule).toMatch(/position\s*:\s*absolute/);
+    expect(editLabelRule).toMatch(/visibility\s*:\s*hidden/);
+    expect(editLabelRule).toMatch(/pointer-events\s*:\s*none/);
   });
 
   it("only shows node-selection outlines while editing and excludes math and details", () => {
