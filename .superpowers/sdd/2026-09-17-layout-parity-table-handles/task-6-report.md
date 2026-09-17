@@ -2,7 +2,7 @@
 
 ## Status and ownership
 
-VERIFIED, pending controller review and integration. Starting commit was `ce5dabfec43afbf82d106f150a4acfff5c2277e4` on `codex/layout-parity-table-handles`. Initial verification fixes were committed as `b5325073efd47d420f14d473e20311ca944679ec` (`fix(editor): close layout parity regressions`). The final-review follow-up below supersedes the initial verification totals: **83 unit tests and 22 browser tests pass**. No merge, push, main modification, or subagent delegation was performed.
+VERIFIED, pending controller review and integration. Starting commit was `ce5dabfec43afbf82d106f150a4acfff5c2277e4` on `codex/layout-parity-table-handles`. Initial verification fixes were committed as `b5325073efd47d420f14d473e20311ca944679ec` (`fix(editor): close layout parity regressions`). The final-review follow-ups below supersede the initial verification totals: **83 unit tests and 24 browser tests pass**. No merge, push, main modification, or subagent delegation was performed.
 
 The exact `owned_path_allowlist` for the initial fix commit was:
 
@@ -157,6 +157,39 @@ The exact `owned_path_allowlist` for the separate final-verification commit is:
 - `.superpowers/sdd/2026-09-17-layout-parity-table-handles/task-6-report.md`
 
 All changed production paths implement one of the three review fixes; all changed test paths add their regression evidence. Other agents' edits, the plan, and ledger are preserved. The initial acceptance mapping remains valid and is strengthened by this section's merged-table, wide-table, and focus coverage. This report accompanies `fix(editor): guard merged tables and preserve table navigation`; staged paths and whitespace are checked before commit, and the resulting hash/clean-state readback is supplied in the controller handoff. Integration and push remain exclusively with the controller.
+
+## Final keyboard-navigation follow-up: reveal the destination before focus
+
+Following commit `f5dda3da5f649575140a2c055e30d684223d3d04`, the controller found that a visible column moved by keyboard into an offscreen destination still lost focus. The transaction rebuilt controls with the destination button hidden; focusing it without first revealing the cell was ineffective.
+
+The systematic-debugging/TDD workflow added two 390px browser cases before changing implementation. Each creates a 12-column table, places column 6 at the left or right visible boundary with its destination completely hidden, opens the menu by keyboard, and moves left/right. `pnpm test:layout --grep 'offscreen column'` failed both cases at the destination focus assertion before the fix; the column content had moved successfully, isolating the focus/reveal defect. The same command passed both cases after the fix (2.2s).
+
+Action completion now resolves the surviving destination handle, scrolls only its actual `.tableWrapper` by the necessary horizontal amount, synchronously updates control visibility/positions, then focuses with `preventScroll: true`. Outward rounding accommodates browser scroll-offset quantization; layout assertions are still exact and use no tolerances. The menu is closed before dispatch, and reopening the focused destination's menu targets its new column. No document schema, transform behavior, CSS, or global page-scrolling behavior was changed.
+
+Both new tests verify the moved column text, visible destination focus, `scrollLeft` decreasing/increasing respectively, full destination-cell containment, handle bounds within 390px, closed/reopened menu state, Escape focus restoration, and exact element/text-line geometry outside the intentionally moved/scrolled table. They also verify exact whole-article geometry while reopening the menu and switching back to view, with page scroll width remaining 390px. This extends the keyboard, no-content-jump, and mobile handle acceptance bullets.
+
+### Latest complete verification matrix
+
+The same full ordered chain was rerun after the final production/test edit and formatting on 2026-09-17; every command exited 0:
+
+```sh
+pnpm generate:article && pnpm fmt && pnpm test && pnpm test:layout && pnpm check && pnpm build && pnpm check:editor-chunk && git diff --check
+```
+
+| Command | Latest result |
+| --- | --- |
+| `pnpm generate:article` | No tracked generated-content changes. |
+| `pnpm fmt` | 50 files, 439ms. |
+| `pnpm test` | 11 files, 83 tests passed; started 17:45:44 JST, 631ms. |
+| `pnpm test:layout` | 24 tests passed in 19.7s, including both new offscreen-destination cases. |
+| `pnpm check` | All 50 files formatted; no lint/type errors or warnings in 39 checked files. |
+| `pnpm build` | Client, server, types, lint and one-page SSG succeeded. |
+| `pnpm check:editor-chunk` | `editor runtime: q-J-R-KAmW.js (517607 bytes), dynamically imported by q-3sQW2JMh.js`. |
+| `git diff --check` | No whitespace errors. |
+
+The existing non-fatal toolchain/bundle notices remain unchanged. This follow-up is automated Chromium browser verification, not a new physical-device or manual screenshot review.
+
+The exact `owned_path_allowlist` for this separate follow-up commit (`fix(editor): reveal moved columns before restoring focus`) is `src/components/editor/table-controls.ts`, `tests/layout/article-layout-parity.spec.ts`, and this report. Only action completion, its behavioral coverage, and verification evidence changed. Staged paths/whitespace are checked before commit; the post-commit hash and clean state are supplied to the controller. Plans and other paths remain untouched; no merge/push/subagents were used.
 
 ## Remaining concerns and delivery boundary
 

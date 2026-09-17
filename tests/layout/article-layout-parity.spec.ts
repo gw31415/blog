@@ -492,6 +492,95 @@ test("scrolls a wide mobile table to the last column and operates its visible ha
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
 });
 
+for (const direction of ["left", "right"] as const) {
+  test(`reveals and focuses an offscreen column after moving ${direction} by keyboard on mobile`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    await page.getByRole("button", { name: "編集" }).click();
+    await waitForEditShell(page);
+    const editor = page.locator(".ProseMirror");
+    await editor.locator("p").first().click();
+    await editor.evaluate((element) => {
+      const clipboardData = new DataTransfer();
+      const cells = Array.from({ length: 12 }, (_, i) => `<td><p>Column${i + 1}</p></td>`).join("");
+      clipboardData.setData("text/html", `<table><tr>${cells}</tr></table>`);
+      element.dispatchEvent(
+        new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData }),
+      );
+    });
+    const table = editor.locator("table").filter({ hasText: "Column12" });
+    const wrapper = table.locator("..");
+    await table.scrollIntoViewIfNeeded();
+    await wrapper.evaluate((element, side) => {
+      const cell = element.querySelectorAll("td")[5].getBoundingClientRect();
+      const clip = element.getBoundingClientRect();
+      element.scrollLeft +=
+        side === "left" ? Math.ceil(cell.left - clip.left) : Math.floor(cell.right - clip.right);
+    }, direction);
+    const source = page.getByRole("button", { name: "6列目の操作", exact: true });
+    const destinationIndex = direction === "left" ? 4 : 6;
+    const destination = page.getByRole("button", {
+      name: `${destinationIndex + 1}列目の操作`,
+      exact: true,
+    });
+    await expect(source).toBeVisible();
+    await expect(destination).toBeHidden();
+    const initialScroll = await wrapper.evaluate((element) => element.scrollLeft);
+    const before = await captureArticleLayout(page);
+    await source.press("Enter");
+    await page.keyboard.press("End");
+    if (direction === "left") await page.keyboard.press("ArrowUp");
+    await expect(
+      page.getByRole("menuitem", {
+        name: direction === "left" ? "左へ移動" : "右へ移動",
+        exact: true,
+      }),
+    ).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(table.locator("td").nth(destinationIndex)).toHaveText("Column6");
+    await expect(destination).toBeFocused();
+    await expect(destination).toBeVisible();
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    const finalScroll = await wrapper.evaluate((element) => element.scrollLeft);
+    expect(direction === "left" ? finalScroll < initialScroll : finalScroll > initialScroll).toBe(
+      true,
+    );
+    const cell = (await table.locator("td").nth(destinationIndex).boundingBox())!;
+    const clip = (await wrapper.boundingBox())!;
+    expect(cell.x).toBeGreaterThanOrEqual(clip.x);
+    expect(cell.x + cell.width).toBeLessThanOrEqual(clip.x + clip.width);
+    const handle = (await destination.boundingBox())!;
+    expect(handle.x).toBeGreaterThanOrEqual(0);
+    expect(handle.x + handle.width).toBeLessThanOrEqual(390);
+    const after = await captureArticleLayout(page);
+    // Only the reordered/scrolled table internals intentionally change geometry.
+    for (const kind of ["elements", "lines"] as const) {
+      expect(
+        Object.fromEntries(
+          Object.entries(after[kind]).filter(([key]) => !key.includes(" > table:")),
+        ),
+      ).toEqual(
+        Object.fromEntries(
+          Object.entries(before[kind]).filter(([key]) => !key.includes(" > table:")),
+        ),
+      );
+    }
+    await destination.press("Enter");
+    await expect(
+      page.getByRole("menu", { name: `${destinationIndex + 1}列目の操作`, exact: true }),
+    ).toBeVisible();
+    expectLayoutEqual(after, await captureArticleLayout(page));
+    await page.keyboard.press("Escape");
+    await expect(destination).toBeFocused();
+    await page.getByRole("button", { name: "閲覧" }).click();
+    await waitForViewShell(page);
+    expectLayoutEqual(after, await captureArticleLayout(page));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  });
+}
+
 test("keeps every structural menu action disabled for a valid merged table without document transactions", async ({
   page,
 }) => {

@@ -261,9 +261,27 @@ class TableControls {
       action.type === "move" ? action.to : handle.index,
       remaining.length - 1,
     );
-    remaining
-      .find((current) => current.index === destination)
-      ?.button.focus({ preventScroll: true });
+    const target = remaining.find((current) => current.index === destination);
+    if (!target) return;
+    if (target.axis === "column") {
+      const wrapper = target.tableDOM.closest<HTMLElement>(".tableWrapper");
+      if (wrapper) {
+        const clip = wrapper.getBoundingClientRect();
+        const cell = target.itemDOM.getBoundingClientRect();
+        const left = Math.max(0, clip.left + wrapper.clientLeft);
+        const right = Math.min(
+          window.innerWidth,
+          clip.left + wrapper.clientLeft + wrapper.clientWidth,
+        );
+        // Reveal only within the table's scroller, never by scrolling the page.
+        // Round outward because scrollLeft may be quantized to whole pixels.
+        if (cell.left < left) wrapper.scrollLeft += Math.floor(cell.left - left);
+        else if (cell.right > right) wrapper.scrollLeft += Math.ceil(cell.right - right);
+      }
+    }
+    // Rebuild positions before focusing: a formerly offscreen handle is hidden.
+    this.position();
+    target.button.focus({ preventScroll: true });
   }
 
   private rebuild(): void {
