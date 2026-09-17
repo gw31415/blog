@@ -33,7 +33,7 @@ const articleShellStyles = css`
   --link-hover-bg: rgb(140 64 55 / 7%);
 
   --body-size: 15px;
-  --body-leading: 19.5px;
+  --body-leading: 22.5px;
 
   --latin-serif:
     "Times New Roman", Times, "Nimbus Roman No9 L", "Liberation Serif", "DejaVu Serif", Georgia;
@@ -189,7 +189,7 @@ const articleShellStyles = css`
   & .article-edit-action {
     position: fixed;
     z-index: 30;
-    top: 50%;
+    top: 68%;
     left: max(0px, calc((100vw - 760px) / 2));
     display: grid;
     width: 44px;
@@ -329,7 +329,7 @@ const articleShellStyles = css`
     font-family: var(--serif);
 
     font-size: var(--body-size);
-    line-height: 1.3;
+    line-height: 1.5;
 
     letter-spacing: normal;
 
@@ -1524,10 +1524,6 @@ const articleShellStyles = css`
         max(22px, env(safe-area-inset-left));
 
       box-shadow: none;
-    }
-
-    & .article-edit-action {
-      top: 68%;
     }
 
     & .article-edit-label {

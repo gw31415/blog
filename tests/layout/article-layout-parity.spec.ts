@@ -272,20 +272,42 @@ test("keeps the paper-edge edit tab in reach while the article scrolls", async (
   expect(scrolled!.y).toBeCloseTo(initial!.y, 0);
 });
 
-test("places the mobile edit tab below center without attaching it to the bottom edge", async ({
+test("places the desktop and mobile edit tabs at the same below-center position", async ({
   page,
 }) => {
-  const viewport = { width: 390, height: 844 };
-  await page.setViewportSize(viewport);
+  const centerRatios: number[] = [];
+  for (const viewport of [
+    { width: 1280, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+
+    const action = await page.getByRole("button", { name: "編集", exact: true }).boundingBox();
+    expect(action).not.toBeNull();
+
+    const centerY = action!.y + action!.height / 2;
+    centerRatios.push(centerY / viewport.height);
+    expect(centerY).toBeGreaterThan(viewport.height * 0.62);
+    expect(centerY).toBeLessThan(viewport.height * 0.75);
+    expect(viewport.height - (action!.y + action!.height)).toBeGreaterThan(viewport.height * 0.2);
+  }
+
+  expect(centerRatios[0]).toBeCloseTo(centerRatios[1], 2);
+});
+
+test("sets Japanese body copy with one-and-a-half line spacing", async ({ page }) => {
   await page.goto("/");
 
-  const action = await page.getByRole("button", { name: "編集", exact: true }).boundingBox();
-  expect(action).not.toBeNull();
+  const metrics = await page.locator(".article-content").evaluate((article) => {
+    const style = getComputedStyle(article);
+    return {
+      fontSize: Number.parseFloat(style.fontSize),
+      lineHeight: Number.parseFloat(style.lineHeight),
+    };
+  });
 
-  const centerY = action!.y + action!.height / 2;
-  expect(centerY).toBeGreaterThan(viewport.height * 0.62);
-  expect(centerY).toBeLessThan(viewport.height * 0.75);
-  expect(viewport.height - (action!.y + action!.height)).toBeGreaterThan(viewport.height * 0.2);
+  expect(metrics).toEqual({ fontSize: 15, lineHeight: 22.5 });
 });
 
 test("keeps mobile paper padding symmetric and the edit tab compact", async ({ page }) => {
@@ -359,7 +381,7 @@ test("keeps the desktop edit tab away from the right scrollbar", async ({ page }
   expect(textCenterDelta).toBeLessThanOrEqual(0.5);
 });
 
-test("shows quiet loading text in the header while the editor starts", async ({ page }) => {
+test("shows only an ellipsis while the editor starts", async ({ page }) => {
   let releaseEditor: (() => void) | undefined;
   await page.route(/editor-runtime/, async (route) => {
     await new Promise<void>((resolve) => {
@@ -372,7 +394,7 @@ test("shows quiet loading text in the header while the editor starts", async ({ 
   const editButton = page.locator(".article-edit-action");
   const click = editButton.click();
   await expect(editButton).toHaveAttribute("aria-busy", "true");
-  await expect(editButton).toHaveText("読込中…");
+  await expect(editButton).toHaveText("…");
 
   releaseEditor?.();
   await click;

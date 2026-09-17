@@ -187,7 +187,7 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
           onFocus$={props.onEditIntent$}
           onClick$={props.onEditRequest$}
         >
-          <span class="article-edit-label">{props.editLoading ? "読込中…" : "編集"}</span>
+          <span class="article-edit-label">{props.editLoading ? "…" : "編集"}</span>
         </button>
       </div>
 
