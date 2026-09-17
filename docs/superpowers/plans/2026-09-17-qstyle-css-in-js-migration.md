@@ -46,7 +46,7 @@
 - Consumes: the existing page at `/`, current class names, and the existing Playwright web server.
 - Produces: a browser contract requiring `[data-qstyle-boundary]`, a generated `q_` class, and preserved computed styles.
 
-- [ ] **Step 1: Add the failing qstyle delivery test**
+- [x] **Step 1: Add the failing qstyle delivery test**
 
 Create `tests/layout/qstyle-style-contract.spec.ts` with a single representative contract:
 
@@ -97,7 +97,7 @@ test("delivers application styles through qstyle", async ({ page }) => {
 });
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run:
 
@@ -107,7 +107,7 @@ pnpm exec playwright test tests/layout/qstyle-style-contract.spec.ts
 
 Expected: FAIL because `[data-qstyle-boundary]` does not exist. The computed-style assertions describe already-supported appearance and must not be the reason for this initial failure.
 
-- [ ] **Step 3: Capture temporary before screenshots**
+- [x] **Step 3: Capture temporary before screenshots**
 
 Start the configured dev server, then capture the unchanged page at both target sizes:
 
@@ -119,11 +119,11 @@ pnpm exec playwright screenshot --viewport-size=390,844 http://127.0.0.1:4173/ .
 
 Keep these files untracked under `.cache`; they are verification evidence, not repository artifacts.
 
-- [ ] **Step 4: Replace stylesheet source assertions with observable contracts**
+- [x] **Step 4: Replace stylesheet source assertions with observable contracts**
 
 In `article-shell.test.ts`, retain the generated-HTML assertions and remove only the `readFileSync(...blog.css)` and `content:` regex assertion. In `rendering-regressions.test.ts`, remove the four cases that parse CSS for table borders, code-control visibility, node-selection selectors, and selection colors; add equivalent browser checks to `qstyle-style-contract.spec.ts` after entering edit mode. In `visual-texture-contract.test.ts`, retain the SVG grid test and remove CSS source parsing; the qstyle browser contract above owns the texture assertions.
 
-- [ ] **Step 5: Run unit tests to keep the test refactor green**
+- [x] **Step 5: Run unit tests to keep the test refactor green**
 
 Run:
 
@@ -133,7 +133,7 @@ pnpm test
 
 Expected: PASS. The focused Playwright contract remains red only because the qstyle boundary is not implemented.
 
-- [ ] **Step 6: Commit the regression contract**
+- [x] **Step 6: Commit the regression contract**
 
 ```bash
 git add tests/layout/qstyle-style-contract.spec.ts src/components/editor/article-shell.test.ts src/components/editor/rendering-regressions.test.ts src/components/blog/visual-texture-contract.test.ts
