@@ -385,6 +385,215 @@ test("opens the selected row menu with a touchscreen tap", async ({ browser }) =
   }
 });
 
+for (const touch of [false, true]) {
+  test(`reorders rows and columns by ${touch ? "touch hold on mobile" : "mouse drag on desktop"} and keyboard without overlay layout shifts`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: touch ? { width: 390, height: 844 } : { width: 1280, height: 900 },
+      hasTouch: touch,
+    });
+    const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    try {
+      await page.goto("/");
+      await page.getByRole("button", { name: "編集" }).click();
+      await waitForEditShell(page);
+      const table = page.locator(".ProseMirror table").first();
+      await table.scrollIntoViewIfNeeded();
+      for (const axis of ["row", "column"] as const) {
+        const from = axis === "row" ? 1 : 0;
+        const to = from + 1;
+        const handles = page.locator(`button[data-table-axis="${axis}"]`);
+        const cells =
+          axis === "row" ? table.locator("tr") : table.locator("tr").first().locator("th,td");
+        const original = await cells.allTextContents();
+        const handle = handles.nth(from);
+        const start = (await handle.boundingBox())!;
+        const target = (await cells.nth(to).boundingBox())!;
+        const x = start.x + start.width / 2;
+        const y = start.y + start.height / 2;
+        const endX = axis === "column" ? target.x + target.width * 0.8 : x;
+        const endY = axis === "row" ? target.y + target.height * 0.8 : y;
+        const before = await captureArticleLayout(page);
+        if (touch) {
+          await cdp.send("Input.dispatchTouchEvent", {
+            type: "touchStart",
+            touchPoints: [{ x, y }],
+          });
+        } else {
+          await page.mouse.move(x, y);
+          await page.mouse.down();
+          await page.mouse.move(x + 4, y);
+        }
+        const ghost = page.locator('[data-editor-overlay="table-drag-ghost"]');
+        await expect(ghost).toBeVisible();
+        if (touch) {
+          await cdp.send("Input.dispatchTouchEvent", {
+            type: "touchMove",
+            touchPoints: [{ x: endX, y: endY }],
+          });
+        } else {
+          await page.mouse.move(endX, endY);
+        }
+        await expect(page.locator('[data-editor-overlay="table-drop-line"]')).toBeVisible();
+        expect(await cells.allTextContents()).toEqual(original);
+        expectLayoutEqual(before, await captureArticleLayout(page));
+        const ghostRect = (await ghost.boundingBox())!;
+        expect(ghostRect.x).toBeGreaterThanOrEqual(0);
+        expect(ghostRect.x + ghostRect.width).toBeLessThanOrEqual(touch ? 390 : 1280);
+        if (touch) {
+          await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        } else {
+          await page.mouse.up();
+        }
+        await expect(cells.nth(to)).toHaveText(original[from]);
+        await expect(cells.nth(from)).toHaveText(original[to]);
+        await expect(ghost).toHaveCount(0);
+        await expect(page.getByRole("menu")).toHaveCount(0);
+        await expect(handles.nth(to)).toBeFocused();
+        const moved = await captureArticleLayout(page);
+        await handles.nth(to).press("Enter");
+        expectLayoutEqual(moved, await captureArticleLayout(page));
+        await page.keyboard.press("End");
+        await page.keyboard.press("ArrowUp");
+        await expect(
+          page.getByRole("menuitem", {
+            name: axis === "row" ? "上へ移動" : "左へ移動",
+            exact: true,
+          }),
+        ).toBeFocused();
+        await page.keyboard.press("Enter");
+        expect(await cells.allTextContents()).toEqual(original);
+        await expect(handles.nth(from)).toBeFocused();
+        await handles.first().press("Enter");
+        await expect(
+          page.getByRole("menuitem", {
+            name: axis === "row" ? "上へ移動" : "左へ移動",
+            exact: true,
+          }),
+        ).toBeDisabled();
+        await page.keyboard.press("Escape");
+        await handles.last().press("Enter");
+        await expect(
+          page.getByRole("menuitem", {
+            name: axis === "row" ? "下へ移動" : "右へ移動",
+            exact: true,
+          }),
+        ).toBeDisabled();
+        await page.keyboard.press("Escape");
+      }
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+test("cancels an active table drag with Escape without mutation or a click menu", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集" }).click();
+  await waitForEditShell(page);
+  const table = page.locator(".ProseMirror table").first();
+  await table.scrollIntoViewIfNeeded();
+  const original = await table.textContent();
+  const handle = page.locator('button[data-table-axis="row"]').nth(1);
+  const rect = (await handle.boundingBox())!;
+  await page.mouse.move(rect.x + 12, rect.y + 12);
+  await page.mouse.down();
+  await page.mouse.move(rect.x + 12, rect.y + 100);
+  await expect(page.locator('[data-editor-overlay="table-drag-ghost"]')).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.mouse.up();
+  await expect(page.locator('[data-editor-overlay="table-drag-ghost"]')).toHaveCount(0);
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(handle).toBeFocused();
+  expect(await table.textContent()).toBe(original);
+});
+
+test("touch movement before hold and native cancellation leave the table unchanged", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  const cdp = await context.newCDPSession(page);
+  try {
+    await page.goto("/");
+    await page.getByRole("button", { name: "編集" }).tap();
+    await waitForEditShell(page);
+    const table = page.locator(".ProseMirror table").first();
+    await table.scrollIntoViewIfNeeded();
+    const original = await table.textContent();
+    const handle = page.locator('button[data-table-axis="row"]').nth(1);
+    const rect = (await handle.boundingBox())!;
+    const x = rect.x + 12;
+    const y = rect.y + 12;
+    const ghost = page.locator('[data-editor-overlay="table-drag-ghost"]');
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x, y: y + 20 }],
+    });
+    // Wait past the actual hold threshold: a cancelled timer must not resurrect the drag.
+    await page.waitForTimeout(360);
+    await expect(ghost).toHaveCount(0);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    expect(await table.textContent()).toBe(original);
+
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+    await expect(ghost).toBeVisible();
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
+    await expect(ghost).toHaveCount(0);
+    expect(await table.textContent()).toBe(original);
+    await handle.tap();
+    await expect(page.getByRole("menu")).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
+test("merged-cell table handles explain disabled drag and keyboard movement", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集" }).click();
+  await waitForEditShell(page);
+  const editor = page.locator(".ProseMirror");
+  await editor.click();
+  await page.keyboard.press("Control+End");
+  await editor.evaluate((element) => {
+    const clipboardData = new DataTransfer();
+    clipboardData.setData(
+      "text/html",
+      "<table><tr><td colspan='2'>A</td><td>B</td></tr><tr><td colspan='2'>C</td><td>D</td></tr><tr><td colspan='2'>E</td><td>F</td></tr></table>",
+    );
+    element.dispatchEvent(
+      new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData }),
+    );
+  });
+  const table = editor.locator("table").filter({ has: page.locator('td[colspan="2"]') });
+  await table.scrollIntoViewIfNeeded();
+  await expect(table.locator("[colspan='2']")).toHaveCount(3);
+  const original = await table.textContent();
+  const handle = page
+    .locator('button[data-reorder-disabled="merged-cells"][data-table-axis="row"]')
+    .nth(1);
+  await expect(handle).toHaveAttribute("aria-description", /結合セル/);
+  const rect = (await handle.boundingBox())!;
+  await page.mouse.move(rect.x + 12, rect.y + 12);
+  await page.mouse.down();
+  await page.mouse.move(rect.x + 12, rect.y + 60);
+  await expect(page.locator('[data-editor-overlay="table-drag-ghost"]')).toHaveCount(0);
+  await page.mouse.up();
+  expect(await table.textContent()).toBe(original);
+  await handle.press("Enter");
+  await expect(page.getByRole("menuitem", { name: "上へ移動", exact: true })).toBeDisabled();
+  await expect(page.getByRole("menuitem", { name: "下へ移動", exact: true })).toBeDisabled();
+});
+
 test("closed details remain browser-searchable and snapshots omit only hidden descendants", async ({
   page,
 }) => {

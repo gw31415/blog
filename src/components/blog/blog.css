@@ -1070,6 +1070,36 @@
       font: 18px/1 var(--sans);
       cursor: pointer;
       pointer-events: auto;
+      touch-action: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    .table-handle[data-dragging] {
+      cursor: grabbing;
+      outline: 2px solid var(--red);
+      outline-offset: 2px;
+    }
+
+    .table-drag-ghost, .table-drop-line {
+      position: fixed;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .table-drag-ghost {
+      padding: 6px 10px;
+      border: 1px solid var(--red);
+      border-radius: 6px;
+      background: var(--paper, #faf8f4);
+      color: var(--ink);
+      opacity: 0.85;
+      white-space: nowrap;
+      box-shadow: 0 4px 16px rgb(0 0 0 / 15%);
+    }
+
+    .table-drop-line {
+      background: var(--red);
     }
 
     .table-handle:focus-visible, .table-controls-menu button:focus-visible {
