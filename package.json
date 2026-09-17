@@ -14,7 +14,8 @@
     "prerender:blog": "node scripts/prerender-blog.mjs",
     "fmt": "vp fmt",
     "lint": "vp lint",
-    "preview": "pnpm run build && wrangler dev"
+    "preview": "pnpm run build && wrangler dev",
+    "test": "vp test run"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.54.3",
