@@ -71,6 +71,8 @@ test("preserves editor control styles while editing", async ({ page }) => {
     "font-size",
     "11px",
   );
+  await expect(page.locator(".editor-formatting")).toHaveCSS("overflow-x", "auto");
+  await expect(page.locator(".editor-formatting")).toHaveCSS("overflow-y", "hidden");
   await expect(page.locator(".editor-panel")).toHaveCSS("border-left-width", "1px");
 
   await page.locator(".editor-panel > summary").click();

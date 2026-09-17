@@ -1370,6 +1370,7 @@ const articleShellStyles = css`
     gap: 0;
     padding: 2px 4px;
     overflow-x: auto;
+    overflow-y: hidden;
   }
 
   & .editor-done {
