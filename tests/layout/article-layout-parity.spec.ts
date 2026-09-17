@@ -235,6 +235,41 @@ async function waitForViewShell(page: Page): Promise<void> {
   await expect(page.getByRole("complementary", { name: "記事編集ツール" })).toHaveCount(0);
 }
 
+test("presents the mode switch as accessible paper-and-pencil symbols", async ({ page }) => {
+  await page.goto("/");
+
+  const viewButton = page.getByRole("button", { name: "閲覧モード", exact: true });
+  const editButton = page.getByRole("button", { name: "編集モード", exact: true });
+
+  await expect(viewButton).toHaveAttribute("title", "閲覧モード");
+  await expect(editButton).toHaveAttribute("title", "編集モード");
+  await expect(viewButton.locator('[data-mode-symbol="paper"]')).toBeVisible();
+  await expect(editButton.locator('[data-mode-symbol="paper-pencil"]')).toBeVisible();
+  await expect(viewButton).toHaveText("");
+  await expect(editButton).toHaveText("");
+});
+
+test("shows a graphite loading mark while the editor starts", async ({ page }) => {
+  let releaseEditor: (() => void) | undefined;
+  await page.route(/editor-runtime/, async (route) => {
+    await new Promise<void>((resolve) => {
+      releaseEditor = resolve;
+    });
+    await route.continue();
+  });
+  await page.goto("/");
+
+  const editButton = page.locator(".edit-toggle");
+  const click = editButton.click();
+  await expect(editButton).toHaveAttribute("aria-busy", "true");
+  await expect(editButton.locator('[data-mode-symbol="graphite-loading"]')).toBeVisible();
+  await expect(editButton).toHaveText("");
+
+  releaseEditor?.();
+  await click;
+  await waitForEditShell(page);
+});
+
 for (const viewport of [
   { name: "desktop", width: 1280, height: 900 },
   { name: "mobile", width: 390, height: 844 },

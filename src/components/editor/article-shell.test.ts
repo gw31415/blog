@@ -44,12 +44,11 @@ describe("article shell", () => {
     expect(headerSource).toContain('class="article-date-input"');
   });
 
-  it("provides immediate pressed feedback and intent-based editor preloading", () => {
+  it("preloads the editor when the edit control receives pointer or keyboard intent", () => {
     const source = readFileSync(new URL("./article-shell.tsx", import.meta.url), "utf8");
 
     expect(source).toContain("preloadEditor$");
     expect(source).toContain("onPointerEnter$={preloadEditor$}");
     expect(source).toContain("onFocus$={preloadEditor$}");
-    expect(source).toContain('class="edit-label-loading"');
   });
 });

@@ -1420,14 +1420,14 @@
       right: 14px;
 
       display: flex;
-      gap: 2px;
-      padding: 3px;
+      gap: 3px;
+      padding: 4px;
 
-      border: 1px solid rgb(86 70 55 / 22%);
-      border-radius: 8px;
-      background: rgb(255 253 247 / 92%);
-      box-shadow: 0 6px 24px rgb(40 30 20 / 14%);
-      backdrop-filter: blur(12px);
+      border: 1px solid var(--line-soft);
+      border-radius: 4px 6px 5px 3px;
+      background: rgb(242 234 213 / 94%);
+      box-shadow: 0 3px 12px rgb(40 30 20 / 10%);
+      transform: rotate(0.2deg);
     }
 
     .mode-switch button,
@@ -1445,7 +1445,61 @@
       cursor: pointer;
     }
 
-    .mode-switch button.active,
+    .mode-switch button {
+      position: relative;
+      display: grid;
+      width: 34px;
+      height: 32px;
+      padding: 5px;
+      place-items: center;
+      border-radius: 2px;
+    }
+
+    .mode-switch button:hover {
+      background: var(--highlight);
+    }
+
+    .mode-switch button.active {
+      color: var(--ink);
+      background: transparent;
+    }
+
+    .mode-switch button.active::after {
+      position: absolute;
+      inset: 2px 1px 1px 2px;
+      content: "";
+      pointer-events: none;
+      border: 1.5px solid var(--red);
+      border-radius: 49% 54% 47% 52%;
+      opacity: 0.82;
+      transform: rotate(-4deg);
+    }
+
+    .mode-switch button:focus-visible {
+      outline: 2px solid var(--red);
+      outline-offset: 2px;
+    }
+
+    .mode-symbol {
+      width: 22px;
+      height: 22px;
+      overflow: visible;
+      fill: none;
+      stroke: currentcolor;
+      stroke-width: 1.25;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .mode-symbol circle {
+      fill: currentcolor;
+      stroke: none;
+    }
+
+    .edit-toggle.active .mode-symbol-pencil-mark {
+      stroke: var(--red);
+    }
+
     .editor-dock button:hover,
     .math-dialog button:last-child {
       background: #352f25;
@@ -1459,18 +1513,18 @@
       opacity: 0.48;
     }
 
-    .edit-label-loading {
+    .edit-symbol-loading {
       display: none;
     }
 
-    .edit-toggle:not(.active):active .edit-label-idle,
-    .edit-toggle[aria-busy="true"] .edit-label-idle {
+    .edit-toggle:not(.active):active .edit-symbol-idle,
+    .edit-toggle[aria-busy="true"] .edit-symbol-idle {
       display: none;
     }
 
-    .edit-toggle:not(.active):active .edit-label-loading,
-    .edit-toggle[aria-busy="true"] .edit-label-loading {
-      display: inline;
+    .edit-toggle:not(.active):active .edit-symbol-loading,
+    .edit-toggle[aria-busy="true"] .edit-symbol-loading {
+      display: block;
     }
 
     .editor-error {

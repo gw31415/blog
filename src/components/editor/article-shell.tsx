@@ -185,24 +185,61 @@ export const ArticleShell = component$(() => {
         <button
           type="button"
           class={{ active: ui.mode === "view" }}
+          aria-label="閲覧モード"
           aria-pressed={ui.mode === "view"}
           disabled={!canSwitchToView(ui.mode)}
+          title="閲覧モード"
           onClick$={enterView$}
         >
-          閲覧
+          <svg
+            class="mode-symbol"
+            data-mode-symbol="paper"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path d="M6.4 3.8c3.7-.2 7.5-.1 11.2.1l.3 16.1c-3.9.2-7.9.2-11.8-.1z" />
+            <path d="M9 8.1c2-.2 4-.1 6 0M9 11.9c1.7-.1 3.5-.1 5.2 0M9 15.7c2-.2 4-.1 6 0" />
+          </svg>
         </button>
         <button
           type="button"
           class={{ "edit-toggle": true, active: ui.mode === "edit" }}
+          aria-label="編集モード"
           aria-pressed={ui.mode === "edit"}
           aria-busy={ui.mode === "loading"}
           disabled={ui.mode === "loading"}
+          title="編集モード"
           onPointerEnter$={preloadEditor$}
           onFocus$={preloadEditor$}
           onClick$={enterEdit$}
         >
-          <span class="edit-label-idle">{ui.mode === "loading" ? "" : "編集"}</span>
-          <span class="edit-label-loading">読込中…</span>
+          <svg
+            class="mode-symbol edit-symbol-idle"
+            data-mode-symbol="paper-pencil"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path d="M5.6 3.8c3.5-.2 7-.1 10.5.1l.2 7.6M15.9 18.9c-3.5.1-7 .1-10.5-.1l.3-15" />
+            <path d="M8.3 8.1c1.8-.2 3.5-.1 5.3 0M8.3 11.8c1.2-.1 2.5-.1 3.7 0" />
+            <path
+              class="mode-symbol-pencil-mark"
+              d="m11.2 17.8.5-2.8 5.8-5.8c.4-.4 1-.4 1.4 0l.6.6c.4.4.4 1 0 1.4L13.7 17zM17 9.8l1.9 1.9"
+            />
+          </svg>
+          <svg
+            class="mode-symbol edit-symbol-loading"
+            data-mode-symbol="graphite-loading"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path d="m8.3 14.8.5-2.6 5.8-5.8c.4-.4 1-.4 1.4 0l.7.7c.4.4.4 1 0 1.4l-5.8 5.8zM14.1 6.9l2.1 2.1" />
+            <circle cx="8" cy="18.2" r=".65" />
+            <circle cx="12" cy="18.2" r=".65" />
+            <circle cx="16" cy="18.2" r=".65" />
+          </svg>
         </button>
       </div>
 
