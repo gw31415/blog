@@ -2,6 +2,7 @@ import {
   $,
   component$,
   noSerialize,
+  useComputed$,
   useSignal,
   useStore,
   useTask$,
@@ -78,6 +79,7 @@ export const ArticleShell = component$(() => {
     math: null,
   });
   const presentation = createArticlePresentation(ui);
+  const editable = useComputed$(() => ui.mode === "edit");
 
   useTask$(({ cleanup, track }) => {
     const ready = track(() => ui.editorReady);
@@ -163,7 +165,7 @@ export const ArticleShell = component$(() => {
           dateLabel={presentation.dateLabel}
           title={ui.title}
           subtitle={ui.subtitle}
-          editable={ui.mode === "edit"}
+          editable={editable.value}
           onCategoryInput$={$((value) => (ui.category = value))}
           onDateInput$={$((value) => (ui.publishedAt = value))}
           onTitleInput$={$((value) => (ui.title = value))}

@@ -40,7 +40,6 @@ describe("article shell", () => {
     const headerSource = readFileSync(new URL("../blog/blog.tsx", import.meta.url), "utf8");
 
     expect(source).not.toContain("<summary>記事情報</summary>");
-    expect(source).toContain('editable={ui.mode === "edit"}');
     expect(headerSource).toContain('type="date"');
     expect(headerSource).toContain('class="article-date-input"');
   });

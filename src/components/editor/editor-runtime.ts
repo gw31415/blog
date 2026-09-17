@@ -205,8 +205,16 @@ export async function mountArticleEditor(
     },
   });
 
+  // Disclosure state belongs to the reader, not the article document. Preserve it
+  // when the identical document replaces the static markup on the first mount.
+  const detailsOpen = [...options.element.querySelectorAll("details")].map(
+    (details) => details.open,
+  );
   options.element.replaceChildren();
   editor.mount(options.element);
+  options.element.querySelectorAll("details").forEach((details, index) => {
+    details.open = detailsOpen[index] ?? false;
+  });
   options.element.dataset.editorReady = "";
   options.onSelectionChange(toolbarState(editor));
 

@@ -315,6 +315,55 @@ for (const viewport of [
     await waitForViewShell(page);
     await expect(page.locator('[data-editor-overlay="table-controls"]')).toBeHidden();
   });
+
+  test(`preserves open details layout across the first editor mount on ${viewport.name}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto("/");
+    const details = page.locator("[data-editor-mount] details").first();
+    await details.locator("summary").click();
+    await expect(details).toHaveAttribute("open", "");
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const initial = await captureArticleLayout(page);
+    expect(detailBodyKeys(initial).length).toBeGreaterThan(0);
+
+    await page.getByRole("button", { name: "編集" }).click();
+    await waitForEditShell(page);
+    await expect(details).toHaveAttribute("open", "");
+    expectLayoutEqual(initial, await captureArticleLayout(page));
+    await page.getByRole("button", { name: "閲覧" }).click();
+    await waitForViewShell(page);
+    expectLayoutEqual(initial, await captureArticleLayout(page));
+
+    await details.locator("summary").click();
+    await expect(details).not.toHaveAttribute("open");
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const closed = await captureArticleLayout(page);
+    await page.getByRole("button", { name: "編集" }).click();
+    await waitForEditShell(page);
+    expectLayoutEqual(closed, await captureArticleLayout(page));
+  });
+
+  test(`keeps header editing available after a math dialog and mode round-trip on ${viewport.name}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto("/");
+    await page.getByRole("button", { name: "編集" }).click();
+    await waitForEditShell(page);
+    const math = page.locator('[data-type="block-math"]').first();
+    await math.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.getByRole("button", { name: "キャンセル", exact: true }).click();
+    await page.getByRole("button", { name: "閲覧" }).click();
+    await waitForViewShell(page);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const view = await captureArticleLayout(page);
+    await page.getByRole("button", { name: "編集" }).click();
+    await waitForEditShell(page);
+    expectLayoutEqual(view, await captureArticleLayout(page));
+  });
 }
 
 test("table contextual actions target their row and column and protect the last axis", async ({
