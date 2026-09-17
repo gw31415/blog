@@ -144,6 +144,25 @@ export function expectLayoutEqual(
   expect(after).toStrictEqual(before);
 }
 
+async function waitForEditShell(page: Page): Promise<void> {
+  await expect(page.locator('[data-editor-mode="edit"]')).toBeVisible();
+  await expect(page.getByRole("button", { name: "編集" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-article-field="title"]')).toHaveAttribute(
+    "contenteditable",
+    "true",
+  );
+  await expect(page.getByLabel("公開日")).toBeAttached();
+  await expect(page.getByRole("complementary", { name: "記事編集ツール" })).toBeVisible();
+}
+
+async function waitForViewShell(page: Page): Promise<void> {
+  await expect(page.locator('[data-editor-mode="view"]')).toBeVisible();
+  await expect(page.getByRole("button", { name: "閲覧" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "編集" })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByLabel("公開日")).toHaveCount(0);
+  await expect(page.getByRole("complementary", { name: "記事編集ツール" })).toHaveCount(0);
+}
+
 for (const viewport of [
   { name: "desktop", width: 1280, height: 900 },
   { name: "mobile", width: 390, height: 844 },
@@ -156,11 +175,11 @@ for (const viewport of [
     const initialView = await captureArticleLayout(page);
 
     await page.getByRole("button", { name: "編集" }).click();
-    await expect(page.locator('[data-editor-mode="edit"]')).toBeVisible();
+    await waitForEditShell(page);
     const edit = await captureArticleLayout(page);
 
     await page.getByRole("button", { name: "閲覧" }).click();
-    await expect(page.locator('[data-editor-mode="view"]')).toBeVisible();
+    await waitForViewShell(page);
     const finalView = await captureArticleLayout(page);
 
     expectLayoutEqual(initialView, edit);
