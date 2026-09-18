@@ -73,10 +73,16 @@ function toolbarState(editor: Editor): ToolbarState {
       ? 3
       : null;
   return {
+    paragraph: editor.isActive("paragraph"),
     bold: editor.isActive("bold"),
     italic: editor.isActive("italic"),
     strike: editor.isActive("strike"),
     heading,
+    bulletList: editor.isActive("bulletList"),
+    orderedList: editor.isActive("orderedList"),
+    taskList: editor.isActive("taskList"),
+    blockquote: editor.isActive("blockquote"),
+    codeBlock: editor.isActive("codeBlock"),
     canUndo: editor.can().undo(),
     canRedo: editor.can().redo(),
   };

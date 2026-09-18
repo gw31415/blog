@@ -13,10 +13,16 @@ export type EditorCommand =
   | { type: "updateMath"; kind: "inline" | "block"; position: number; latex: string };
 
 export interface ToolbarState {
+  paragraph: boolean;
   bold: boolean;
   italic: boolean;
   strike: boolean;
   heading: 2 | 3 | null;
+  bulletList: boolean;
+  orderedList: boolean;
+  taskList: boolean;
+  blockquote: boolean;
+  codeBlock: boolean;
   canUndo: boolean;
   canRedo: boolean;
 }

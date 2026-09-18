@@ -1368,6 +1368,14 @@ const articleShellStyles = css`
     background: transparent;
   }
 
+  & .editor-formatting button[aria-pressed="true"],
+  & .editor-formatting button[aria-pressed="true"]:hover {
+    color: #fffaf0;
+    -webkit-text-fill-color: #fffaf0;
+    border-radius: 0;
+    background: #352f25;
+  }
+
   & .editor-dialog button:last-child {
     background: #352f25;
     color: #fffaf0;

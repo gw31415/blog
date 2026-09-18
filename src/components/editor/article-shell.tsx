@@ -21,6 +21,7 @@ import {
   type EditorCommand,
   type EditorController,
   type MathEditRequest,
+  type ToolbarState,
 } from "./editor-controller";
 import { ArticleStyleBoundary } from "./article-styles";
 
@@ -71,6 +72,7 @@ interface EditorUiState {
   bodyMarkdown: string;
   insertDialog: InsertDialogState | null;
   math: (MathEditRequest & { preview: string; error: string }) | null;
+  toolbar: ToolbarState;
 }
 
 export const ArticleShell = component$(() => {
@@ -88,6 +90,20 @@ export const ArticleShell = component$(() => {
     bodyMarkdown: INITIAL_ARTICLE.bodyMarkdown,
     insertDialog: null,
     math: null,
+    toolbar: {
+      paragraph: true,
+      bold: false,
+      italic: false,
+      strike: false,
+      heading: null,
+      bulletList: false,
+      orderedList: false,
+      taskList: false,
+      blockquote: false,
+      codeBlock: false,
+      canUndo: false,
+      canRedo: false,
+    },
   });
   const presentation = createArticlePresentation(ui);
   const editable = useComputed$(() => ui.mode === "edit");
@@ -175,7 +191,9 @@ export const ArticleShell = component$(() => {
         onUpdate: (markdown) => {
           ui.bodyMarkdown = markdown;
         },
-        onSelectionChange: () => {},
+        onSelectionChange: (state) => {
+          ui.toolbar = state;
+        },
         onMathEdit: (request) => void openMathEditor$(request),
       });
       ui.editorReady = true;
@@ -288,21 +306,39 @@ export const ArticleShell = component$(() => {
                 <button type="button" title="やり直す" onClick$={() => command$({ type: "redo" })}>
                   ↷
                 </button>
-                <button type="button" onClick$={() => command$({ type: "paragraph" })}>
+                <button
+                  type="button"
+                  aria-pressed={ui.toolbar.paragraph}
+                  onClick$={() => command$({ type: "paragraph" })}
+                >
                   本文
                 </button>
-                <button type="button" onClick$={() => command$({ type: "heading", level: 2 })}>
+                <button
+                  type="button"
+                  aria-pressed={ui.toolbar.heading === 2}
+                  onClick$={() => command$({ type: "heading", level: 2 })}
+                >
                   見出し
                 </button>
-                <button type="button" onClick$={() => command$({ type: "heading", level: 3 })}>
+                <button
+                  type="button"
+                  aria-pressed={ui.toolbar.heading === 3}
+                  onClick$={() => command$({ type: "heading", level: 3 })}
+                >
                   小見出し
                 </button>
-                <button type="button" aria-label="太字" onClick$={() => command$({ type: "bold" })}>
+                <button
+                  type="button"
+                  aria-label="太字"
+                  aria-pressed={ui.toolbar.bold}
+                  onClick$={() => command$({ type: "bold" })}
+                >
                   <b>B</b>
                 </button>
                 <button
                   type="button"
                   aria-label="斜体"
+                  aria-pressed={ui.toolbar.italic}
                   onClick$={() => command$({ type: "italic" })}
                 >
                   <i>I</i>
@@ -310,20 +346,37 @@ export const ArticleShell = component$(() => {
                 <button
                   type="button"
                   aria-label="打ち消し線"
+                  aria-pressed={ui.toolbar.strike}
                   onClick$={() => command$({ type: "strike" })}
                 >
                   <s>S</s>
                 </button>
-                <button type="button" onClick$={() => command$({ type: "bulletList" })}>
+                <button
+                  type="button"
+                  aria-pressed={ui.toolbar.bulletList}
+                  onClick$={() => command$({ type: "bulletList" })}
+                >
                   箇条書き
                 </button>
-                <button type="button" onClick$={() => command$({ type: "orderedList" })}>
+                <button
+                  type="button"
+                  aria-pressed={ui.toolbar.orderedList}
+                  onClick$={() => command$({ type: "orderedList" })}
+                >
                   番号
                 </button>
-                <button type="button" onClick$={() => command$({ type: "taskList" })}>
+                <button
+                  type="button"
+                  aria-pressed={ui.toolbar.taskList}
+                  onClick$={() => command$({ type: "taskList" })}
+                >
                   ToDo
                 </button>
-                <button type="button" onClick$={() => command$({ type: "blockquote" })}>
+                <button
+                  type="button"
+                  aria-pressed={ui.toolbar.blockquote}
+                  onClick$={() => command$({ type: "blockquote" })}
+                >
                   引用
                 </button>
                 <button
@@ -332,7 +385,11 @@ export const ArticleShell = component$(() => {
                 >
                   リンク
                 </button>
-                <button type="button" onClick$={() => command$({ type: "codeBlock" })}>
+                <button
+                  type="button"
+                  aria-pressed={ui.toolbar.codeBlock}
+                  onClick$={() => command$({ type: "codeBlock" })}
+                >
                   コード
                 </button>
                 <button type="button" onClick$={() => command$({ type: "table" })}>

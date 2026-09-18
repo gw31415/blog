@@ -654,12 +654,58 @@ test("keeps toolbar hover styling plain", async ({ page }) => {
   await page.getByRole("button", { name: "編集", exact: true }).click();
   await waitForEditShell(page);
 
-  const button = page.getByRole("button", { name: "本文", exact: true });
+  const button = page.getByRole("button", { name: "表", exact: true });
   const before = await button.evaluate((element) => getComputedStyle(element).backgroundColor);
   await button.hover();
 
   await expect(button).toHaveCSS("background-color", before);
   await expect(button).toHaveCSS("border-radius", "0px");
+});
+
+test("reflects inline and block formatting state in the toolbar", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集", exact: true }).click();
+  await waitForEditShell(page);
+
+  const bold = page.getByRole("button", { name: "太字", exact: true });
+  const heading = page.getByRole("button", { name: "見出し", exact: true });
+  const paragraph = page.getByRole("button", { name: "本文", exact: true });
+
+  await expect(bold).toHaveAttribute("aria-pressed", "false");
+  await bold.click();
+  await expect(bold).toHaveAttribute("aria-pressed", "true");
+  await bold.click();
+  await expect(bold).toHaveAttribute("aria-pressed", "false");
+
+  await heading.click();
+  await expect(heading).toHaveAttribute("aria-pressed", "true");
+  await expect(paragraph).toHaveAttribute("aria-pressed", "false");
+  await paragraph.click();
+  await expect(paragraph).toHaveAttribute("aria-pressed", "true");
+  await expect(heading).toHaveAttribute("aria-pressed", "false");
+});
+
+test("keeps active toolbar buttons square and visibly inverted while hovered", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集", exact: true }).click();
+  await waitForEditShell(page);
+
+  const bold = page.getByRole("button", { name: "太字", exact: true });
+  const inactiveBackground = await bold.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  );
+  await bold.click();
+
+  await expect(bold).toHaveCSS("background-color", "rgb(53, 47, 37)");
+  await expect(bold).toHaveCSS("color", "rgb(255, 250, 240)");
+  await expect(bold).toHaveCSS("border-radius", "0px");
+  expect(await bold.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(
+    inactiveBackground,
+  );
+
+  await bold.hover();
+  await expect(bold).toHaveCSS("background-color", "rgb(53, 47, 37)");
+  await expect(bold).toHaveCSS("color", "rgb(255, 250, 240)");
 });
 
 test("keeps the editing tools fixed to the bottom edge while the article scrolls", async ({
