@@ -6,6 +6,7 @@ import {
   useSignal,
   useStore,
   useTask$,
+  useVisibleTask$,
   type NoSerialize,
 } from "@qwik.dev/core";
 
@@ -74,6 +75,7 @@ interface EditorUiState {
 
 export const ArticleShell = component$(() => {
   const editorMount = useSignal<HTMLElement>();
+  const formattingToolbar = useSignal<HTMLElement>();
   const controller = useSignal<NoSerialize<EditorController>>();
   const ui = useStore<EditorUiState>({
     mode: "view",
@@ -93,6 +95,56 @@ export const ArticleShell = component$(() => {
   useTask$(({ cleanup, track }) => {
     const ready = track(() => ui.editorReady);
     if (ready) cleanup(() => controller.value?.destroy());
+  });
+
+  // Native listeners must run in the same trusted gesture as an iOS toolbar tap;
+  // a resumable handler can refocus too late after Safari starts hiding the keyboard.
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(({ cleanup, track }) => {
+    const mode = track(() => ui.mode);
+    const toolbar = formattingToolbar.value;
+    if (mode !== "edit" || !toolbar) return;
+
+    let touchStart: { identifier: number; x: number; y: number } | undefined;
+    const onTouchStart = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      touchStart = touch
+        ? { identifier: touch.identifier, x: touch.clientX, y: touch.clientY }
+        : undefined;
+    };
+    const onTouchEnd = (event: TouchEvent) => {
+      const start = touchStart;
+      touchStart = undefined;
+      const touch = start
+        ? [...event.changedTouches].find((candidate) => candidate.identifier === start.identifier)
+        : undefined;
+      const target =
+        event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button") : null;
+      if (
+        !start ||
+        !touch ||
+        !target ||
+        Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > 8
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      editorMount.value?.querySelector<HTMLElement>(".ProseMirror")?.focus({ preventScroll: true });
+      target.click();
+    };
+    const onTouchCancel = () => {
+      touchStart = undefined;
+    };
+
+    toolbar.addEventListener("touchstart", onTouchStart, { passive: true });
+    toolbar.addEventListener("touchend", onTouchEnd, { passive: false });
+    toolbar.addEventListener("touchcancel", onTouchCancel);
+    cleanup(() => {
+      toolbar.removeEventListener("touchstart", onTouchStart);
+      toolbar.removeEventListener("touchend", onTouchEnd);
+      toolbar.removeEventListener("touchcancel", onTouchCancel);
+    });
   });
 
   const command$ = $((command: EditorCommand) => controller.value?.run(command));
@@ -222,7 +274,14 @@ export const ArticleShell = component$(() => {
               <button type="button" class="editor-done" onClick$={enterView$}>
                 完了
               </button>
-              <div class="editor-dock-row editor-formatting" role="toolbar" aria-label="本文の書式">
+              <div
+                ref={formattingToolbar}
+                class="editor-dock-row editor-formatting"
+                role="toolbar"
+                aria-label="本文の書式"
+                preventdefault:mousedown
+                onMouseDown$={() => {}}
+              >
                 <button type="button" title="元に戻す" onClick$={() => command$({ type: "undo" })}>
                   ↶
                 </button>

@@ -459,6 +459,54 @@ test("keeps the closed editing toolbar to one compact row", async ({ page }) => 
   expect(done!.y).toBeCloseTo(formatting!.y, 0);
 });
 
+test("keeps the article editor focused while a formatting action is pressed", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集", exact: true }).click();
+  await waitForEditShell(page);
+
+  const editor = page.locator(".ProseMirror");
+  await editor.focus();
+  await expect(editor).toBeFocused();
+
+  const bold = await page.getByRole("button", { name: "太字", exact: true }).boundingBox();
+  expect(bold).not.toBeNull();
+  await page.mouse.move(bold!.x + bold!.width / 2, bold!.y + bold!.height / 2);
+  await page.mouse.down();
+
+  await expect(editor).toBeFocused();
+  await page.mouse.up();
+});
+
+test("does not blur the article editor when a formatting action is tapped", async ({ browser }) => {
+  const context = await browser.newContext({
+    hasTouch: true,
+    isMobile: true,
+    viewport: { width: 390, height: 844 },
+  });
+  const page = await context.newPage();
+  try {
+    await page.goto("http://127.0.0.1:4173/");
+    await page.getByRole("button", { name: "編集", exact: true }).tap();
+    await waitForEditShell(page);
+
+    const editor = page.locator(".ProseMirror");
+    await editor.focus();
+    await editor.evaluate((element) => {
+      element.dataset.blurCount = "0";
+      element.addEventListener("blur", () => {
+        element.dataset.blurCount = String(Number(element.dataset.blurCount) + 1);
+      });
+    });
+
+    await page.getByRole("button", { name: "太字", exact: true }).tap();
+
+    await expect(editor).toBeFocused();
+    await expect(editor).toHaveAttribute("data-blur-count", "0");
+  } finally {
+    await context.close();
+  }
+});
+
 test("keeps unstyled viewport bars at the Chrome viewport edges while content scrolls internally", async ({
   page,
 }) => {
