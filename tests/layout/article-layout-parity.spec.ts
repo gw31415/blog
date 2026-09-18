@@ -7,6 +7,7 @@ import { createEditorExtensions } from "../../src/components/editor/editor-exten
 declare global {
   interface Window {
     find(text: string): boolean;
+    testVisualViewport: EventTarget & { height: number; offsetTop: number };
   }
 }
 
@@ -241,6 +242,16 @@ async function waitForViewShell(page: Page): Promise<void> {
   await expect(page.getByRole("complementary", { name: "記事編集ツール" })).toHaveCount(0);
 }
 
+async function activateDoneButton(page: Page): Promise<void> {
+  // Playwright's locator click scrolls a sticky-bottom element to its natural
+  // flow position before clicking. A real pointer click does not move the
+  // scroll container, so invoke the already-visible control in place.
+  await page.getByRole("button", { name: "完了", exact: true }).evaluate((button) => {
+    if (!(button instanceof HTMLButtonElement)) throw new Error("Done action is not a button");
+    button.click();
+  });
+}
+
 test("keeps mode actions inside the article and editing tools", async ({ page }) => {
   await page.goto("/");
 
@@ -251,8 +262,7 @@ test("keeps mode actions inside the article and editing tools", async ({ page })
   await header.getByRole("button", { name: "編集", exact: true }).click();
   await waitForEditShell(page);
 
-  const dock = page.getByRole("complementary", { name: "記事編集ツール" });
-  await dock.getByRole("button", { name: "完了", exact: true }).click();
+  await activateDoneButton(page);
   await waitForViewShell(page);
 });
 
@@ -449,6 +459,123 @@ test("keeps the closed editing toolbar to one compact row", async ({ page }) => 
   expect(done!.y).toBeCloseTo(formatting!.y, 0);
 });
 
+test("keeps unstyled viewport bars at the Chrome viewport edges while content scrolls internally", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "編集", exact: true }).click();
+  await waitForEditShell(page);
+
+  const viewport = page.locator("[data-virtual-keyboard-viewport]");
+  await expect(viewport).toBeVisible();
+  await viewport.locator('[data-virtual-keyboard-region="top"]').evaluate((top) => {
+    const probe = document.createElement("div");
+    probe.textContent = "top probe";
+    probe.style.height = "24px";
+    top.append(probe);
+  });
+
+  const geometry = await viewport.evaluate((root) => {
+    root.scrollTop = Math.round((root.scrollHeight - root.clientHeight) / 2);
+    const top = root.querySelector<HTMLElement>('[data-virtual-keyboard-region="top"]');
+    const bottom = root.querySelector<HTMLElement>('[data-virtual-keyboard-region="bottom"]');
+    const dock = root.querySelector<HTMLElement>(".editor-dock");
+    if (!top || !bottom || !dock) throw new Error("Viewport bar contract is incomplete");
+    const rootRect = root.getBoundingClientRect();
+    const topRect = top.getBoundingClientRect();
+    const bottomRect = bottom.getBoundingClientRect();
+    const dockRect = dock.getBoundingClientRect();
+    return {
+      root: { top: rootRect.top, bottom: rootRect.bottom, height: rootRect.height },
+      top: { top: topRect.top },
+      bottom: { bottom: bottomRect.bottom },
+      dock: { top: dockRect.top, bottom: dockRect.bottom },
+      rootScrollTop: root.scrollTop,
+      windowScrollY: window.scrollY,
+      overflowY: getComputedStyle(root).overflowY,
+    };
+  });
+
+  expect(geometry.root.height).toBe(844);
+  expect(geometry.overflowY).toMatch(/auto|scroll/);
+  expect(geometry.rootScrollTop).toBeGreaterThan(0);
+  expect(geometry.windowScrollY).toBe(0);
+  expect(geometry.top.top).toBeCloseTo(geometry.root.top, 0);
+  expect(geometry.bottom.bottom).toBeCloseTo(geometry.root.bottom, 0);
+  expect(geometry.dock.bottom).toBeCloseTo(geometry.root.bottom, 0);
+  expect(geometry.dock.top).toBeGreaterThan(geometry.root.height / 2);
+});
+
+test("tracks an iOS visual viewport while the virtual keyboard opens and closes", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    const viewport = Object.assign(new EventTarget(), {
+      height: 844,
+      width: 390,
+      scale: 1,
+      offsetLeft: 0,
+      offsetTop: 0,
+      pageLeft: 0,
+      pageTop: 0,
+    });
+    Object.defineProperty(navigator, "userAgent", {
+      configurable: true,
+      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15",
+    });
+    Object.defineProperty(window, "visualViewport", { configurable: true, value: viewport });
+    Object.defineProperty(window, "testVisualViewport", { configurable: true, value: viewport });
+  });
+  await page.goto("/");
+
+  const viewport = page.locator("[data-virtual-keyboard-viewport]");
+  await expect
+    .poll(() =>
+      viewport.evaluate((root) =>
+        getComputedStyle(root).getPropertyValue("--virtual-keyboard-svh").trim(),
+      ),
+    )
+    .toBe("8.44px");
+
+  await page.evaluate(() => {
+    const visualViewport = window.testVisualViewport;
+    visualViewport.height = 500;
+    visualViewport.offsetTop = 44;
+    visualViewport.dispatchEvent(new Event("resize"));
+    visualViewport.dispatchEvent(new Event("scroll"));
+  });
+
+  await expect(viewport).toHaveAttribute("data-virtual-keyboard-open", "");
+  await expect
+    .poll(() =>
+      viewport.evaluate((root) => {
+        const rect = root.getBoundingClientRect();
+        const styles = getComputedStyle(root);
+        return {
+          height: rect.height,
+          top: rect.top,
+          offsetTop: styles.getPropertyValue("--visual-viewport-offset-top").trim(),
+          overflow: styles.overscrollBehaviorY,
+          scrollTop: root.scrollTop,
+        };
+      }),
+    )
+    .toEqual({ height: 500, top: 44, offsetTop: "44px", overflow: "contain", scrollTop: 44 });
+
+  await page.evaluate(() => {
+    const visualViewport = window.testVisualViewport;
+    visualViewport.height = 844;
+    visualViewport.offsetTop = 0;
+    visualViewport.dispatchEvent(new Event("resize"));
+  });
+  await expect(viewport).not.toHaveAttribute("data-virtual-keyboard-open", "");
+  await expect
+    .poll(() => viewport.evaluate((root) => root.getBoundingClientRect().height))
+    .toBe(844);
+});
+
 test("uses focused link and image forms while details insert immediately", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
@@ -487,7 +614,7 @@ test("keeps toolbar hover styling plain", async ({ page }) => {
   await expect(button).toHaveCSS("border-radius", "0px");
 });
 
-test("keeps the editing tools fixed to the top edge while the article scrolls", async ({
+test("keeps the editing tools fixed to the bottom edge while the article scrolls", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -497,14 +624,19 @@ test("keeps the editing tools fixed to the top edge while the article scrolls", 
 
   const dock = page.getByRole("complementary", { name: "記事編集ツール" });
   const initial = await dock.boundingBox();
-  expect(initial?.y).toBe(0);
+  expect(initial).not.toBeNull();
+  expect(initial!.y + initial!.height).toBeCloseTo(900, 0);
 
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.locator("[data-virtual-keyboard-viewport]").evaluate((root) => {
+    root.scrollTop = root.scrollHeight;
+  });
   const scrolled = await dock.boundingBox();
-  expect(scrolled?.y).toBe(0);
+  expect(scrolled).not.toBeNull();
+  expect(scrolled!.y + scrolled!.height).toBeCloseTo(900, 0);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });
 
-test("keeps mobile category and date fields clear of the fixed toolbar", async ({ page }) => {
+test("keeps the bottom toolbar clear of mobile category and date fields", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await page.getByRole("button", { name: "編集", exact: true }).click();
@@ -519,8 +651,8 @@ test("keeps mobile category and date fields clear of the fixed toolbar", async (
   expect(toolbar).not.toBeNull();
   expect(categoryBox).not.toBeNull();
   expect(dateBox).not.toBeNull();
-  expect(categoryBox!.y).toBeGreaterThanOrEqual(toolbar!.y + toolbar!.height + 8);
-  expect(dateBox!.y).toBeGreaterThanOrEqual(toolbar!.y + toolbar!.height + 8);
+  expect(categoryBox!.y + categoryBox!.height).toBeLessThanOrEqual(toolbar!.y - 8);
+  expect(dateBox!.y + dateBox!.height).toBeLessThanOrEqual(toolbar!.y - 8);
 
   await category.click();
   await expect(category).toBeFocused();
@@ -545,7 +677,7 @@ for (const viewport of [
     const edit = await captureArticleLayout(page);
     const editCodeControls = await captureCodeLanguageControlRects(page);
 
-    await page.getByRole("button", { name: "完了" }).click();
+    await activateDoneButton(page);
     await waitForViewShell(page);
     const finalView = await captureArticleLayout(page);
     const finalCodeControls = await captureCodeLanguageControlRects(page);
@@ -626,7 +758,7 @@ for (const viewport of [
       await page.locator(".ProseMirror th").first().click();
       await expect(menu).toHaveCount(0);
     }
-    await page.getByRole("button", { name: "完了" }).click();
+    await activateDoneButton(page);
     await waitForViewShell(page);
     await expect(page.locator('[data-editor-overlay="table-controls"]')).toBeHidden();
   });
@@ -647,7 +779,7 @@ for (const viewport of [
     await waitForEditShell(page);
     await expect(details).toHaveAttribute("open", "");
     expectLayoutEqual(initial, await captureArticleLayout(page));
-    await page.getByRole("button", { name: "完了" }).click();
+    await activateDoneButton(page);
     await waitForViewShell(page);
     expectLayoutEqual(initial, await captureArticleLayout(page));
 
@@ -671,7 +803,7 @@ for (const viewport of [
     await math.click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.getByRole("button", { name: "キャンセル", exact: true }).click();
-    await page.getByRole("button", { name: "完了" }).click();
+    await activateDoneButton(page);
     await waitForViewShell(page);
     await page.evaluate(() => window.scrollTo(0, 0));
     const view = await captureArticleLayout(page);
@@ -798,7 +930,7 @@ test("scrolls a wide mobile table to the last column and operates its visible ha
     el.scrollLeft = el.scrollWidth;
   });
   const after = await captureArticleLayout(page);
-  await page.getByRole("button", { name: "完了" }).click();
+  await activateDoneButton(page);
   await waitForViewShell(page);
   expectLayoutEqual(after, await captureArticleLayout(page));
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
@@ -886,7 +1018,7 @@ for (const direction of ["left", "right"] as const) {
     expectLayoutEqual(after, await captureArticleLayout(page));
     await page.keyboard.press("Escape");
     await expect(destination).toBeFocused();
-    await page.getByRole("button", { name: "完了" }).click();
+    await activateDoneButton(page);
     await waitForViewShell(page);
     expectLayoutEqual(after, await captureArticleLayout(page));
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
@@ -1255,7 +1387,7 @@ test("closed details remain browser-searchable and snapshots omit only hidden de
   await page.getByRole("button", { name: "編集" }).click();
   await waitForEditShell(page);
   expectLayoutEqual(initial, await captureArticleLayout(page));
-  await page.getByRole("button", { name: "完了" }).click();
+  await activateDoneButton(page);
   await waitForViewShell(page);
   expectLayoutEqual(initial, await captureArticleLayout(page));
   await details.locator("summary").click();

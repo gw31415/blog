@@ -13,7 +13,10 @@ export default component$(() => {
     <>
       <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content, maximum-scale=1"
+        />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <DocumentHeadTags />
         <link rel="canonical" href={url.href} />

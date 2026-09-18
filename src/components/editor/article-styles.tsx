@@ -1393,21 +1393,17 @@ const articleShellStyles = css`
   }
 
   & .editor-dock {
-    position: fixed;
-    z-index: 35;
-    top: 0;
-    right: 0;
-    left: 0;
+    position: relative;
 
     width: min(760px, 100vw);
     max-height: min(52vh, 420px);
     margin-inline: auto;
-    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
     overflow: visible;
 
-    border-top: 0;
+    border-top: 1px solid var(--line-soft);
     border-right: 1px solid var(--line-soft);
-    border-bottom: 1px solid var(--line-soft);
+    border-bottom: 0;
     border-left: 1px solid var(--line-soft);
     border-radius: 0;
     background: rgb(242 234 213 / 98%);

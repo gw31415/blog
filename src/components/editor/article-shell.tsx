@@ -10,6 +10,7 @@ import {
 } from "@qwik.dev/core";
 
 import { BlogFooter, BlogHeader, BlogPaper } from "~/components/blog/blog";
+import { VirtualKeyboardViewport } from "~/components/layout/virtual-keyboard-viewport";
 import { formatJapaneseDate, formatJapaneseEraYear, type ArticleDraft } from "~/content/article";
 import { INITIAL_ARTICLE } from "~/content/initial-article";
 import { INITIAL_ARTICLE_HTML, INITIAL_ARTICLE_JSON } from "~/content/initial-article.generated";
@@ -188,127 +189,136 @@ export const ArticleShell = component$(() => {
 
   return (
     <ArticleStyleBoundary>
-      <BlogPaper>
-        <BlogHeader
-          category={ui.category}
-          dateTime={ui.publishedAt}
-          dateLabel={presentation.dateLabel}
-          title={ui.title}
-          subtitle={ui.subtitle}
-          editable={editable.value}
-          editLoading={ui.mode === "loading"}
-          onEditIntent$={preloadEditor$}
-          onEditRequest$={enterEdit$}
-          onCategoryInput$={$((value) => (ui.category = value))}
-          onDateInput$={$((value) => (ui.publishedAt = value))}
-          onTitleInput$={$((value) => (ui.title = value))}
-          onSubtitleInput$={$((value) => (ui.subtitle = value))}
-        />
-        <article
-          class="article-content"
-          data-layout-key="article"
-          data-editor-mount
-          ref={editorMount}
-          dangerouslySetInnerHTML={INITIAL_ARTICLE_HTML}
-        ></article>
-        <BlogFooter left="日々の記録" right={presentation.footerRight} />
-      </BlogPaper>
+      <VirtualKeyboardViewport>
+        <BlogPaper>
+          <BlogHeader
+            category={ui.category}
+            dateTime={ui.publishedAt}
+            dateLabel={presentation.dateLabel}
+            title={ui.title}
+            subtitle={ui.subtitle}
+            editable={editable.value}
+            editLoading={ui.mode === "loading"}
+            onEditIntent$={preloadEditor$}
+            onEditRequest$={enterEdit$}
+            onCategoryInput$={$((value) => (ui.category = value))}
+            onDateInput$={$((value) => (ui.publishedAt = value))}
+            onTitleInput$={$((value) => (ui.title = value))}
+            onSubtitleInput$={$((value) => (ui.subtitle = value))}
+          />
+          <article
+            class="article-content"
+            data-layout-key="article"
+            data-editor-mount
+            ref={editorMount}
+            dangerouslySetInnerHTML={INITIAL_ARTICLE_HTML}
+          ></article>
+          <BlogFooter left="日々の記録" right={presentation.footerRight} />
+        </BlogPaper>
+
+        {ui.mode === "edit" && (
+          <aside q:slot="bottom" class="editor-dock" aria-label="記事編集ツール">
+            <div class="editor-dock-head">
+              <button type="button" class="editor-done" onClick$={enterView$}>
+                完了
+              </button>
+              <div class="editor-dock-row editor-formatting" role="toolbar" aria-label="本文の書式">
+                <button type="button" title="元に戻す" onClick$={() => command$({ type: "undo" })}>
+                  ↶
+                </button>
+                <button type="button" title="やり直す" onClick$={() => command$({ type: "redo" })}>
+                  ↷
+                </button>
+                <button type="button" onClick$={() => command$({ type: "paragraph" })}>
+                  本文
+                </button>
+                <button type="button" onClick$={() => command$({ type: "heading", level: 2 })}>
+                  見出し
+                </button>
+                <button type="button" onClick$={() => command$({ type: "heading", level: 3 })}>
+                  小見出し
+                </button>
+                <button type="button" aria-label="太字" onClick$={() => command$({ type: "bold" })}>
+                  <b>B</b>
+                </button>
+                <button
+                  type="button"
+                  aria-label="斜体"
+                  onClick$={() => command$({ type: "italic" })}
+                >
+                  <i>I</i>
+                </button>
+                <button
+                  type="button"
+                  aria-label="打ち消し線"
+                  onClick$={() => command$({ type: "strike" })}
+                >
+                  <s>S</s>
+                </button>
+                <button type="button" onClick$={() => command$({ type: "bulletList" })}>
+                  箇条書き
+                </button>
+                <button type="button" onClick$={() => command$({ type: "orderedList" })}>
+                  番号
+                </button>
+                <button type="button" onClick$={() => command$({ type: "taskList" })}>
+                  ToDo
+                </button>
+                <button type="button" onClick$={() => command$({ type: "blockquote" })}>
+                  引用
+                </button>
+                <button
+                  type="button"
+                  onClick$={() => (ui.insertDialog = createInsertDialog("link"))}
+                >
+                  リンク
+                </button>
+                <button type="button" onClick$={() => command$({ type: "codeBlock" })}>
+                  コード
+                </button>
+                <button type="button" onClick$={() => command$({ type: "table" })}>
+                  表
+                </button>
+                <button type="button" onClick$={() => command$({ type: "horizontalRule" })}>
+                  区切り
+                </button>
+                <button type="button" onClick$={() => command$({ type: "inlineMath" })}>
+                  文中数式
+                </button>
+                <button type="button" onClick$={() => command$({ type: "blockMath" })}>
+                  別行数式
+                </button>
+                <button type="button" onClick$={() => command$({ type: "callout", label: "補足" })}>
+                  補足
+                </button>
+                <button
+                  type="button"
+                  onClick$={() => (ui.insertDialog = createInsertDialog("image"))}
+                >
+                  画像
+                </button>
+                <button
+                  type="button"
+                  onClick$={() =>
+                    command$({
+                      type: "details",
+                      summary: "補足",
+                      body: "詳しい内容を書きます。",
+                    })
+                  }
+                >
+                  折り畳み
+                </button>
+              </div>
+            </div>
+          </aside>
+        )}
+      </VirtualKeyboardViewport>
 
       {ui.error && (
         <p class="editor-error" role="alert">
           エディターを開始できませんでした: {ui.error}
         </p>
-      )}
-
-      {ui.mode === "edit" && (
-        <aside class="editor-dock" aria-label="記事編集ツール">
-          <div class="editor-dock-head">
-            <button type="button" class="editor-done" onClick$={enterView$}>
-              完了
-            </button>
-            <div class="editor-dock-row editor-formatting" role="toolbar" aria-label="本文の書式">
-              <button type="button" title="元に戻す" onClick$={() => command$({ type: "undo" })}>
-                ↶
-              </button>
-              <button type="button" title="やり直す" onClick$={() => command$({ type: "redo" })}>
-                ↷
-              </button>
-              <button type="button" onClick$={() => command$({ type: "paragraph" })}>
-                本文
-              </button>
-              <button type="button" onClick$={() => command$({ type: "heading", level: 2 })}>
-                見出し
-              </button>
-              <button type="button" onClick$={() => command$({ type: "heading", level: 3 })}>
-                小見出し
-              </button>
-              <button type="button" aria-label="太字" onClick$={() => command$({ type: "bold" })}>
-                <b>B</b>
-              </button>
-              <button type="button" aria-label="斜体" onClick$={() => command$({ type: "italic" })}>
-                <i>I</i>
-              </button>
-              <button
-                type="button"
-                aria-label="打ち消し線"
-                onClick$={() => command$({ type: "strike" })}
-              >
-                <s>S</s>
-              </button>
-              <button type="button" onClick$={() => command$({ type: "bulletList" })}>
-                箇条書き
-              </button>
-              <button type="button" onClick$={() => command$({ type: "orderedList" })}>
-                番号
-              </button>
-              <button type="button" onClick$={() => command$({ type: "taskList" })}>
-                ToDo
-              </button>
-              <button type="button" onClick$={() => command$({ type: "blockquote" })}>
-                引用
-              </button>
-              <button type="button" onClick$={() => (ui.insertDialog = createInsertDialog("link"))}>
-                リンク
-              </button>
-              <button type="button" onClick$={() => command$({ type: "codeBlock" })}>
-                コード
-              </button>
-              <button type="button" onClick$={() => command$({ type: "table" })}>
-                表
-              </button>
-              <button type="button" onClick$={() => command$({ type: "horizontalRule" })}>
-                区切り
-              </button>
-              <button type="button" onClick$={() => command$({ type: "inlineMath" })}>
-                文中数式
-              </button>
-              <button type="button" onClick$={() => command$({ type: "blockMath" })}>
-                別行数式
-              </button>
-              <button type="button" onClick$={() => command$({ type: "callout", label: "補足" })}>
-                補足
-              </button>
-              <button
-                type="button"
-                onClick$={() => (ui.insertDialog = createInsertDialog("image"))}
-              >
-                画像
-              </button>
-              <button
-                type="button"
-                onClick$={() =>
-                  command$({
-                    type: "details",
-                    summary: "補足",
-                    body: "詳しい内容を書きます。",
-                  })
-                }
-              >
-                折り畳み
-              </button>
-            </div>
-          </div>
-        </aside>
       )}
 
       {ui.insertDialog && (
