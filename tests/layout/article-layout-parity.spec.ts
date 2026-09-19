@@ -432,13 +432,14 @@ test("keeps the done action separate from the scrolling formatting strip", async
   expect(layout.overflowX).toBe("auto");
 });
 
-test("keeps the closed editing toolbar to one compact row", async ({ page }) => {
+test("keeps the editing toolbar compact with a half-line background gutter", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await page.getByRole("button", { name: "編集", exact: true }).click();
   await waitForEditShell(page);
 
-  const dock = await page.getByRole("complementary", { name: "記事編集ツール" }).boundingBox();
+  const dockLocator = page.getByRole("complementary", { name: "記事編集ツール" });
+  const dock = await dockLocator.boundingBox();
   const formatting = await page.getByRole("toolbar", { name: "本文の書式" }).boundingBox();
   const link = await page.getByRole("button", { name: "リンク", exact: true }).boundingBox();
   const image = await page.getByRole("button", { name: "画像", exact: true }).boundingBox();
@@ -451,7 +452,18 @@ test("keeps the closed editing toolbar to one compact row", async ({ page }) => 
   expect(image).not.toBeNull();
   expect(details).not.toBeNull();
   expect(done).not.toBeNull();
-  expect(dock!.height).toBeLessThanOrEqual(34);
+  const gutter = await dockLocator.evaluate((element) => {
+    const style = getComputedStyle(element, "::after");
+    return {
+      backgroundColor: style.backgroundColor,
+      height: Number.parseFloat(style.height),
+    };
+  });
+
+  expect(dock!.height).toBeCloseTo(45, 0);
+  expect(formatting!.height).toBeLessThanOrEqual(32);
+  expect(gutter.height).toBeCloseTo(12, 0);
+  expect(gutter.backgroundColor).toBe("rgb(222, 216, 202)");
   for (const action of [link!, image!, details!]) {
     expect(action.y).toBeGreaterThanOrEqual(formatting!.y);
     expect(action.y + action.height).toBeLessThanOrEqual(formatting!.y + formatting!.height);

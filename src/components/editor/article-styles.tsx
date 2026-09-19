@@ -3,6 +3,7 @@ import { css } from "@qstyle/qwik";
 
 const articleShellStyles = css`
   display: contents;
+  --page-background: #ded8ca;
   --paper: #f2ead5;
   --paper-deep: #e9dfc7;
 
@@ -1406,7 +1407,6 @@ const articleShellStyles = css`
     width: min(760px, 100vw);
     max-height: min(52vh, 420px);
     margin-inline: auto;
-    padding-bottom: env(safe-area-inset-bottom);
     overflow: visible;
 
     border-top: 1px solid var(--line-soft);
@@ -1416,6 +1416,13 @@ const articleShellStyles = css`
     border-radius: 0;
     background: rgb(242 234 213 / 98%);
     box-shadow: none;
+  }
+
+  & .editor-dock::after {
+    display: block;
+    height: calc(0.75rem + env(safe-area-inset-bottom));
+    background: var(--page-background);
+    content: "";
   }
 
   & .editor-dock-head {
