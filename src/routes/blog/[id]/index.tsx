@@ -7,6 +7,7 @@ import {
 } from "@qwik.dev/router";
 
 import { ArticleShell } from "~/components/editor/article-shell";
+import { BLOG_NAME } from "~/content/article";
 import { canManagePosts } from "~/content/permissions";
 import { canonicalPath } from "~/content/post-url";
 import { database, findPost, redirectCanonical, savePostContent } from "~/server/posts";
@@ -79,7 +80,7 @@ export default component$(() => {
     >
       <div class="article-topbar">
         <a class="article-site-title" href="/">
-          ブログ名（仮）
+          {BLOG_NAME}
         </a>
       </div>
     </ArticleShell>

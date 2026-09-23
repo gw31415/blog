@@ -170,6 +170,68 @@ const articleShellStyles = css`
        Header
        ───────────────────────────── */
 
+  & [data-virtual-keyboard-region="top"]:has(.article-sticky-header) {
+    height: 0;
+  }
+
+  & .article-sticky-header {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    display: flex;
+    width: min(100%, 760px);
+    align-items: center;
+    gap: 0.55em;
+    padding: calc(env(safe-area-inset-top) + 7px) clamp(22px, 4vw, 32px) 7px;
+    overflow: hidden;
+    color: var(--ink);
+    border-bottom: 1px solid var(--line-soft);
+    background: rgb(242 234 213 / 98%);
+    box-shadow: 0 3px 12px rgb(40 30 20 / 8%);
+    font-family: var(--sans);
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translate(-50%, -100%);
+    transition:
+      opacity 150ms ease,
+      transform 150ms ease,
+      visibility 150ms;
+  }
+
+  & [data-virtual-keyboard-viewport][data-scrolled] .article-sticky-header {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translate(-50%, 0);
+  }
+
+  & .article-sticky-site,
+  & .article-sticky-separator,
+  & .article-sticky-date {
+    flex: none;
+  }
+
+  & .article-sticky-title {
+    min-width: 0;
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  & .article-sticky-date {
+    color: var(--muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    & .article-sticky-header {
+      transition: none;
+    }
+  }
+
   & .article-topbar {
     margin-bottom: var(--section-gap);
     font-family: var(--sans);

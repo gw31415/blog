@@ -74,12 +74,21 @@ export const VirtualKeyboardViewport = component$(() => {
       if (bottom) resizeObserver.observe(bottom);
       syncBarSizes();
 
+      const syncScroll = () => {
+        root.toggleAttribute("data-scrolled", root.scrollTop > 0);
+      };
+      root.addEventListener("scroll", syncScroll, { passive: true });
+      syncScroll();
+
       const visualViewport = window.visualViewport;
       const isIOS =
         /iPad|iPhone|iPod/.test(navigator.userAgent) ||
         (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
       if (!isIOS || !visualViewport) {
-        cleanup(() => resizeObserver.disconnect());
+        cleanup(() => {
+          resizeObserver.disconnect();
+          root.removeEventListener("scroll", syncScroll);
+        });
         return;
       }
 
@@ -123,6 +132,7 @@ export const VirtualKeyboardViewport = component$(() => {
         for (const animationFrame of animationFrames) cancelAnimationFrame(animationFrame);
         animationFrames.clear();
         resizeObserver.disconnect();
+        root.removeEventListener("scroll", syncScroll);
         visualViewport.removeEventListener("resize", syncVisualViewport);
         visualViewport.removeEventListener("scroll", syncVisualViewport);
       });

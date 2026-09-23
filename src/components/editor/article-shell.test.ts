@@ -16,6 +16,7 @@ describe("article shell", () => {
   it("derives visible date and footer text from the article date", () => {
     expect(createArticlePresentation(INITIAL_ARTICLE)).toEqual({
       dateLabel: "九月十七日　木曜日",
+      shortDate: "2026.9.17",
       footerRight: "令和八年 / 2026",
     });
   });
@@ -23,6 +24,7 @@ describe("article shell", () => {
   it("keeps rendering while the date input is temporarily empty", () => {
     expect(createArticlePresentation({ publishedAt: "" })).toEqual({
       dateLabel: "公開日未設定",
+      shortDate: "日付未設定",
       footerRight: "年未設定",
     });
   });

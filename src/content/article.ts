@@ -6,6 +6,8 @@ export interface ArticleDraft {
   bodyMarkdown: string;
 }
 
+export const BLOG_NAME = "ブログ名（仮）";
+
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
 const DIGITS = ["〇", "一", "二", "三", "四", "五", "六", "七", "八", "九"] as const;
 
@@ -44,6 +46,11 @@ function toKanjiNumber(value: number): string {
 export function formatJapaneseDate(isoDate: string): string {
   const date = parseIsoDate(isoDate);
   return `${toKanjiNumber(date.getUTCMonth() + 1)}月${toKanjiNumber(date.getUTCDate())}日　${WEEKDAYS[date.getUTCDay()]}曜日`;
+}
+
+export function formatShortDate(isoDate: string): string {
+  const date = parseIsoDate(isoDate);
+  return `${date.getUTCFullYear()}.${date.getUTCMonth() + 1}.${date.getUTCDate()}`;
 }
 
 export function formatJapaneseEraYear(isoDate: string): string {

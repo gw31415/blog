@@ -15,7 +15,13 @@ import type { JSONContent } from "@tiptap/core";
 
 import { BlogFooter, BlogHeader, BlogPaper } from "~/components/blog/blog";
 import { VirtualKeyboardViewport } from "~/components/layout/virtual-keyboard-viewport";
-import { formatJapaneseDate, formatJapaneseEraYear, type ArticleDraft } from "~/content/article";
+import {
+  BLOG_NAME,
+  formatJapaneseDate,
+  formatJapaneseEraYear,
+  formatShortDate,
+  type ArticleDraft,
+} from "~/content/article";
 import { INITIAL_ARTICLE } from "~/content/initial-article";
 import { INITIAL_ARTICLE_HTML, INITIAL_ARTICLE_JSON } from "~/content/initial-article.generated";
 
@@ -37,10 +43,11 @@ export function loadEditorRuntime() {
 
 export function createArticlePresentation(article: Pick<ArticleDraft, "publishedAt">) {
   if (article.publishedAt === "") {
-    return { dateLabel: "公開日未設定", footerRight: "年未設定" };
+    return { dateLabel: "公開日未設定", shortDate: "日付未設定", footerRight: "年未設定" };
   }
   return {
     dateLabel: formatJapaneseDate(article.publishedAt),
+    shortDate: formatShortDate(article.publishedAt),
     footerRight: formatJapaneseEraYear(article.publishedAt),
   };
 }
@@ -333,6 +340,18 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
   return (
     <ArticleStyleBoundary>
       <VirtualKeyboardViewport>
+        <nav q:slot="top" class="article-sticky-header" aria-label="記事の現在位置">
+          <a class="article-sticky-site" href="/">
+            {BLOG_NAME}
+          </a>
+          <span class="article-sticky-separator" aria-hidden="true">
+            &gt;
+          </span>
+          <span class="article-sticky-title">{ui.title || "無題"}</span>
+          <time class="article-sticky-date" dateTime={ui.publishedAt}>
+            （{presentation.shortDate}）
+          </time>
+        </nav>
         <BlogPaper>
           <Slot />
           <BlogHeader

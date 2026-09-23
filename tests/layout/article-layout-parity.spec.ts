@@ -742,6 +742,73 @@ test("keeps the editing tools fixed to the bottom edge while the article scrolls
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });
 
+for (const viewportSize of [
+  { width: 1280, height: 900 },
+  { width: 390, height: 844 },
+] as const) {
+  test(`shows the article header only after scrolling at ${viewportSize.width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewportSize);
+    await page.goto("/sample");
+
+    const viewport = page.locator("[data-virtual-keyboard-viewport]");
+    const header = page.getByRole("navigation", { name: "記事の現在位置" });
+    await expect(header).toBeHidden();
+
+    await viewport.evaluate((root) => {
+      root.scrollTop = 200;
+    });
+    await expect(header).toBeVisible();
+    await expect(header).toContainText("ブログ名（仮）");
+    await expect(header.locator(".article-sticky-title")).toHaveText(
+      await page.locator('[data-layout-key="header"] h1').innerText(),
+    );
+    await expect(header).toContainText("2026.9.17");
+    await expect(header.locator(".article-sticky-title")).toHaveCSS("text-overflow", "ellipsis");
+    const dateBox = await header.locator("time").boundingBox();
+    expect(dateBox).not.toBeNull();
+    await expect.poll(async () => (await header.boundingBox())?.y).toBeCloseTo(0, 0);
+    const box = await header.boundingBox();
+    const titleBox = await header.locator(".article-sticky-title").boundingBox();
+    expect(box!.width).toBeLessThanOrEqual(viewportSize.width);
+    expect(box!.height).toBeLessThan(36);
+    expect(titleBox).not.toBeNull();
+    expect(
+      Math.abs(titleBox!.y - box!.y - (box!.y + box!.height - titleBox!.y - titleBox!.height)),
+    ).toBeLessThanOrEqual(1);
+    expect(dateBox!.x + dateBox!.width).toBeLessThanOrEqual(box!.x + box!.width);
+
+    await viewport.evaluate((root) => {
+      root.scrollTop = root.scrollHeight;
+    });
+    await expect.poll(async () => (await header.boundingBox())?.y).toBeCloseTo(0, 0);
+
+    await viewport.evaluate((root) => {
+      root.scrollTop = 0;
+    });
+    await expect(header).toBeHidden();
+  });
+}
+
+test("updates the scrolling header when the article title and date are edited", async ({
+  page,
+}) => {
+  await page.goto("/sample");
+  await page.getByRole("button", { name: "編集", exact: true }).click();
+  await waitForEditShell(page);
+
+  await page.locator('[data-layout-key="header"] h1').fill("更新した記事タイトル");
+  await page.getByLabel("公開日").fill("2026-10-01");
+  await page.locator("[data-virtual-keyboard-viewport]").evaluate((root) => {
+    root.scrollTop = 200;
+  });
+
+  const header = page.getByRole("navigation", { name: "記事の現在位置" });
+  await expect(header.locator(".article-sticky-title")).toHaveText("更新した記事タイトル");
+  await expect(header.locator("time")).toHaveText("（2026.10.1）");
+});
+
 test("keeps the bottom toolbar clear of mobile category and date fields", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/sample");
