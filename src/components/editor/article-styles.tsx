@@ -35,6 +35,8 @@ const articleShellStyles = css`
 
   --body-size: 15px;
   --body-leading: 22.5px;
+  --paper-inset: clamp(22px, 7vw, 68px);
+  --section-gap: clamp(22px, 4vw, 40px);
 
   --latin-serif:
     "Times New Roman", Times, "Nimbus Roman No9 L", "Liberation Serif", "DejaVu Serif", Georgia;
@@ -74,7 +76,7 @@ const articleShellStyles = css`
     min-height: 100dvh;
     margin-inline: auto;
 
-    padding: clamp(44px, 8vw, 78px) clamp(22px, 7vw, 68px) clamp(64px, 10vw, 100px);
+    padding: var(--paper-inset);
 
     overflow: hidden;
 
@@ -168,8 +170,19 @@ const articleShellStyles = css`
        Header
        ───────────────────────────── */
 
-  & header {
-    margin-bottom: 3rem;
+  & .article-topbar {
+    margin-bottom: var(--section-gap);
+    font-family: var(--sans);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  & .article-site-title {
+    font-weight: 600;
+  }
+
+  & [data-layout-key="header"] {
+    margin-bottom: var(--section-gap);
   }
 
   & .meta {
@@ -296,6 +309,51 @@ const articleShellStyles = css`
     height: 1px;
 
     background: var(--line);
+  }
+
+  & .publication-status {
+    display: inline-grid;
+    flex: none;
+    white-space: nowrap;
+  }
+
+  & .publication-status-measure,
+  & .publication-status-button {
+    grid-area: 1 / 1;
+  }
+
+  & .publication-status-measure {
+    visibility: hidden;
+  }
+
+  & .publication-status-button {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    color: var(--muted);
+    border: 0;
+    border-radius: 0;
+    background-color: transparent;
+    font: inherit;
+    letter-spacing: inherit;
+    line-height: inherit;
+    text-align: start;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  & .publication-status-button:disabled {
+    cursor: default;
+    opacity: 1;
+  }
+
+  & .publication-status-button:not(:disabled) {
+    cursor: pointer;
+  }
+
+  & .publication-status-button:not(:disabled):hover,
+  & .publication-status-button:not(:disabled):focus-visible {
+    color: var(--link);
   }
 
   & h1 {
@@ -1318,8 +1376,8 @@ const articleShellStyles = css`
 
     gap: 1rem;
 
-    margin-top: 4rem;
-    padding-top: 1rem;
+    margin-top: calc(var(--section-gap) / 2);
+    padding-top: calc(var(--section-gap) / 2 - 1px);
 
     border-top: 1px solid var(--line-soft);
 
@@ -1578,10 +1636,13 @@ const articleShellStyles = css`
 
   @media (max-width: 600px) {
     & .paper {
+      --paper-inset: 22px;
       width: 100%;
 
-      padding: calc(env(safe-area-inset-top) + 41px) max(22px, env(safe-area-inset-right)) 64px
-        max(22px, env(safe-area-inset-left));
+      padding: calc(env(safe-area-inset-top) + var(--paper-inset))
+        max(var(--paper-inset), env(safe-area-inset-right))
+        calc(env(safe-area-inset-bottom) + var(--paper-inset))
+        max(var(--paper-inset), env(safe-area-inset-left));
 
       box-shadow: none;
     }
@@ -1602,10 +1663,6 @@ const articleShellStyles = css`
 
     & .content {
       max-width: none;
-    }
-
-    & header {
-      margin-bottom: 2.6rem;
     }
 
     & .math-block {

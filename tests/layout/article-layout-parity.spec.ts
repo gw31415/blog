@@ -253,7 +253,7 @@ async function activateDoneButton(page: Page): Promise<void> {
 }
 
 test("keeps mode actions inside the article and editing tools", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/sample");
 
   const header = page.locator('[data-layout-key="header"]');
   await expect(header.getByRole("button", { name: "編集", exact: true })).toBeVisible();
@@ -268,7 +268,7 @@ test("keeps mode actions inside the article and editing tools", async ({ page })
 
 test("keeps the paper-edge edit tab in reach while the article scrolls", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto("/");
+  await page.goto("/sample");
 
   const editAction = page.getByRole("button", { name: "編集", exact: true });
   const initial = await editAction.boundingBox();
@@ -291,7 +291,7 @@ test("places the desktop and mobile edit tabs at the same below-center position"
     { width: 390, height: 844 },
   ]) {
     await page.setViewportSize(viewport);
-    await page.goto("/");
+    await page.goto("/sample");
 
     const action = await page.getByRole("button", { name: "編集", exact: true }).boundingBox();
     expect(action).not.toBeNull();
@@ -307,7 +307,7 @@ test("places the desktop and mobile edit tabs at the same below-center position"
 });
 
 test("sets Japanese body copy with one-and-a-half line spacing", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/sample");
 
   const metrics = await page.locator(".article-content").evaluate((article) => {
     const style = getComputedStyle(article);
@@ -322,7 +322,7 @@ test("sets Japanese body copy with one-and-a-half line spacing", async ({ page }
 
 test("keeps mobile paper padding symmetric and the edit tab compact", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/sample");
 
   const action = await page.getByRole("button", { name: "編集", exact: true }).boundingBox();
   const labelLocator = page.locator(".article-edit-label");
@@ -354,7 +354,7 @@ test("keeps mobile paper padding symmetric and the edit tab compact", async ({ p
 
 test("keeps the vertical edit label free of a detached hover underline", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/sample");
 
   const action = page.getByRole("button", { name: "編集", exact: true });
   const label = page.locator(".article-edit-label");
@@ -365,7 +365,7 @@ test("keeps the vertical edit label free of a detached hover underline", async (
 
 test("keeps the desktop edit tab away from the right scrollbar", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto("/");
+  await page.goto("/sample");
 
   const action = await page.getByRole("button", { name: "編集", exact: true }).boundingBox();
   const labelLocator = page.locator(".article-edit-label");
@@ -399,7 +399,7 @@ test("shows only an ellipsis while the editor starts", async ({ page }) => {
     });
     await route.continue();
   });
-  await page.goto("/");
+  await page.goto("/sample");
 
   const editButton = page.locator(".article-edit-action");
   const click = editButton.click();
@@ -412,7 +412,7 @@ test("shows only an ellipsis while the editor starts", async ({ page }) => {
 });
 
 test("keeps the done action separate from the scrolling formatting strip", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "編集", exact: true }).click();
   await waitForEditShell(page);
 
@@ -434,7 +434,7 @@ test("keeps the done action separate from the scrolling formatting strip", async
 
 test("keeps the editing toolbar compact with a half-line background gutter", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "編集", exact: true }).click();
   await waitForEditShell(page);
 
@@ -472,7 +472,7 @@ test("keeps the editing toolbar compact with a half-line background gutter", asy
 });
 
 test("keeps the article editor focused while a formatting action is pressed", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "編集", exact: true }).click();
   await waitForEditShell(page);
 
@@ -497,7 +497,7 @@ test("does not blur the article editor when a formatting action is tapped", asyn
   });
   const page = await context.newPage();
   try {
-    await page.goto("http://127.0.0.1:4173/");
+    await page.goto("http://127.0.0.1:4173/sample");
     await page.getByRole("button", { name: "編集", exact: true }).tap();
     await waitForEditShell(page);
 
@@ -523,7 +523,7 @@ test("keeps unstyled viewport bars at the Chrome viewport edges while content sc
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "編集", exact: true }).click();
   await waitForEditShell(page);
 
@@ -588,7 +588,7 @@ test("tracks an iOS visual viewport while the virtual keyboard opens and closes"
     Object.defineProperty(window, "visualViewport", { configurable: true, value: viewport });
     Object.defineProperty(window, "testVisualViewport", { configurable: true, value: viewport });
   });
-  await page.goto("/");
+  await page.goto("/sample");
 
   const viewport = page.locator("[data-virtual-keyboard-viewport]");
   await expect
@@ -638,7 +638,7 @@ test("tracks an iOS visual viewport while the virtual keyboard opens and closes"
 
 test("uses focused link and image forms while details insert immediately", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "編集", exact: true }).click();
   await waitForEditShell(page);
 
@@ -662,7 +662,7 @@ test("uses focused link and image forms while details insert immediately", async
 });
 
 test("keeps toolbar hover styling plain", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "編集", exact: true }).click();
   await waitForEditShell(page);
 
@@ -675,7 +675,7 @@ test("keeps toolbar hover styling plain", async ({ page }) => {
 });
 
 test("reflects inline and block formatting state in the toolbar", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "編集", exact: true }).click();
   await waitForEditShell(page);
 
@@ -698,7 +698,7 @@ test("reflects inline and block formatting state in the toolbar", async ({ page 
 });
 
 test("keeps active toolbar buttons square and visibly inverted while hovered", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "編集", exact: true }).click();
   await waitForEditShell(page);
 
@@ -724,7 +724,7 @@ test("keeps the editing tools fixed to the bottom edge while the article scrolls
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto("/");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "編集", exact: true }).click();
   await waitForEditShell(page);
 
@@ -744,7 +744,7 @@ test("keeps the editing tools fixed to the bottom edge while the article scrolls
 
 test("keeps the bottom toolbar clear of mobile category and date fields", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "編集", exact: true }).click();
   await waitForEditShell(page);
 
@@ -772,7 +772,7 @@ for (const viewport of [
 ] as const) {
   test(`keeps view and edit article layout identical on ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await page.goto("/");
+    await page.goto("/sample");
     await expect(page.locator("[data-editor-mount]")).toBeVisible();
 
     const initialView = await captureArticleLayout(page);
@@ -801,7 +801,7 @@ for (const viewport of [
     page,
   }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await page.goto("/");
+    await page.goto("/sample");
     await page.getByRole("button", { name: "編集" }).click();
     await waitForEditShell(page);
     const table = page.locator(".ProseMirror table").first();
@@ -873,7 +873,7 @@ for (const viewport of [
     page,
   }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await page.goto("/");
+    await page.goto("/sample");
     const details = page.locator("[data-editor-mount] details").first();
     await details.locator("summary").click();
     await expect(details).toHaveAttribute("open", "");
@@ -902,7 +902,7 @@ for (const viewport of [
     page,
   }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await page.goto("/");
+    await page.goto("/sample");
     await page.getByRole("button", { name: "編集" }).click();
     await waitForEditShell(page);
     const math = page.locator('[data-type="block-math"]').first();
@@ -922,7 +922,7 @@ for (const viewport of [
     page,
   }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await page.goto("/");
+    await page.goto("/sample");
     await page.getByRole("button", { name: "編集" }).click();
     await waitForEditShell(page);
     await page.locator(".ProseMirror table").first().scrollIntoViewIfNeeded();
@@ -952,7 +952,7 @@ test("scrolls a wide mobile table to the last column and operates its visible ha
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/sample");
   expect(
     await page
       .locator(".tableWrapper")
@@ -1047,7 +1047,7 @@ for (const direction of ["left", "right"] as const) {
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/");
+    await page.goto("/sample");
     await page.getByRole("button", { name: "編集" }).click();
     await waitForEditShell(page);
     const editor = page.locator(".ProseMirror");
@@ -1134,7 +1134,7 @@ for (const direction of ["left", "right"] as const) {
 test("keeps every structural menu action disabled for a valid merged table without document transactions", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "編集" }).click();
   await waitForEditShell(page);
   const editor = page.locator(".ProseMirror");
@@ -1195,7 +1195,7 @@ test("keeps every structural menu action disabled for a valid merged table witho
 test("table contextual actions target their row and column and protect the last axis", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "編集" }).click();
   await waitForEditShell(page);
   const table = page.locator(".ProseMirror table").first();
@@ -1243,7 +1243,7 @@ test("opens the selected row menu with a touchscreen tap", async ({ browser }) =
   });
   const page = await context.newPage();
   try {
-    await page.goto("/");
+    await page.goto("/sample");
     await page.getByRole("button", { name: "編集" }).tap();
     await waitForEditShell(page);
     await page.locator(".ProseMirror table").first().scrollIntoViewIfNeeded();
@@ -1271,7 +1271,7 @@ for (const touch of [false, true]) {
     const page = await context.newPage();
     const cdp = await context.newCDPSession(page);
     try {
-      await page.goto("/");
+      await page.goto("/sample");
       await page.getByRole("button", { name: "編集" }).click();
       await waitForEditShell(page);
       const table = page.locator(".ProseMirror table").first();
@@ -1367,7 +1367,7 @@ for (const touch of [false, true]) {
 test("cancels an active table drag with Escape without mutation or a click menu", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "編集" }).click();
   await waitForEditShell(page);
   const table = page.locator(".ProseMirror table").first();
@@ -1397,7 +1397,7 @@ test("touch movement before hold and native cancellation leave the table unchang
   const page = await context.newPage();
   const cdp = await context.newCDPSession(page);
   try {
-    await page.goto("/");
+    await page.goto("/sample");
     await page.getByRole("button", { name: "編集" }).tap();
     await waitForEditShell(page);
     const table = page.locator(".ProseMirror table").first();
@@ -1433,7 +1433,7 @@ test("touch movement before hold and native cancellation leave the table unchang
 });
 
 test("merged-cell table handles explain disabled drag and keyboard movement", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "編集" }).click();
   await waitForEditShell(page);
   const editor = page.locator(".ProseMirror");
@@ -1472,7 +1472,7 @@ test("merged-cell table handles explain disabled drag and keyboard movement", as
 test("closed details remain browser-searchable and snapshots omit only hidden descendants", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/sample");
   const details = page.locator("details").first();
   await expect(details).not.toHaveAttribute("open");
   const hiddenText = (await details.locator(".details-body").textContent())!.trim();
@@ -1506,7 +1506,7 @@ test("closed details remain browser-searchable and snapshots omit only hidden de
 });
 
 test("round-trips a shared code block through clipboard HTML", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "編集" }).click();
   await waitForEditShell(page);
 
@@ -1551,7 +1551,7 @@ test("pastes a bare pre element as plaintext without crashing", async ({ page })
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
-  await page.goto("/");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "編集" }).click();
   await waitForEditShell(page);
 

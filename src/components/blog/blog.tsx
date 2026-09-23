@@ -130,19 +130,22 @@ interface BlogHeaderProps {
   dateTime: string;
   /** 表示用の和文日付 (例: "九月十七日 木曜日") */
   dateLabel: string;
+  publicationStatus?: "draft" | "published";
   title: string;
   subtitle?: string;
   editable?: boolean;
+  canEdit?: boolean;
   editLoading?: boolean;
   onEditIntent$?: QRL<() => void>;
   onEditRequest$?: QRL<() => void>;
   onCategoryInput$?: QRL<(value: string) => void>;
   onDateInput$?: QRL<(value: string) => void>;
+  onPublicationToggle$?: QRL<() => void>;
   onTitleInput$?: QRL<(value: string) => void>;
   onSubtitleInput$?: QRL<(value: string) => void>;
 }
 
-/** 記事ヘッダー (カテゴリ・日付・題・副題)。 */
+/** 記事ヘッダー (カテゴリ・日付・公開状態・題・副題)。 */
 export const BlogHeader = component$((props: BlogHeaderProps) => {
   return (
     <header data-layout-key="header">
@@ -173,22 +176,47 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
           )}
         </span>
 
-        <button
-          type="button"
-          class={{
-            "article-edit-action": true,
-            "is-hidden": props.editable,
-          }}
-          aria-busy={props.editLoading}
-          aria-hidden={props.editable}
-          disabled={props.editable || props.editLoading}
-          tabIndex={props.editable ? -1 : undefined}
-          onPointerEnter$={props.onEditIntent$}
-          onFocus$={props.onEditIntent$}
-          onClick$={props.onEditRequest$}
-        >
-          <span class="article-edit-label">{props.editLoading ? "…" : "編集"}</span>
-        </button>
+        {props.publicationStatus && (
+          <span class="publication-status">
+            <span class="publication-status-measure" aria-hidden="true">
+              （非公開）
+            </span>
+            <button
+              type="button"
+              class="publication-status-button"
+              disabled={!props.editable}
+              aria-label={
+                props.editable
+                  ? `公開状態を切り替え。現在${props.publicationStatus === "published" ? "公開" : "非公開"}`
+                  : props.publicationStatus === "published"
+                    ? "公開"
+                    : "非公開"
+              }
+              onClick$={props.onPublicationToggle$}
+            >
+              {props.publicationStatus === "published" ? "（公開）" : "（非公開）"}
+            </button>
+          </span>
+        )}
+
+        {props.canEdit !== false && (
+          <button
+            type="button"
+            class={{
+              "article-edit-action": true,
+              "is-hidden": props.editable,
+            }}
+            aria-busy={props.editLoading}
+            aria-hidden={props.editable}
+            disabled={props.editable || props.editLoading}
+            tabIndex={props.editable ? -1 : undefined}
+            onPointerEnter$={props.onEditIntent$}
+            onFocus$={props.onEditIntent$}
+            onClick$={props.onEditRequest$}
+          >
+            <span class="article-edit-label">{props.editLoading ? "…" : "編集"}</span>
+          </button>
+        )}
       </div>
 
       <h1
@@ -200,7 +228,7 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
         {props.title}
       </h1>
 
-      {props.subtitle && (
+      {(props.subtitle || props.editable) && (
         <p
           class="subtitle ink ink-muted"
           data-article-field="subtitle"

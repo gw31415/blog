@@ -1,8 +1,13 @@
 import { component$ } from "@qwik.dev/core";
-import { DocumentHeadTags, RouterOutlet, useLocation, useQwikRouter } from "@qwik.dev/router";
+import { DocumentHeadTags, QwikRouterProvider, RouterOutlet, useLocation } from "@qwik.dev/router";
 
-export default component$(() => {
-  useQwikRouter();
+export default component$(() => (
+  <QwikRouterProvider>
+    <RootContent />
+  </QwikRouterProvider>
+));
+
+const RootContent = component$(() => {
   const { url } = useLocation();
 
   /**
@@ -19,27 +24,31 @@ export default component$(() => {
         />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <DocumentHeadTags />
-        <link rel="canonical" href={url.href} />
+        <link rel="canonical" href={`${url.origin}${url.pathname}`} />
       </head>
       <body
-        css={{
-          minHeight: "100%",
-          margin: 0,
-          color: "#352f25",
-          fontFamily:
-            '"Times New Roman", Times, "Nimbus Roman No9 L", "Liberation Serif", "DejaVu Serif", Georgia, "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", "Noto Serif CJK JP", serif',
-          fontKerning: "normal",
-          fontSynthesis: "none",
-          textAutospace: "normal",
-          background: "#ded8ca",
-          "&::selection, & ::selection": {
-            color: "#352f25",
-            background: "rgb(135 89 79 / 28%)",
-          },
-          "@media (max-width: 600px)": {
-            background: "#f2ead5",
-          },
-        }}
+        css={
+          url.pathname === "/sample" || url.pathname.startsWith("/blog/")
+            ? {
+                minHeight: "100%",
+                margin: 0,
+                color: "#352f25",
+                fontFamily:
+                  '"Times New Roman", Times, "Nimbus Roman No9 L", "Liberation Serif", "DejaVu Serif", Georgia, "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", "Noto Serif CJK JP", serif',
+                fontKerning: "normal",
+                fontSynthesis: "none",
+                textAutospace: "normal",
+                background: "#ded8ca",
+                "&::selection, & ::selection": {
+                  color: "#352f25",
+                  background: "rgb(135 89 79 / 28%)",
+                },
+                "@media (max-width: 600px)": {
+                  background: "#f2ead5",
+                },
+              }
+            : undefined
+        }
       >
         <RouterOutlet />
       </body>

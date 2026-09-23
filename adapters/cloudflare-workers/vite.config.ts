@@ -1,9 +1,8 @@
-import { cloudflare } from "@cloudflare/vite-plugin";
 import { cloudflarePagesAdapter } from "@qwik.dev/router/adapters/cloudflare-pages/vite";
 import { extendConfig } from "@qwik.dev/router/vite";
 import baseConfig from "../../vite.config";
 
-export default extendConfig(baseConfig, ({ command }) => ({
+export default extendConfig(baseConfig, () => ({
   build: {
     ssr: true,
     rolldownOptions: {
@@ -17,18 +16,5 @@ export default extendConfig(baseConfig, ({ command }) => ({
   builder: {
     sharedPlugins: true,
   },
-  plugins:
-    command === "serve"
-      ? [
-          cloudflarePagesAdapter({ ssg: { include: ["/*"] } }),
-          cloudflare({ config: { main: "./src/entry.cloudflare-pages.tsx" } }),
-        ]
-      : [
-          cloudflarePagesAdapter({
-            ssg: {
-              include: ["/*"],
-              origin: "https://blog.gw31415.workers.dev",
-            },
-          }),
-        ],
+  plugins: [cloudflarePagesAdapter()],
 }));

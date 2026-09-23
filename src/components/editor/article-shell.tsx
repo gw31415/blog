@@ -2,13 +2,16 @@ import {
   $,
   component$,
   noSerialize,
+  Slot,
   useComputed$,
   useSignal,
   useStore,
   useTask$,
   useVisibleTask$,
   type NoSerialize,
+  type QRL,
 } from "@qwik.dev/core";
+import type { JSONContent } from "@tiptap/core";
 
 import { BlogFooter, BlogHeader, BlogPaper } from "~/components/blog/blog";
 import { VirtualKeyboardViewport } from "~/components/layout/virtual-keyboard-viewport";
@@ -64,30 +67,52 @@ export function canApplyInsertDialog(dialog: InsertDialogState): boolean {
 interface EditorUiState {
   mode: "view" | "loading" | "edit";
   editorReady: boolean;
+  saving: boolean;
   error: string;
   category: string;
   publishedAt: string;
   title: string;
   subtitle: string;
   bodyMarkdown: string;
+  status: "draft" | "published";
+  alias: string;
+  aliasDialog: string | null;
   insertDialog: InsertDialogState | null;
   math: (MathEditRequest & { preview: string; error: string }) | null;
   toolbar: ToolbarState;
 }
 
-export const ArticleShell = component$(() => {
+interface ArticleShellProps {
+  article?: ArticleDraft;
+  initialHtml?: string;
+  initialContent?: JSONContent;
+  publicationStatus?: "draft" | "published";
+  canonicalAlias?: string | null;
+  autoEditFromQuery?: boolean;
+  canEdit?: boolean;
+  onSave$?: QRL<
+    (draft: ArticleDraft & { status: "draft" | "published"; alias: string }) => Promise<void>
+  >;
+}
+
+export const ArticleShell = component$((props: ArticleShellProps) => {
+  const article = props.article ?? INITIAL_ARTICLE;
   const editorMount = useSignal<HTMLElement>();
   const formattingToolbar = useSignal<HTMLElement>();
   const controller = useSignal<NoSerialize<EditorController>>();
   const ui = useStore<EditorUiState>({
     mode: "view",
     editorReady: false,
+    saving: false,
     error: "",
-    category: INITIAL_ARTICLE.category,
-    publishedAt: INITIAL_ARTICLE.publishedAt,
-    title: INITIAL_ARTICLE.title,
-    subtitle: INITIAL_ARTICLE.subtitle,
-    bodyMarkdown: INITIAL_ARTICLE.bodyMarkdown,
+    category: article.category,
+    publishedAt: article.publishedAt,
+    title: article.title,
+    subtitle: article.subtitle,
+    bodyMarkdown: article.bodyMarkdown,
+    status: props.publicationStatus ?? "published",
+    alias: props.canonicalAlias ?? "",
+    aliasDialog: null,
     insertDialog: null,
     math: null,
     toolbar: {
@@ -179,33 +204,81 @@ export const ArticleShell = component$(() => {
   });
 
   const enterEdit$ = $(async () => {
-    if (!editorMount.value || ui.mode !== "view") return;
+    const mount = editorMount.value ?? document.querySelector<HTMLElement>("[data-editor-mount]");
+    if (!mount || ui.mode !== "view") return;
     ui.mode = "loading";
     ui.error = "";
-    try {
-      if (!controller.value) {
-        controller.value = noSerialize(createEditorController(loadEditorRuntime));
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (!controller.value) {
+          controller.value = noSerialize(createEditorController(loadEditorRuntime));
+        }
+        await controller.value?.enterEdit(mount, {
+          content: props.initialContent ?? INITIAL_ARTICLE_JSON,
+          onUpdate: (markdown) => {
+            ui.bodyMarkdown = markdown;
+          },
+          onSelectionChange: (state) => {
+            ui.toolbar = state;
+          },
+          onMathEdit: (request) => void openMathEditor$(request),
+        });
+        ui.editorReady = true;
+        ui.mode = "edit";
+        return;
+      } catch (error) {
+        let failure = error;
+        if (attempt === 0 && error instanceof Promise) {
+          try {
+            await error;
+            continue;
+          } catch (loadError) {
+            failure = loadError;
+          }
+        }
+        ui.mode = "view";
+        ui.error =
+          failure instanceof Error ? failure.message : "エディターを読み込めませんでした。";
+        return;
       }
-      await controller.value?.enterEdit(editorMount.value, {
-        content: INITIAL_ARTICLE_JSON,
-        onUpdate: (markdown) => {
-          ui.bodyMarkdown = markdown;
-        },
-        onSelectionChange: (state) => {
-          ui.toolbar = state;
-        },
-        onMathEdit: (request) => void openMathEditor$(request),
-      });
-      ui.editorReady = true;
-      ui.mode = "edit";
-    } catch (error) {
-      ui.mode = "view";
-      ui.error = error instanceof Error ? error.message : "エディターを読み込めませんでした。";
     }
   });
 
-  const enterView$ = $(() => {
-    if (!canSwitchToView(ui.mode)) return;
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(
+    () => {
+      if (props.autoEditFromQuery && new URLSearchParams(window.location.search).has("edit")) {
+        void enterEdit$();
+      }
+    },
+    { strategy: "document-ready" },
+  );
+
+  const enterView$ = $(async () => {
+    if (!canSwitchToView(ui.mode) || ui.saving) return;
+    if (props.onSave$) {
+      ui.error = "";
+      ui.saving = true;
+      try {
+        await props.onSave$({
+          category: ui.category,
+          publishedAt: ui.publishedAt,
+          title: ui.title,
+          subtitle: ui.subtitle,
+          bodyMarkdown: controller.value?.getMarkdown() ?? ui.bodyMarkdown,
+          status: ui.status,
+          alias: ui.alias.trim(),
+        });
+        if (props.autoEditFromQuery && new URLSearchParams(window.location.search).has("edit")) {
+          window.history.replaceState(window.history.state, "", window.location.pathname);
+        }
+      } catch (error) {
+        ui.error = error instanceof Error ? error.message : "保存できませんでした。";
+        return;
+      } finally {
+        ui.saving = false;
+      }
+    }
     controller.value?.enterView();
     ui.insertDialog = null;
     ui.math = null;
@@ -261,18 +334,24 @@ export const ArticleShell = component$(() => {
     <ArticleStyleBoundary>
       <VirtualKeyboardViewport>
         <BlogPaper>
+          <Slot />
           <BlogHeader
             category={ui.category}
             dateTime={ui.publishedAt}
             dateLabel={presentation.dateLabel}
+            publicationStatus={props.publicationStatus ? ui.status : undefined}
             title={ui.title}
             subtitle={ui.subtitle}
             editable={editable.value}
+            canEdit={props.canEdit !== false}
             editLoading={ui.mode === "loading"}
             onEditIntent$={preloadEditor$}
             onEditRequest$={enterEdit$}
             onCategoryInput$={$((value) => (ui.category = value))}
             onDateInput$={$((value) => (ui.publishedAt = value))}
+            onPublicationToggle$={$(() => {
+              ui.status = ui.status === "published" ? "draft" : "published";
+            })}
             onTitleInput$={$((value) => (ui.title = value))}
             onSubtitleInput$={$((value) => (ui.subtitle = value))}
           />
@@ -281,7 +360,7 @@ export const ArticleShell = component$(() => {
             data-layout-key="article"
             data-editor-mount
             ref={editorMount}
-            dangerouslySetInnerHTML={INITIAL_ARTICLE_HTML}
+            dangerouslySetInnerHTML={props.initialHtml ?? INITIAL_ARTICLE_HTML}
           ></article>
           <BlogFooter left="日々の記録" right={presentation.footerRight} />
         </BlogPaper>
@@ -289,8 +368,8 @@ export const ArticleShell = component$(() => {
         {ui.mode === "edit" && (
           <aside q:slot="bottom" class="editor-dock" aria-label="記事編集ツール">
             <div class="editor-dock-head">
-              <button type="button" class="editor-done" onClick$={enterView$}>
-                完了
+              <button type="button" class="editor-done" disabled={ui.saving} onClick$={enterView$}>
+                {ui.saving ? "…" : "完了"}
               </button>
               <div
                 ref={formattingToolbar}
@@ -385,6 +464,11 @@ export const ArticleShell = component$(() => {
                 >
                   リンク
                 </button>
+                {props.onSave$ && (
+                  <button type="button" onClick$={() => (ui.aliasDialog = ui.alias)}>
+                    記事URL
+                  </button>
+                )}
                 <button
                   type="button"
                   aria-pressed={ui.toolbar.codeBlock}
@@ -433,7 +517,7 @@ export const ArticleShell = component$(() => {
 
       {ui.error && (
         <p class="editor-error" role="alert">
-          エディターを開始できませんでした: {ui.error}
+          {ui.error}
         </p>
       )}
 
@@ -517,6 +601,52 @@ export const ArticleShell = component$(() => {
               <button type="submit" disabled={!canApplyInsertDialog(ui.insertDialog)}>
                 挿入
               </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {ui.aliasDialog !== null && (
+        <div
+          class="editor-dialog-backdrop"
+          role="presentation"
+          onClick$={() => (ui.aliasDialog = null)}
+        >
+          <form
+            class="editor-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="alias-dialog-title"
+            onClick$={(event) => event.stopPropagation()}
+            preventdefault:submit
+            onSubmit$={(_, form) => {
+              const value = new FormData(form).get("alias");
+              ui.alias = typeof value === "string" ? value.trim() : "";
+              ui.aliasDialog = null;
+            }}
+          >
+            <div class="editor-dialog-heading">
+              <p>記事の設定</p>
+              <h2 id="alias-dialog-title">記事URL</h2>
+            </div>
+            <div class="editor-dialog-fields">
+              <label>
+                エイリアス（任意）
+                <input
+                  name="alias"
+                  value={ui.aliasDialog}
+                  pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                  maxLength={80}
+                  autoFocus
+                  onInput$={(_, element) => (ui.aliasDialog = element.value)}
+                />
+              </label>
+            </div>
+            <div class="editor-dialog-actions">
+              <button type="button" onClick$={() => (ui.aliasDialog = null)}>
+                キャンセル
+              </button>
+              <button type="submit">決定</button>
             </div>
           </form>
         </div>

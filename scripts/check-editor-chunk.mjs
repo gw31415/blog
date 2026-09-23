@@ -1,7 +1,23 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const manifest = JSON.parse(readFileSync("dist/q-manifest.json", "utf8"));
-const html = readFileSync("dist/index.html", "utf8");
+const previewUrl = process.env.BLOG_PREVIEW_URL;
+if (!existsSync("dist/index.html") && !previewUrl) {
+  throw new Error("Set BLOG_PREVIEW_URL to a running SSR preview to check the initial HTML.");
+}
+const html = existsSync("dist/index.html")
+  ? readFileSync("dist/index.html", "utf8")
+  : previewUrl
+    ? (
+        await Promise.all(
+          ["/", "/sample"].map(async (path) => {
+            const response = await fetch(new URL(path, previewUrl));
+            if (!response.ok) throw new Error(`Preview ${path} returned ${response.status}`);
+            return response.text();
+          }),
+        )
+      ).join("\n")
+    : "";
 const bundles = Object.entries(manifest.bundles);
 const initialBundles = bundles.filter(([name]) => html.includes(name)).map(([name]) => name);
 
