@@ -198,14 +198,10 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
             </button>
           </span>
         )}
-
         {props.canEdit !== false && (
           <button
             type="button"
-            class={{
-              "article-edit-action": true,
-              "is-hidden": props.editable,
-            }}
+            class={{ "article-header-edit": true, "is-hidden": props.editable }}
             aria-busy={props.editLoading}
             aria-hidden={props.editable}
             disabled={props.editable || props.editLoading}
@@ -214,7 +210,7 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
             onFocus$={props.onEditIntent$}
             onClick$={props.onEditRequest$}
           >
-            <span class="article-edit-label">{props.editLoading ? "…" : "編集"}</span>
+            {props.editLoading ? "…" : "編集"}
           </button>
         )}
       </div>

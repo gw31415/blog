@@ -70,7 +70,8 @@ describe("article shell", () => {
     const headerSource = readFileSync(new URL("../blog/blog.tsx", import.meta.url), "utf8");
 
     expect(source).toContain("preloadEditor$");
-    expect(source).toContain("onEditIntent$={preloadEditor$}");
+    expect(source).toContain("onPointerEnter$={preloadEditor$}");
+    expect(source).toContain("onFocus$={preloadEditor$}");
     expect(headerSource).toContain("onPointerEnter$={props.onEditIntent$}");
     expect(headerSource).toContain("onFocus$={props.onEditIntent$}");
   });

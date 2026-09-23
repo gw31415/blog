@@ -36,7 +36,7 @@ interface CodeLanguageControlRects {
 }
 
 const EXCLUDED_LAYOUT =
-  ".article-edit-action, .editor-dock, .editor-error, .math-dialog, [data-editor-overlay], details:not([open]) > :not(summary:first-of-type)";
+  ".article-header-edit, .article-sticky-edit, .editor-dock, .editor-error, .math-dialog, [data-editor-overlay], details:not([open]) > :not(summary:first-of-type)";
 
 export async function captureArticleLayout(page: Page): Promise<ArticleLayoutSnapshot> {
   await page.evaluate(() => document.fonts.ready);
@@ -231,9 +231,7 @@ async function waitForEditShell(page: Page): Promise<void> {
 
 async function waitForViewShell(page: Page): Promise<void> {
   await expect(page.locator('[data-editor-mode="view"]')).toBeVisible();
-  const editAction = page.locator(".article-edit-action");
-  await expect(editAction).toHaveAttribute("aria-hidden", "false");
-  await expect(editAction).not.toHaveClass(/is-hidden/);
+  const editAction = page.getByRole("button", { name: "編集", exact: true });
   await expect(editAction).toBeEnabled();
   await expect(editAction).toBeVisible();
   await expect(page.getByRole("button", { name: "編集", exact: true })).toBeVisible();
@@ -252,11 +250,26 @@ async function activateDoneButton(page: Page): Promise<void> {
   });
 }
 
-test("keeps mode actions inside the article and editing tools", async ({ page }) => {
+async function clickVisibleStickyEdit(page: Page): Promise<void> {
+  const box = await page.locator(".article-sticky-edit").boundingBox();
+  if (!box) throw new Error("Sticky edit action is not visible");
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  const canClick = await page.evaluate(
+    (point) =>
+      Boolean(document.elementFromPoint(point.x, point.y)?.closest(".article-sticky-edit")),
+    { x, y },
+  );
+  if (!canClick) throw new Error("Sticky edit action is covered");
+  await page.mouse.click(x, y);
+}
+
+test("keeps mode actions in the visible header and editing tools", async ({ page }) => {
   await page.goto("/sample");
 
   const header = page.locator('[data-layout-key="header"]');
   await expect(header.getByRole("button", { name: "編集", exact: true })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "記事の現在位置" })).toBeHidden();
   await expect(page.locator(".mode-switch")).toHaveCount(0);
 
   await header.getByRole("button", { name: "編集", exact: true }).click();
@@ -266,44 +279,24 @@ test("keeps mode actions inside the article and editing tools", async ({ page })
   await waitForViewShell(page);
 });
 
-test("keeps the paper-edge edit tab in reach while the article scrolls", async ({ page }) => {
+test("keeps the header edit action in reach while the article scrolls", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/sample");
 
-  const editAction = page.getByRole("button", { name: "編集", exact: true });
-  const initial = await editAction.boundingBox();
-  expect(initial).not.toBeNull();
+  const regularEdit = page.locator(".article-header-edit");
+  const stickyEdit = page.locator(".article-sticky-edit");
+  await expect(regularEdit).toBeVisible();
+  await expect(stickyEdit).toBeHidden();
 
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-  await expect(editAction).toBeVisible();
-  const scrolled = await editAction.boundingBox();
+  await expect(regularEdit).toBeHidden();
+  await expect(stickyEdit).toBeVisible();
+  const scrolled = await stickyEdit.boundingBox();
 
   expect(scrolled).not.toBeNull();
-  expect(scrolled!.y).toBeCloseTo(initial!.y, 0);
-});
-
-test("places the desktop and mobile edit tabs at the same below-center position", async ({
-  page,
-}) => {
-  const centerRatios: number[] = [];
-  for (const viewport of [
-    { width: 1280, height: 900 },
-    { width: 390, height: 844 },
-  ]) {
-    await page.setViewportSize(viewport);
-    await page.goto("/sample");
-
-    const action = await page.getByRole("button", { name: "編集", exact: true }).boundingBox();
-    expect(action).not.toBeNull();
-
-    const centerY = action!.y + action!.height / 2;
-    centerRatios.push(centerY / viewport.height);
-    expect(centerY).toBeGreaterThan(viewport.height * 0.62);
-    expect(centerY).toBeLessThan(viewport.height * 0.75);
-    expect(viewport.height - (action!.y + action!.height)).toBeGreaterThan(viewport.height * 0.2);
-  }
-
-  expect(centerRatios[0]).toBeCloseTo(centerRatios[1], 2);
+  expect(scrolled!.y).toBeLessThan(52);
+  await clickVisibleStickyEdit(page);
+  await waitForEditShell(page);
 });
 
 test("sets Japanese body copy with one-and-a-half line spacing", async ({ page }) => {
@@ -320,75 +313,71 @@ test("sets Japanese body copy with one-and-a-half line spacing", async ({ page }
   expect(metrics).toEqual({ fontSize: 15, lineHeight: 22.5 });
 });
 
-test("keeps mobile paper padding symmetric and the edit tab compact", async ({ page }) => {
+test("keeps mobile paper padding symmetric and the edit action at the regular header right", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/sample");
 
   const action = await page.getByRole("button", { name: "編集", exact: true }).boundingBox();
-  const labelLocator = page.locator(".article-edit-label");
-  const label = await labelLocator.boundingBox();
+  const header = await page.locator('[data-layout-key="header"] .meta').boundingBox();
+  const stickyX = await page.locator(".article-sticky-edit").evaluate((button) => {
+    return button.getBoundingClientRect().x;
+  });
+  const categoryX = await page.locator(".meta-category").evaluate((category) => {
+    return category.getBoundingClientRect().x;
+  });
   const paper = await page.locator('[data-layout-key="paper"]').boundingBox();
   const content = await page.locator(".content").boundingBox();
-  const textCenterDelta = await labelLocator.evaluate((element) => {
-    const range = document.createRange();
-    range.selectNodeContents(element);
-    const text = range.getBoundingClientRect();
-    const box = element.getBoundingClientRect();
-    return Math.abs(text.x + text.width / 2 - (box.x + box.width / 2));
-  });
 
   expect(action?.width).toBeGreaterThanOrEqual(44);
-  expect(action?.height).toBe(44);
-  expect(label).not.toBeNull();
-  expect(label?.height).toBe(36);
-  expect(label?.width).toBe(16);
-  expect(label!.y + label!.height / 2).toBeCloseTo(action!.y + action!.height / 2, 0);
+  expect(action?.height).toBeGreaterThanOrEqual(32);
+  expect(header).not.toBeNull();
+  expect(action!.x + action!.width).toBeLessThanOrEqual(header!.x + header!.width);
+  expect(action!.x).toBeGreaterThan(header!.x + header!.width / 2);
+  expect(action!.x).toBeCloseTo(stickyX, 0);
+  expect(action!.y).toBeGreaterThanOrEqual(header!.y);
+  expect(action!.y + action!.height).toBeLessThanOrEqual(header!.y + header!.height);
   expect(paper).not.toBeNull();
   expect(content).not.toBeNull();
   expect(content!.x).toBeCloseTo(390 - (content!.x + content!.width), 0);
-  expect(label!.x).toBeCloseTo(paper!.x + 4, 0);
-  expect(label!.x + label!.width).toBeLessThan(content!.x);
-  expect(action!.x + action!.width).toBeLessThan(390 / 2);
-  expect(textCenterDelta).toBeLessThanOrEqual(0.5);
+  expect(categoryX).toBeCloseTo(content!.x, 0);
 });
 
-test("keeps the vertical edit label free of a detached hover underline", async ({ page }) => {
+test("keeps the header edit label free of a detached hover underline", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/sample");
 
   const action = page.getByRole("button", { name: "編集", exact: true });
-  const label = page.locator(".article-edit-label");
   await action.hover();
 
-  await expect(label).toHaveCSS("text-decoration-line", "none");
+  await expect(action).toHaveCSS("text-decoration-line", "none");
 });
 
-test("keeps the desktop edit tab away from the right scrollbar", async ({ page }) => {
+test("keeps the desktop edit action at the regular header right", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/sample");
 
   const action = await page.getByRole("button", { name: "編集", exact: true }).boundingBox();
-  const labelLocator = page.locator(".article-edit-label");
-  const label = await labelLocator.boundingBox();
-  const paper = await page.locator('[data-layout-key="paper"]').boundingBox();
-  const content = await page.locator(".content").boundingBox();
-  const textCenterDelta = await labelLocator.evaluate((element) => {
-    const range = document.createRange();
-    range.selectNodeContents(element);
-    const text = range.getBoundingClientRect();
-    const box = element.getBoundingClientRect();
-    return Math.abs(text.x + text.width / 2 - (box.x + box.width / 2));
+  const header = await page.locator('[data-layout-key="header"] .meta').boundingBox();
+  const stickyX = await page.locator(".article-sticky-edit").evaluate((button) => {
+    return button.getBoundingClientRect().x;
   });
+  const categoryX = await page.locator(".meta-category").evaluate((category) => {
+    return category.getBoundingClientRect().x;
+  });
+  const content = await page.locator(".content").boundingBox();
+  const paper = await page.locator('[data-layout-key="paper"]').boundingBox();
 
   expect(action).not.toBeNull();
-  expect(label).not.toBeNull();
-  expect(label?.width).toBe(24);
+  expect(header).not.toBeNull();
   expect(paper).not.toBeNull();
-  expect(content).not.toBeNull();
-  expect(label!.x).toBeCloseTo(paper!.x + 4, 0);
-  expect(label!.x + label!.width).toBeLessThan(content!.x);
-  expect(action!.x + action!.width).toBeLessThan(1280 / 2);
-  expect(textCenterDelta).toBeLessThanOrEqual(0.5);
+  expect(header!.x).toBeGreaterThan(paper!.x);
+  expect(header!.x + header!.width).toBeLessThan(paper!.x + paper!.width);
+  expect(action!.x).toBeGreaterThan(header!.x + header!.width / 2);
+  expect(action!.x).toBeCloseTo(stickyX, 0);
+  expect(action!.x + action!.width).toBeLessThanOrEqual(header!.x + header!.width);
+  expect(categoryX).toBeCloseTo(content!.x, 0);
 });
 
 test("shows only an ellipsis while the editor starts", async ({ page }) => {
@@ -401,7 +390,7 @@ test("shows only an ellipsis while the editor starts", async ({ page }) => {
   });
   await page.goto("/sample");
 
-  const editButton = page.locator(".article-edit-action");
+  const editButton = page.locator(".article-header-edit");
   const click = editButton.click();
   await expect(editButton).toHaveAttribute("aria-busy", "true");
   await expect(editButton).toHaveText("…");
@@ -566,7 +555,8 @@ for (const width of [390, 1280]) {
     await page.goto("/sample");
     const viewport = page.locator("[data-virtual-keyboard-viewport]");
     await page.evaluate(() => window.scrollTo(0, 500));
-    await page.getByRole("button", { name: "編集", exact: true }).click();
+    await expect(page.locator(".article-sticky-edit")).toBeVisible();
+    await clickVisibleStickyEdit(page);
     await waitForEditShell(page);
     await expect(viewport).toHaveAttribute("data-internal-scroll", "");
     await expect.poll(() => viewport.evaluate((root) => root.scrollTop)).toBe(500);
@@ -831,17 +821,23 @@ for (const viewportSize of [
   { width: 1280, height: 900 },
   { width: 390, height: 844 },
 ] as const) {
-  test(`shows the article header only after scrolling at ${viewportSize.width}px`, async ({
+  test(`shows the sticky article header only after scrolling at ${viewportSize.width}px`, async ({
     page,
   }) => {
     await page.setViewportSize(viewportSize);
     await page.goto("/sample");
 
-    const header = page.getByRole("navigation", { name: "記事の現在位置" });
+    const header = page.locator(".article-sticky-header");
     await expect(header).toBeHidden();
+    await expect(header).toHaveCSS("transition-property", "opacity, transform, visibility");
+    await expect(header).toHaveCSS("transition-duration", "0.24s, 0.24s, 0.24s");
+    await expect(page.locator(".article-header-edit")).toBeVisible();
 
+    await page.evaluate(() => window.scrollTo(0, 1));
+    await expect(header).toBeVisible();
     await page.evaluate(() => window.scrollTo(0, 200));
     await expect(header).toBeVisible();
+    await expect(header.getByRole("button", { name: "編集" })).toBeVisible();
     await expect(header).toContainText("ブログ名（仮）");
     await expect(header.locator(".article-sticky-title")).toHaveText(
       await page.locator('[data-layout-key="header"] h1').innerText(),
@@ -854,11 +850,11 @@ for (const viewportSize of [
     const box = await header.boundingBox();
     const titleBox = await header.locator(".article-sticky-title").boundingBox();
     expect(box!.width).toBeLessThanOrEqual(viewportSize.width);
-    expect(box!.height).toBeLessThan(36);
+    expect(box!.height).toBeLessThan(52);
     expect(titleBox).not.toBeNull();
     expect(
       Math.abs(titleBox!.y - box!.y - (box!.y + box!.height - titleBox!.y - titleBox!.height)),
-    ).toBeLessThanOrEqual(1);
+    ).toBeLessThanOrEqual(2);
     expect(dateBox!.x + dateBox!.width).toBeLessThanOrEqual(box!.x + box!.width);
 
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
@@ -866,6 +862,7 @@ for (const viewportSize of [
 
     await page.evaluate(() => window.scrollTo(0, 0));
     await expect(header).toBeHidden();
+    await expect(page.locator(".article-header-edit")).toBeVisible();
   });
 }
 

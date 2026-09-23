@@ -351,6 +351,19 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
           <time class="article-sticky-date" dateTime={ui.publishedAt}>
             （{presentation.shortDate}）
           </time>
+          {props.canEdit !== false && ui.mode !== "edit" && (
+            <button
+              type="button"
+              class="article-sticky-edit"
+              aria-busy={ui.mode === "loading"}
+              disabled={ui.mode === "loading"}
+              onPointerEnter$={preloadEditor$}
+              onFocus$={preloadEditor$}
+              onClick$={enterEdit$}
+            >
+              {ui.mode === "loading" ? "…" : "編集"}
+            </button>
+          )}
         </nav>
         <BlogPaper>
           <Slot />

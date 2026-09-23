@@ -36,6 +36,7 @@ const articleShellStyles = css`
   --body-size: 15px;
   --body-leading: 22.5px;
   --paper-inset: clamp(22px, 7vw, 68px);
+  --sticky-edit-inset: calc(clamp(22px, 4vw, 32px) - 8px);
   --section-gap: clamp(22px, 4vw, 40px);
 
   --latin-serif:
@@ -69,6 +70,8 @@ const articleShellStyles = css`
     box-sizing: border-box;
   }
   & .paper {
+    --paper-inner-width: calc(min(100vw, 760px) - var(--paper-inset) - var(--paper-inset));
+
     position: relative;
     isolation: isolate;
 
@@ -195,11 +198,11 @@ const articleShellStyles = css`
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transform: translate(-50%, -100%);
+    transform: translate(-50%, -8px);
     transition:
-      opacity 150ms ease,
-      transform 150ms ease,
-      visibility 150ms;
+      opacity 240ms ease-out,
+      transform 240ms ease-out,
+      visibility 240ms;
   }
 
   & [data-virtual-keyboard-viewport][data-scrolled] .article-sticky-header {
@@ -226,6 +229,37 @@ const articleShellStyles = css`
     color: var(--muted);
   }
 
+  & .article-sticky-edit {
+    flex: none;
+    min-width: 44px;
+    min-height: 32px;
+    margin: -7px -8px -7px auto;
+    padding: 0 8px;
+    color: var(--muted);
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    cursor: pointer;
+  }
+
+  & .article-sticky-edit:hover {
+    color: var(--link);
+    background: var(--highlight);
+  }
+
+  & .article-sticky-edit:focus-visible {
+    outline: 1px solid var(--red);
+    outline-offset: -1px;
+  }
+
+  & .article-sticky-edit:disabled {
+    cursor: wait;
+    opacity: 0.58;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     & .article-sticky-header {
       transition: none;
@@ -248,12 +282,16 @@ const articleShellStyles = css`
   }
 
   & .meta {
+    --meta-overhang: max(0px, calc((var(--paper-inner-width) - 100%) / 2));
+
     position: relative;
     display: flex;
+    width: calc(var(--paper-inner-width) + var(--paper-inset) - var(--sticky-edit-inset));
     align-items: center;
     gap: 0.9em;
 
-    margin-bottom: 1.2rem;
+    margin: 0 0 1.2rem calc(0px - var(--meta-overhang));
+    padding-left: var(--meta-overhang);
 
     font-family: var(--sans);
     font-size: 11px;
@@ -262,68 +300,39 @@ const articleShellStyles = css`
     letter-spacing: 0.09em;
   }
 
-  & .article-edit-action {
-    position: fixed;
-    z-index: 30;
-    top: 68%;
-    left: max(0px, calc((100vw - 760px) / 2));
-    display: grid;
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    align-items: center;
-    justify-items: start;
-    color: var(--faint);
+  & .article-header-edit {
+    flex: none;
+    min-width: 44px;
+    min-height: 32px;
+    margin-left: auto;
+    padding: 0 8px;
+    color: var(--muted);
     border: 0;
     background: transparent;
     font-family: inherit;
-    font-size: 10px;
-    font-stretch: inherit;
-    font-style: inherit;
-    font-variant: inherit;
+    font-size: inherit;
     font-weight: inherit;
     line-height: inherit;
     cursor: pointer;
-    transform: translateY(-50%);
   }
 
-  & .article-edit-label {
-    display: grid;
-    width: 24px;
-    height: 44px;
-    margin-left: 4px;
-    padding: 5px 4px;
-    place-items: center;
-    border: 0;
-    background: rgb(242 234 213 / 92%);
-    box-shadow:
-      inset 0 0 0 1px var(--line-soft),
-      3px 3px 10px rgb(40 30 20 / 6%);
-    letter-spacing: 0.18em;
-    line-height: 1;
-    writing-mode: vertical-rl;
-  }
-
-  & .article-edit-action:hover .article-edit-label {
+  & .article-header-edit:hover {
     color: var(--link);
     background: var(--highlight);
   }
 
-  & .article-edit-action:focus-visible {
-    outline: 0;
-  }
-
-  & .article-edit-action:focus-visible .article-edit-label {
+  & .article-header-edit:focus-visible {
     outline: 1px solid var(--red);
-    outline-offset: -5px;
+    outline-offset: -1px;
   }
 
-  & .article-edit-action:disabled {
+  & .article-header-edit:disabled {
     cursor: wait;
     opacity: 0.58;
   }
 
-  & .article-edit-action.is-hidden {
+  & .article-header-edit.is-hidden,
+  & [data-virtual-keyboard-viewport][data-scrolled] .article-header-edit {
     visibility: hidden;
     pointer-events: none;
   }
@@ -1707,12 +1716,6 @@ const articleShellStyles = css`
         max(var(--paper-inset), env(safe-area-inset-left));
 
       box-shadow: none;
-    }
-
-    & .article-edit-label {
-      width: 16px;
-      height: 36px;
-      padding: 1px;
     }
 
     & .editor-dock {
