@@ -128,7 +128,7 @@ interface BlogHeaderProps {
   category: string;
   /** <time datetime> 用の機械可読日付 (例: "2026-09-17") */
   dateTime: string;
-  /** 表示用の和文日付 (例: "九月十七日 木曜日") */
+  /** 表示用の和文日付 (例: "令和八年 九月十七日 木曜日") */
   dateLabel: string;
   publicationStatus?: "draft" | "published";
   title: string;
@@ -154,6 +154,7 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
   const initialCategory = useConstant(() => props.category);
   const initialTitle = useConstant(() => props.title);
   const initialSubtitle = useConstant(() => props.subtitle);
+  const dateParts = /^(.+年)\s*(.+月)(.+日)\s*(.曜日)$/.exec(props.dateLabel);
   return (
     <header data-layout-key="header">
       <div class="meta">
@@ -170,7 +171,21 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
 
         <span class="article-date-control">
           <time class="ink ink-muted" dateTime={props.dateTime} data-article-field="publishedAt">
-            {props.dateLabel}
+            {dateParts ? (
+              <>
+                <span class="article-date-group">
+                  <span class="article-date-unit">{dateParts[1].trim()}</span>{" "}
+                  <span class="article-date-group">
+                    <span class="article-date-unit">{dateParts[2].trim()}</span>
+                    <wbr />
+                    <span class="article-date-unit">{dateParts[3].trim()}</span>
+                  </span>
+                </span>{" "}
+                <span class="article-date-unit">{dateParts[4]}</span>
+              </>
+            ) : (
+              props.dateLabel
+            )}
           </time>
           {props.editable && (
             <input

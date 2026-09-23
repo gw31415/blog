@@ -2,9 +2,6 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vite-plus/test";
 
-import { INITIAL_ARTICLE } from "~/content/initial-article";
-import { INITIAL_ARTICLE_HTML } from "~/content/initial-article.generated";
-
 import {
   canApplyInsertDialog,
   canSwitchToView,
@@ -14,8 +11,8 @@ import {
 
 describe("article shell", () => {
   it("derives visible date and footer text from the article date", () => {
-    expect(createArticlePresentation(INITIAL_ARTICLE)).toEqual({
-      dateLabel: "九月十七日　木曜日",
+    expect(createArticlePresentation({ publishedAt: "2026-09-17" })).toEqual({
+      dateLabel: "令和八年　九月十七日　木曜日",
       shortDate: "2026.9.17",
       footerRight: "令和八年 / 2026",
     });
@@ -50,12 +47,6 @@ describe("article shell", () => {
     );
   });
 
-  it("keeps section numbers out of generated article content", () => {
-    expect(INITIAL_ARTICLE_HTML).not.toMatch(/第[一二三四五六七八九十]+節/);
-    expect(INITIAL_ARTICLE_HTML).not.toContain('class="section-number"');
-    expect(INITIAL_ARTICLE_HTML.match(/<h2(?:\s|>)/g)).toHaveLength(4);
-  });
-
   it("edits article metadata in place instead of an editor panel", () => {
     const source = readFileSync(new URL("./article-shell.tsx", import.meta.url), "utf8");
     const headerSource = readFileSync(new URL("../blog/blog.tsx", import.meta.url), "utf8");
@@ -70,9 +61,11 @@ describe("article shell", () => {
     const headerSource = readFileSync(new URL("../blog/blog.tsx", import.meta.url), "utf8");
 
     expect(source).toContain("preloadEditor$");
-    expect(source).toContain("onPointerEnter$={preloadEditor$}");
-    expect(source).toContain("onFocus$={preloadEditor$}");
-    expect(headerSource).toContain("onPointerEnter$={props.onEditIntent$}");
-    expect(headerSource).toContain("onFocus$={props.onEditIntent$}");
+    expect(source).toContain('onPointerEnter$={ui.mode === "edit" ? undefined : preloadEditor$}');
+    expect(source).toContain('onFocus$={ui.mode === "edit" ? undefined : preloadEditor$}');
+    expect(headerSource).toContain(
+      "onPointerEnter$={props.editable ? undefined : props.onEditIntent$}",
+    );
+    expect(headerSource).toContain("onFocus$={props.editable ? undefined : props.onEditIntent$}");
   });
 });

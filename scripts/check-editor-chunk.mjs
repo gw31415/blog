@@ -8,15 +8,11 @@ if (!existsSync("dist/index.html") && !previewUrl) {
 const html = existsSync("dist/index.html")
   ? readFileSync("dist/index.html", "utf8")
   : previewUrl
-    ? (
-        await Promise.all(
-          ["/", "/sample"].map(async (path) => {
-            const response = await fetch(new URL(path, previewUrl));
-            if (!response.ok) throw new Error(`Preview ${path} returned ${response.status}`);
-            return response.text();
-          }),
-        )
-      ).join("\n")
+    ? await (async () => {
+        const response = await fetch(new URL("/", previewUrl));
+        if (!response.ok) throw new Error(`Preview / returned ${response.status}`);
+        return response.text();
+      })()
     : "";
 const bundles = Object.entries(manifest.bundles);
 const initialBundles = bundles.filter(([name]) => html.includes(name)).map(([name]) => name);

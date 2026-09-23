@@ -23,8 +23,6 @@ import {
   formatShortDate,
   type ArticleDraft,
 } from "~/content/article";
-import { INITIAL_ARTICLE } from "~/content/initial-article";
-import { INITIAL_ARTICLE_HTML, INITIAL_ARTICLE_JSON } from "~/content/initial-article.generated";
 
 import {
   createEditorController,
@@ -91,9 +89,9 @@ interface EditorUiState {
 }
 
 interface ArticleShellProps {
-  article?: ArticleDraft;
-  initialHtml?: string;
-  initialContent?: JSONContent;
+  article: ArticleDraft;
+  initialHtml: string;
+  initialContent: JSONContent;
   publicationStatus?: "draft" | "published";
   canonicalAlias?: string | null;
   autoEditFromQuery?: boolean;
@@ -104,8 +102,8 @@ interface ArticleShellProps {
 }
 
 export const ArticleShell = component$((props: ArticleShellProps) => {
-  const article = props.article ?? INITIAL_ARTICLE;
-  const initialHtml = useConstant(() => props.initialHtml ?? INITIAL_ARTICLE_HTML);
+  const article = props.article;
+  const initialHtml = useConstant(() => props.initialHtml);
   const editorMount = useSignal<HTMLElement>();
   const formattingToolbar = useSignal<HTMLElement>();
   const controller = useSignal<NoSerialize<EditorController>>();
@@ -222,7 +220,7 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
           controller.value = noSerialize(createEditorController(loadEditorRuntime));
         }
         await controller.value?.enterEdit(mount, {
-          content: props.initialContent ?? INITIAL_ARTICLE_JSON,
+          content: props.initialContent,
           onUpdate: (markdown) => {
             ui.bodyMarkdown = markdown;
           },

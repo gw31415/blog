@@ -4,7 +4,8 @@ import { formatJapaneseDate, formatJapaneseEraYear, formatShortDate } from "./ar
 
 describe("article presentation", () => {
   it("derives the localized date from the ISO publication date", () => {
-    expect(formatJapaneseDate("2026-09-17")).toBe("九月十七日　木曜日");
+    expect(formatJapaneseDate("2026-09-17")).toBe("令和八年　九月十七日　木曜日");
+    expect(formatJapaneseDate("2019-05-01")).toBe("令和元年　五月一日　水曜日");
   });
 
   it("derives the Japanese era and western year for the footer", () => {

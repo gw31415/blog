@@ -10,7 +10,7 @@ export default component$(() => (
 
 const RootContent = component$(() => {
   const { url } = useLocation();
-  const isArticlePage = url.pathname === "/sample" || url.pathname.startsWith("/blog/");
+  const isArticlePage = url.pathname.startsWith("/blog/");
 
   /**
    * This is the root of a QwikRouter site. It contains the document's `<head>` and `<body>`. You can adjust them as you see fit.

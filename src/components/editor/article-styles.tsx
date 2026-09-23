@@ -287,20 +287,23 @@ const articleShellStyles = css`
     position: relative;
     display: flex;
     width: calc(var(--paper-inner-width) + var(--paper-inset) - var(--sticky-edit-inset));
-    align-items: center;
-    gap: 0.9em;
+    align-items: flex-start;
+    gap: 0.5em;
 
     margin: 0 0 1.2rem calc(0px - var(--meta-overhang));
     padding-left: var(--meta-overhang);
 
     font-family: var(--sans);
     font-size: 11px;
-    line-height: 1.3;
+    line-height: 22px;
 
     letter-spacing: 0.09em;
   }
 
   & .article-header-edit {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
     flex: none;
     min-width: 44px;
     min-height: 32px;
@@ -337,7 +340,10 @@ const articleShellStyles = css`
   }
 
   & .meta-category {
-    padding: 0.24em 0.58em;
+    flex: none;
+    white-space: nowrap;
+    padding: 0 0.58em;
+    line-height: 20px;
 
     border: 1px solid var(--line);
 
@@ -358,11 +364,22 @@ const articleShellStyles = css`
   & .article-date-control {
     position: relative;
     display: inline-grid;
+    min-width: 0;
     vertical-align: baseline;
   }
 
   & .article-date-control > * {
     grid-area: 1 / 1;
+  }
+
+  & .article-date-group {
+    display: inline-block;
+    max-width: 100%;
+    vertical-align: top;
+  }
+
+  & .article-date-unit {
+    white-space: nowrap;
   }
 
   & .article-date-input {
@@ -376,8 +393,10 @@ const articleShellStyles = css`
   }
 
   & .meta-separator {
-    width: 18px;
+    flex: none;
+    width: 12px;
     height: 1px;
+    margin-top: 10.5px;
 
     background: var(--line);
   }

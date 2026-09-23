@@ -11,15 +11,12 @@
     "check:editor-chunk": "node scripts/check-editor-chunk.mjs",
     "check.fmt": "vp fmt --check",
     "db:migrate:local": "wrangler d1 migrations apply blog-posts --local",
-    "db:seed:local": "node scripts/seed-sample-posts.mjs",
     "deploy": "pnpm run build && wrangler deploy",
     "dev": "vp dev -c adapters/cloudflare-workers/vite.config.ts --mode ssr --host 0.0.0.0",
     "fmt": "vp fmt",
-    "generate:article": "node scripts/render-initial-article.mjs",
     "lint": "vp lint",
     "preview": "pnpm run build && wrangler dev",
-    "test": "vp test run",
-    "test:layout": "playwright test tests/layout/article-layout-parity.spec.ts"
+    "test": "vp test run"
   },
   "dependencies": {
     "@tiptap/core": "3.31.3",

@@ -45,7 +45,7 @@ function toKanjiNumber(value: number): string {
 
 export function formatJapaneseDate(isoDate: string): string {
   const date = parseIsoDate(isoDate);
-  return `${toKanjiNumber(date.getUTCMonth() + 1)}月${toKanjiNumber(date.getUTCDate())}日　${WEEKDAYS[date.getUTCDay()]}曜日`;
+  return `${japaneseEraYear(date, isoDate)}　${toKanjiNumber(date.getUTCMonth() + 1)}月${toKanjiNumber(date.getUTCDate())}日　${WEEKDAYS[date.getUTCDay()]}曜日`;
 }
 
 export function formatShortDate(isoDate: string): string {
@@ -53,8 +53,7 @@ export function formatShortDate(isoDate: string): string {
   return `${date.getUTCFullYear()}.${date.getUTCMonth() + 1}.${date.getUTCDate()}`;
 }
 
-export function formatJapaneseEraYear(isoDate: string): string {
-  const date = parseIsoDate(isoDate);
+function japaneseEraYear(date: Date, isoDate: string): string {
   const parts = new Intl.DateTimeFormat("ja-JP-u-ca-japanese", {
     era: "long",
     year: "numeric",
@@ -65,5 +64,10 @@ export function formatJapaneseEraYear(isoDate: string): string {
   if (!era || !year) throw new Error(`Cannot format Japanese era: ${isoDate}`);
 
   const eraYear = /^\d+$/.test(year) ? toKanjiNumber(Number(year)) : year;
-  return `${era}${eraYear}年 / ${date.getUTCFullYear()}`;
+  return `${era}${eraYear}年`;
+}
+
+export function formatJapaneseEraYear(isoDate: string): string {
+  const date = parseIsoDate(isoDate);
+  return `${japaneseEraYear(date, isoDate)} / ${date.getUTCFullYear()}`;
 }
