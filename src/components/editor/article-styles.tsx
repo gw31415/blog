@@ -3,7 +3,7 @@ import { css } from "@qstyle/qwik";
 
 const articleShellStyles = css`
   display: contents;
-  --page-background: #ded8ca;
+  --page-background: #f2ead5;
   --paper: #f2ead5;
   --paper-deep: #e9dfc7;
 

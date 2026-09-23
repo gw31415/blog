@@ -9,6 +9,7 @@ export default component$(() => (
 
 const RootContent = component$(() => {
   const { url } = useLocation();
+  const isArticlePage = url.pathname === "/sample" || url.pathname.startsWith("/blog/");
 
   /**
    * This is the root of a QwikRouter site. It contains the document's `<head>` and `<body>`. You can adjust them as you see fit.
@@ -23,12 +24,18 @@ const RootContent = component$(() => {
           content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content, maximum-scale=1"
         />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        {isArticlePage && (
+          <>
+            <meta name="theme-color" content="#f2ead5" />
+            <style>{"html { background-color: #f2ead5; }"}</style>
+          </>
+        )}
         <DocumentHeadTags />
         <link rel="canonical" href={`${url.origin}${url.pathname}`} />
       </head>
       <body
         css={
-          url.pathname === "/sample" || url.pathname.startsWith("/blog/")
+          isArticlePage
             ? {
                 minHeight: "100%",
                 margin: 0,
@@ -38,13 +45,10 @@ const RootContent = component$(() => {
                 fontKerning: "normal",
                 fontSynthesis: "none",
                 textAutospace: "normal",
-                background: "#ded8ca",
+                background: "#f2ead5",
                 "&::selection, & ::selection": {
                   color: "#352f25",
                   background: "rgb(135 89 79 / 28%)",
-                },
-                "@media (max-width: 600px)": {
-                  background: "#f2ead5",
                 },
               }
             : undefined
