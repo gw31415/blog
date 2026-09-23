@@ -173,6 +173,9 @@ importers:
       '@types/node':
         specifier: 26.4.1
         version: 26.4.1
+      '@unocss/reset':
+        specifier: ^66.10.5
+        version: 66.10.5
       eslint-plugin-qwik:
         specifier: 2.0.0-beta.43
         version: 2.0.0-beta.43(eslint@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(typescript@7.0.2)
@@ -1646,6 +1649,9 @@ packages:
 
   '@ungap/structured-clone@1.4.0':
     resolution: {integrity: sha512-1mEZtMKPM09vDmQt5y7YvmN2+DFTP7Tg0EWXdic8/C6VRnpb33e4ghisCIE3WZjsE2N8mf+QV1Zqh7ZFYLWInQ==}
+
+  '@unocss/reset@66.10.5':
+    resolution: {integrity: sha512-AElCFeXaK+3a8LX1obMSmhYhhlRKDXXVngn0Kse7XwxHOItQqpncTU6ZKUeNNGmeoE0Vwc6MfrLw6eGE7EEpgw==}
 
   '@vitest/browser-preview@4.1.11':
     resolution: {integrity: sha512-iPKSE6Ibayey6HFgK1V1/aHgyhx7HSRk1YMi+lnBZGmlIiNV5Uc7xRkD9Su8RDylTxDECK23t7kTHdRKoqSYDQ==}
@@ -4828,6 +4834,8 @@ snapshots:
     optional: true
 
   '@ungap/structured-clone@1.4.0': {}
+
+  '@unocss/reset@66.10.5': {}
 
   '@vitest/browser-preview@4.1.11(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(vitest@4.1.11)':
     dependencies:

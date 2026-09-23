@@ -1,5 +1,6 @@
 import { component$ } from "@qwik.dev/core";
 import { DocumentHeadTags, QwikRouterProvider, RouterOutlet, useLocation } from "@qwik.dev/router";
+import "./reset.css";
 
 export default component$(() => (
   <QwikRouterProvider>

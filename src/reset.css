@@ -1,0 +1,6 @@
+@import "@unocss/reset/normalize.css";
+
+/* Keep the existing browser-default line height on the unstyled index. */
+:where(html) {
+  line-height: normal;
+}
