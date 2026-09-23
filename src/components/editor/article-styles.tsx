@@ -475,6 +475,10 @@ const articleShellStyles = css`
        ───────────────────────────── */
 
   & article {
+    /* 和文の文字サイズと行送りの差を、段落間の余白の初期値にする。
+       em は text の実測高ではない。外側のトリムは text-box-trim に任せる。 */
+    --paragraph-gap: calc(1lh - 1em);
+
     font-family: var(--serif);
 
     font-size: var(--body-size);
@@ -540,6 +544,27 @@ const articleShellStyles = css`
     margin: 0;
 
     text-indent: 1em;
+  }
+
+  @supports (text-box-trim: trim-both) {
+    & article > p,
+    & .article-content > .tiptap > p {
+      text-box-trim: trim-both;
+      overflow: visible;
+    }
+
+    /* 背景で文字を塗る .ink は箱の外を描けないため、段落は通常の文字描画にする。 */
+    & article > p.ink,
+    & .article-content > .tiptap > p.ink {
+      color: var(--ink-color);
+      -webkit-text-fill-color: var(--ink-color);
+      background-image: none;
+    }
+
+    & article > p + p,
+    & .article-content > .tiptap > p + p {
+      margin-block-start: var(--paragraph-gap);
+    }
   }
 
   & strong {
