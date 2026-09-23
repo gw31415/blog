@@ -219,6 +219,7 @@ export function expectLayoutEqual(
 
 async function waitForEditShell(page: Page): Promise<void> {
   await expect(page.locator('[data-editor-mode="edit"]')).toBeVisible();
+  await expect(page.locator(".ProseMirror")).toHaveAttribute("contenteditable", "true");
   await expect(page.getByRole("button", { name: "完了", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "編集", exact: true })).toBeHidden();
   await expect(page.locator('[data-article-field="title"]')).toHaveAttribute(
@@ -262,6 +263,29 @@ async function clickVisibleStickyEdit(page: Page): Promise<void> {
   );
   if (!canClick) throw new Error("Sticky edit action is covered");
   await page.mouse.click(x, y);
+}
+
+for (const width of [1280, 390]) {
+  test(`edits database article body after clicking edit at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    // Use a local seeded article without saving changes back to the database.
+    await page.goto("/");
+    const href = await page
+      .locator('a[href^="/blog/"]:not([href*="?"])')
+      .first()
+      .getAttribute("href");
+    expect(href, "Seed a local article before running the database editor regression").toBeTruthy();
+    await page.goto(href!);
+    await page.locator(".article-header-edit").click();
+    await waitForEditShell(page);
+    const editor = page.locator(".ProseMirror");
+    await editor.locator(":scope > p").first().click();
+    await page.keyboard.insertText("本文の編集確認");
+    await expect(editor).toContainText("本文の編集確認");
+    await page.getByRole("button", { name: "太字", exact: true }).click();
+    await expect(editor).toContainText("本文の編集確認");
+    await expect(editor).toHaveAttribute("contenteditable", "true");
+  });
 }
 
 test("keeps mode actions in the visible header and editing tools", async ({ page }) => {

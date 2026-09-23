@@ -2,8 +2,10 @@ import {
   $,
   component$,
   noSerialize,
+  RenderOnce,
   Slot,
   useComputed$,
+  useConstant,
   useSignal,
   useStore,
   useTask$,
@@ -104,6 +106,7 @@ interface ArticleShellProps {
 
 export const ArticleShell = component$((props: ArticleShellProps) => {
   const article = props.article ?? INITIAL_ARTICLE;
+  const initialHtml = useConstant(() => props.initialHtml ?? INITIAL_ARTICLE_HTML);
   const editorMount = useSignal<HTMLElement>();
   const formattingToolbar = useSignal<HTMLElement>();
   const controller = useSignal<NoSerialize<EditorController>>();
@@ -387,13 +390,16 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
             onTitleInput$={$((value) => (ui.title = value))}
             onSubtitleInput$={$((value) => (ui.subtitle = value))}
           />
-          <article
-            class="article-content"
-            data-layout-key="article"
-            data-editor-mount
-            ref={editorMount}
-            dangerouslySetInnerHTML={props.initialHtml ?? INITIAL_ARTICLE_HTML}
-          ></article>
+          {/* After mounting, Tiptap owns this DOM; mode updates must not restore the SSR HTML. */}
+          <RenderOnce>
+            <article
+              class="article-content"
+              data-layout-key="article"
+              data-editor-mount
+              ref={editorMount}
+              dangerouslySetInnerHTML={initialHtml}
+            ></article>
+          </RenderOnce>
           <BlogFooter left="日々の記録" right={presentation.footerRight} />
         </BlogPaper>
 
