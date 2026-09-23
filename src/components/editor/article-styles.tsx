@@ -331,7 +331,6 @@ const articleShellStyles = css`
     opacity: 0.58;
   }
 
-  & .article-header-edit.is-hidden,
   & [data-virtual-keyboard-viewport][data-scrolled] .article-header-edit {
     visibility: hidden;
     pointer-events: none;
@@ -348,10 +347,11 @@ const articleShellStyles = css`
 
   & [data-article-field][contenteditable="true"] {
     outline: 0;
+    caret-color: var(--red);
     cursor: text;
   }
 
-  & [data-article-field][contenteditable="true"]:focus-visible {
+  & [data-article-field][contenteditable="true"]:focus {
     box-shadow: 0 1px 0 var(--red);
   }
 
@@ -737,9 +737,9 @@ const articleShellStyles = css`
 
     background: rgb(105 75 58 / 4%);
 
-    border-top: 1px dashed var(--line);
+    border-top: 1px solid var(--line);
 
-    border-bottom: 1px dashed var(--line);
+    border-bottom: 1px solid var(--line);
 
     text-align: center;
 
@@ -773,7 +773,7 @@ const articleShellStyles = css`
   & .section-heading,
   & .article-content > h2,
   & .article-content > .tiptap > h2 {
-    margin: calc(var(--body-leading) * 3) 0 var(--body-leading);
+    margin: calc(var(--body-leading) * 2) 0 var(--body-leading);
 
     text-align: start;
   }
@@ -815,6 +815,32 @@ const articleShellStyles = css`
     line-height: 1.3;
 
     letter-spacing: 0.07em;
+  }
+
+  & .article-content > h3,
+  & .article-content > .tiptap > h3 {
+    margin: var(--body-leading) 0;
+
+    font-family: var(--sans);
+    font-size: var(--body-size);
+    font-weight: 600;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+
+    text-align: start;
+  }
+
+  & .article-content > :is(ul, ol),
+  & .article-content > .tiptap > :is(ul, ol) {
+    margin: var(--body-leading) 0;
+  }
+
+  & .article-content li > p {
+    margin: 0;
+  }
+
+  & .article-content li + li {
+    margin-top: var(--body-leading);
   }
 
   /* ─────────────────────────────
@@ -904,8 +930,8 @@ const articleShellStyles = css`
     color: var(--muted);
     -webkit-text-fill-color: var(--muted);
 
-    font: 9px/1.4 var(--sans);
-    letter-spacing: 0.08em;
+    font: 11px/1.4 var(--mono);
+    letter-spacing: normal;
     text-transform: lowercase;
   }
 
@@ -915,13 +941,13 @@ const articleShellStyles = css`
     inset: -1px;
     inline-size: calc(100% + 2px);
     block-size: calc(100% + 2px);
-    padding: 1px 20px 1px 6px;
+    padding: 1px 6px;
   }
 
   & .code-language-label {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: flex-end;
     pointer-events: none;
   }
 
@@ -1248,18 +1274,14 @@ const articleShellStyles = css`
     margin: calc(var(--body-leading) * 2) 0;
 
     overflow-x: auto;
-
-    border-top: 1px solid var(--rule);
-
-    border-bottom: 1px solid var(--rule);
   }
 
   & .article-content table {
     margin: calc(var(--body-leading) * 2) 0;
 
-    border-top: 1px solid var(--rule);
+    border-top: 2px solid var(--line-strong);
 
-    border-bottom: 1px solid var(--rule);
+    border-bottom: 2px solid var(--line-strong);
   }
 
   & .tableWrapper {
@@ -1275,7 +1297,8 @@ const articleShellStyles = css`
     width: 100%;
     min-width: 430px;
 
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
 
     font-size: 12px;
     line-height: 1.45;
@@ -1292,15 +1315,15 @@ const articleShellStyles = css`
     text-align: start;
     vertical-align: top;
 
-    border-bottom: 1px dashed var(--line-soft);
+    border-bottom: 1px solid var(--line-soft);
   }
 
   & th {
-    font-family: var(--sans);
-    font-weight: 500;
+    font-family: inherit;
+    font-weight: inherit;
   }
 
-  & tbody tr:last-child td {
+  & tbody tr:last-child > :is(th, td) {
     border-bottom: 0;
   }
 
@@ -1434,7 +1457,7 @@ const articleShellStyles = css`
 
     width: 42%;
 
-    border-top: 1px dashed var(--line);
+    border-top: 1px solid var(--red);
     border-right: 0;
     border-bottom: 0;
     border-left: 0;
@@ -1554,32 +1577,14 @@ const articleShellStyles = css`
     content: "";
   }
 
-  & .editor-dock-head {
-    position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    height: 32px;
-    border-bottom: 1px solid rgb(86 70 55 / 14%);
-  }
-
-  & .editor-dock-row {
-    grid-row: 1;
-    grid-column: 1;
-    min-width: 0;
+  & .editor-formatting {
     display: flex;
     gap: 0;
+    height: 32px;
     padding: 2px 4px;
     overflow-x: auto;
     overflow-y: hidden;
-  }
-
-  & .editor-done {
-    grid-row: 1;
-    grid-column: 2;
-    min-width: 44px;
-    border-left: 1px solid rgb(86 70 55 / 14%);
-    border-radius: 0;
-    color: var(--link);
+    border-bottom: 1px solid rgb(86 70 55 / 14%);
   }
 
   & .editor-formatting button {
@@ -1671,7 +1676,7 @@ const articleShellStyles = css`
     margin: 0 16px;
     padding: 12px;
     overflow-x: auto;
-    border: 1px dashed rgb(86 70 55 / 25%);
+    border: 1px solid rgb(86 70 55 / 25%);
     text-align: center;
   }
 

@@ -220,8 +220,9 @@ export function expectLayoutEqual(
 async function waitForEditShell(page: Page): Promise<void> {
   await expect(page.locator('[data-editor-mode="edit"]')).toBeVisible();
   await expect(page.locator(".ProseMirror")).toHaveAttribute("contenteditable", "true");
-  await expect(page.getByRole("button", { name: "完了", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "編集", exact: true })).toBeHidden();
+  await expect(page.locator(".article-header-edit")).toHaveText("完了");
+  await expect(page.locator(".article-sticky-edit")).toHaveText("完了");
+  await expect(page.getByRole("button", { name: "編集", exact: true })).toHaveCount(0);
   await expect(page.locator('[data-article-field="title"]')).toHaveAttribute(
     "contenteditable",
     "true",
@@ -236,19 +237,16 @@ async function waitForViewShell(page: Page): Promise<void> {
   await expect(editAction).toBeEnabled();
   await expect(editAction).toBeVisible();
   await expect(page.getByRole("button", { name: "編集", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "完了", exact: true })).toHaveCount(0);
+  await expect(page.locator(".article-header-edit")).toHaveText("編集");
+  await expect(page.locator(".article-sticky-edit")).toHaveText("編集");
   await expect(page.getByLabel("公開日")).toHaveCount(0);
   await expect(page.getByRole("complementary", { name: "記事編集ツール" })).toHaveCount(0);
 }
 
 async function activateDoneButton(page: Page): Promise<void> {
-  // Playwright's locator click scrolls a sticky-bottom element to its natural
-  // flow position before clicking. A real pointer click does not move the
-  // scroll container, so invoke the already-visible control in place.
-  await page.getByRole("button", { name: "完了", exact: true }).evaluate((button) => {
-    if (!(button instanceof HTMLButtonElement)) throw new Error("Done action is not a button");
-    button.click();
-  });
+  const sticky = page.locator(".article-sticky-edit");
+  const button = (await sticky.isVisible()) ? sticky : page.locator(".article-header-edit");
+  await button.click();
 }
 
 async function clickVisibleStickyEdit(page: Page): Promise<void> {
@@ -316,11 +314,40 @@ test("keeps the header edit action in reach while the article scrolls", async ({
   await expect(regularEdit).toBeHidden();
   await expect(stickyEdit).toBeVisible();
   const scrolled = await stickyEdit.boundingBox();
+  const stickyStyle = await stickyEdit.evaluate((button) => {
+    const style = getComputedStyle(button);
+    return {
+      color: style.color,
+      background: style.backgroundColor,
+      font: style.font,
+      padding: style.padding,
+    };
+  });
 
   expect(scrolled).not.toBeNull();
   expect(scrolled!.y).toBeLessThan(52);
   await clickVisibleStickyEdit(page);
   await waitForEditShell(page);
+  await expect(stickyEdit).toBeVisible();
+  await expect(stickyEdit).toHaveText("完了");
+  await page.mouse.move(0, 100);
+  const doneRect = await stickyEdit.boundingBox();
+  expect(doneRect?.x).toBe(scrolled!.x);
+  expect(doneRect?.width).toBe(scrolled!.width);
+  expect(doneRect?.height).toBeCloseTo(scrolled!.height, 0);
+  expect(
+    await stickyEdit.evaluate((button) => {
+      const style = getComputedStyle(button);
+      return {
+        color: style.color,
+        background: style.backgroundColor,
+        font: style.font,
+        padding: style.padding,
+      };
+    }),
+  ).toEqual(stickyStyle);
+  await stickyEdit.click();
+  await waitForViewShell(page);
 });
 
 test("sets Japanese body copy with one-and-a-half line spacing", async ({ page }) => {
@@ -335,6 +362,62 @@ test("sets Japanese body copy with one-and-a-half line spacing", async ({ page }
   });
 
   expect(metrics).toEqual({ fontSize: 15, lineHeight: 22.5 });
+});
+
+test("aligns code languages and spaces article headings in body lines", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/sample");
+
+  const readStyles = async () =>
+    page.evaluate(() => {
+      const root = document.querySelector<HTMLElement>(".article-content .ProseMirror");
+      const heading = root?.querySelector<HTMLElement>("h2");
+      const block = root?.querySelector<HTMLElement>("pre.code-block");
+      const control = block?.querySelector<HTMLElement>(".code-language-control");
+      const label = control?.querySelector<HTMLElement>(".code-language-label");
+      const code = block?.querySelector<HTMLElement>("code");
+      if (!root || !heading || !block || !control || !label || !code) {
+        throw new Error("Article typography fixture is incomplete");
+      }
+      const subheading = document.createElement("h3");
+      subheading.textContent = "小見出し";
+      heading.after(subheading);
+      const labelRange = document.createRange();
+      labelRange.selectNodeContents(label);
+      const result = {
+        leading: Number.parseFloat(getComputedStyle(root).lineHeight),
+        headingTop: Number.parseFloat(getComputedStyle(heading).marginTop),
+        headingBottom: Number.parseFloat(getComputedStyle(heading).marginBottom),
+        headingSize: Number.parseFloat(getComputedStyle(heading).fontSize),
+        subheadingTop: Number.parseFloat(getComputedStyle(subheading).marginTop),
+        subheadingBottom: Number.parseFloat(getComputedStyle(subheading).marginBottom),
+        subheadingSize: Number.parseFloat(getComputedStyle(subheading).fontSize),
+        subheadingWeight: getComputedStyle(subheading).fontWeight,
+        subheadingFamily: getComputedStyle(subheading).fontFamily,
+        controlFamily: getComputedStyle(control).fontFamily,
+        codeFamily: getComputedStyle(code).fontFamily,
+        languageRightGap:
+          control.getBoundingClientRect().right - labelRange.getBoundingClientRect().right,
+      };
+      subheading.remove();
+      return result;
+    });
+
+  const reading = await readStyles();
+  expect(reading.headingTop).toBe(reading.leading * 2);
+  expect(reading.headingBottom).toBe(reading.leading);
+  expect(reading.subheadingTop).toBe(reading.leading);
+  expect(reading.subheadingBottom).toBe(reading.leading);
+  expect(reading.subheadingSize).toBeLessThan(reading.headingSize);
+  expect(reading.subheadingWeight).toBe("600");
+  expect(reading.subheadingFamily).toContain("Hiragino Sans");
+  expect(reading.controlFamily).toBe(reading.codeFamily);
+  expect(reading.languageRightGap).toBeGreaterThanOrEqual(0);
+  expect(reading.languageRightGap).toBeLessThan(10);
+
+  await page.getByRole("button", { name: "編集" }).click();
+  await waitForEditShell(page);
+  expect(await readStyles()).toEqual(reading);
 });
 
 test("keeps mobile paper padding symmetric and the edit action at the regular header right", async ({
@@ -424,26 +507,45 @@ test("shows only an ellipsis while the editor starts", async ({ page }) => {
   await waitForEditShell(page);
 });
 
-test("keeps the done action separate from the scrolling formatting strip", async ({ page }) => {
-  await page.goto("/sample");
-  await page.getByRole("button", { name: "編集", exact: true }).click();
-  await waitForEditShell(page);
-
-  const layout = await page.locator(".editor-dock").evaluate((dock) => {
-    const row = dock.querySelector<HTMLElement>(".editor-formatting")?.getBoundingClientRect();
-    const done = dock.querySelector<HTMLElement>(".editor-done")?.getBoundingClientRect();
-    if (!row || !done) throw new Error("Editor toolbar layout is missing");
-
-    return {
-      formattingRight: row.right,
-      doneLeft: done.left,
-      overflowX: getComputedStyle(dock.querySelector<HTMLElement>(".editor-formatting")!).overflowX,
-    };
+for (const width of [390, 1280]) {
+  test(`replaces edit with identically styled done and keeps only formatting in the dock at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/sample");
+    const action = page.locator(".article-header-edit");
+    const edit = await action.boundingBox();
+    const style = await action.evaluate((button) => {
+      const computed = getComputedStyle(button);
+      return {
+        color: computed.color,
+        background: computed.backgroundColor,
+        font: computed.font,
+        padding: computed.padding,
+      };
+    });
+    await action.click();
+    await waitForEditShell(page);
+    await page.mouse.move(0, 0);
+    expect(await action.boundingBox()).toEqual(edit);
+    expect(
+      await action.evaluate((button) => {
+        const computed = getComputedStyle(button);
+        return {
+          color: computed.color,
+          background: computed.backgroundColor,
+          font: computed.font,
+          padding: computed.padding,
+        };
+      }),
+    ).toEqual(style);
+    await expect(page.locator(".editor-dock > .editor-formatting")).toHaveCount(1);
+    await expect(page.locator(".editor-formatting")).toHaveCSS("overflow-x", "auto");
+    await expect(
+      page.locator(".editor-dock .editor-done, .editor-dock-head, .editor-dock-row"),
+    ).toHaveCount(0);
   });
-
-  expect(layout.formattingRight).toBeLessThanOrEqual(layout.doneLeft);
-  expect(layout.overflowX).toBe("auto");
-});
+}
 
 test("keeps the editing toolbar compact with a half-line background gutter", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -457,14 +559,12 @@ test("keeps the editing toolbar compact with a half-line background gutter", asy
   const link = await page.getByRole("button", { name: "リンク", exact: true }).boundingBox();
   const image = await page.getByRole("button", { name: "画像", exact: true }).boundingBox();
   const details = await page.getByRole("button", { name: "折り畳み", exact: true }).boundingBox();
-  const done = await page.getByRole("button", { name: "完了", exact: true }).boundingBox();
 
   expect(dock).not.toBeNull();
   expect(formatting).not.toBeNull();
   expect(link).not.toBeNull();
   expect(image).not.toBeNull();
   expect(details).not.toBeNull();
-  expect(done).not.toBeNull();
   const gutter = await dockLocator.evaluate((element) => {
     const style = getComputedStyle(element, "::after");
     return {
@@ -476,12 +576,11 @@ test("keeps the editing toolbar compact with a half-line background gutter", asy
   expect(dock!.height).toBeCloseTo(45, 0);
   expect(formatting!.height).toBeLessThanOrEqual(32);
   expect(gutter.height).toBeCloseTo(12, 0);
-  expect(gutter.backgroundColor).toBe("rgb(222, 216, 202)");
+  expect(gutter.backgroundColor).toBe("rgb(242, 234, 213)");
   for (const action of [link!, image!, details!]) {
     expect(action.y).toBeGreaterThanOrEqual(formatting!.y);
     expect(action.y + action.height).toBeLessThanOrEqual(formatting!.y + formatting!.height);
   }
-  expect(done!.y).toBeCloseTo(formatting!.y, 0);
 });
 
 test("keeps the article editor focused while a formatting action is pressed", async ({ page }) => {
@@ -906,6 +1005,61 @@ test("updates the scrolling header when the article title and date are edited", 
   const header = page.getByRole("navigation", { name: "記事の現在位置" });
   await expect(header.locator(".article-sticky-title")).toHaveText("更新した記事タイトル");
   await expect(header.locator("time")).toHaveText("（2026.10.1）");
+});
+
+test("shows the caret and keeps focus while editing the title and subtitle", async ({ page }) => {
+  await page.setViewportSize({ width: 564, height: 717 });
+  await page.goto("/sample");
+  await page.getByRole("button", { name: "編集", exact: true }).click();
+  await waitForEditShell(page);
+
+  for (const field of ["title", "subtitle"]) {
+    const editable = page.locator(`[data-article-field="${field}"]`);
+    await editable.click();
+    await editable.evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      range.collapse(false);
+      const selection = document.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    });
+    const caretOffset = () =>
+      editable.evaluate((element) => {
+        const selection = document.getSelection();
+        if (!selection?.anchorNode || !element.contains(selection.anchorNode)) return -1;
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        range.setEnd(selection.anchorNode, selection.anchorOffset);
+        return range.toString().length;
+      });
+    await expect(editable).toBeFocused();
+    await expect(editable).toHaveCSS("caret-color", "rgb(135, 89, 79)");
+    await expect(editable).toHaveCSS("box-shadow", /rgb\(135, 89, 79\)/);
+    expect(await caretOffset()).toBe((await editable.textContent())?.length);
+    for (const character of "ABC") {
+      await page.keyboard.type(character);
+      if (field === "title") {
+        await expect(page.locator(".article-sticky-title")).toContainText(character);
+      }
+      await expect.poll(caretOffset).toBe((await editable.textContent())?.length);
+    }
+    await expect(editable).toBeFocused();
+    await expect(editable).toContainText("ABC");
+  }
+
+  await activateDoneButton(page);
+  await waitForViewShell(page);
+  await expect(page.locator('[data-article-field="title"]')).toContainText("ABC");
+  await expect(page.locator('[data-article-field="subtitle"]')).toContainText("ABC");
+
+  const stickyEdit = page.locator(".article-sticky-edit");
+  await (
+    (await stickyEdit.isVisible()) ? stickyEdit : page.locator(".article-header-edit")
+  ).click();
+  await waitForEditShell(page);
+  await expect(page.locator('[data-article-field="title"]')).toContainText("ABC");
+  await expect(page.locator('[data-article-field="subtitle"]')).toContainText("ABC");
 });
 
 test("keeps the bottom toolbar clear of mobile category and date fields", async ({ page }) => {

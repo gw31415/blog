@@ -9,7 +9,7 @@
  * dangerouslySetInnerHTML で埋め込む。初期表示でクライアント側の
  * MathJax / highlight.js 実行や CDN スクリプトは不要。
  */
-import { Slot, component$, type QRL } from "@qwik.dev/core";
+import { RenderOnce, Slot, component$, useConstant, type QRL } from "@qwik.dev/core";
 
 /** 紙面の土台。方眼・紙テクスチャ・本文カラムを提供する。 */
 export const BlogPaper = component$(() => {
@@ -136,8 +136,10 @@ interface BlogHeaderProps {
   editable?: boolean;
   canEdit?: boolean;
   editLoading?: boolean;
+  saving?: boolean;
   onEditIntent$?: QRL<() => void>;
   onEditRequest$?: QRL<() => void>;
+  onDoneRequest$?: QRL<() => void>;
   onCategoryInput$?: QRL<(value: string) => void>;
   onDateInput$?: QRL<(value: string) => void>;
   onPublicationToggle$?: QRL<() => void>;
@@ -147,6 +149,11 @@ interface BlogHeaderProps {
 
 /** 記事ヘッダー (カテゴリ・日付・公開状態・題・副題)。 */
 export const BlogHeader = component$((props: BlogHeaderProps) => {
+  // These contentEditable text nodes belong to the browser while editing.
+  // Replacing them on each store update moves the selection back to the start.
+  const initialCategory = useConstant(() => props.category);
+  const initialTitle = useConstant(() => props.title);
+  const initialSubtitle = useConstant(() => props.subtitle);
   return (
     <header data-layout-key="header">
       <div class="meta">
@@ -156,7 +163,7 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
           contentEditable={props.editable ? "true" : undefined}
           onInput$={(_, element) => props.onCategoryInput$?.(element.textContent ?? "")}
         >
-          {props.category}
+          <RenderOnce>{initialCategory}</RenderOnce>
         </span>
 
         <span class="meta-separator" aria-hidden="true"></span>
@@ -201,16 +208,14 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
         {props.canEdit !== false && (
           <button
             type="button"
-            class={{ "article-header-edit": true, "is-hidden": props.editable }}
-            aria-busy={props.editLoading}
-            aria-hidden={props.editable}
-            disabled={props.editable || props.editLoading}
-            tabIndex={props.editable ? -1 : undefined}
-            onPointerEnter$={props.onEditIntent$}
-            onFocus$={props.onEditIntent$}
-            onClick$={props.onEditRequest$}
+            class="article-header-edit"
+            aria-busy={props.editLoading || props.saving}
+            disabled={props.editLoading || props.saving}
+            onPointerEnter$={props.editable ? undefined : props.onEditIntent$}
+            onFocus$={props.editable ? undefined : props.onEditIntent$}
+            onClick$={props.editable ? props.onDoneRequest$ : props.onEditRequest$}
           >
-            {props.editLoading ? "…" : "編集"}
+            {props.editLoading || props.saving ? "…" : props.editable ? "完了" : "編集"}
           </button>
         )}
       </div>
@@ -221,7 +226,7 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
         contentEditable={props.editable ? "true" : undefined}
         onInput$={(_, element) => props.onTitleInput$?.(element.textContent ?? "")}
       >
-        {props.title}
+        <RenderOnce>{initialTitle}</RenderOnce>
       </h1>
 
       {(props.subtitle || props.editable) && (
@@ -231,7 +236,7 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
           contentEditable={props.editable ? "true" : undefined}
           onInput$={(_, element) => props.onSubtitleInput$?.(element.textContent ?? "")}
         >
-          {props.subtitle}
+          <RenderOnce>{initialSubtitle}</RenderOnce>
         </p>
       )}
     </header>

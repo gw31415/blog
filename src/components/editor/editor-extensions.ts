@@ -1,4 +1,5 @@
 import CodeBlock from "@tiptap/extension-code-block";
+import Heading from "@tiptap/extension-heading";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -12,6 +13,7 @@ import {
   Node,
   type NodeViewRendererProps,
   mergeAttributes,
+  textblockTypeInputRule,
 } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
@@ -517,14 +519,27 @@ interface EditorExtensionOptions {
   onMathEdit?: (request: { kind: "inline" | "block"; latex: string; position: number }) => void;
 }
 
+const ArticleHeading = Heading.extend({
+  addInputRules() {
+    return ([2, 3] as const).map((level) =>
+      textblockTypeInputRule({
+        find: new RegExp(`^#{${level - 1}}\\s$`),
+        type: this.type,
+        getAttributes: { level },
+      }),
+    );
+  },
+});
+
 export function createEditorExtensions(options: EditorExtensionOptions = {}): AnyExtension[] {
   return [
     StarterKit.configure({
       link: false,
       codeBlock: false,
       paragraph: { HTMLAttributes: { class: "ink" } },
-      heading: { HTMLAttributes: { class: "ink" } },
+      heading: false,
     }),
+    ArticleHeading.configure({ levels: [2, 3], HTMLAttributes: { class: "ink" } }),
     SharedCodeBlock,
     ...(options.additionalExtensions ?? []),
     Link.configure({ openOnClick: false, autolink: true }),

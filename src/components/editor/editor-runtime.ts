@@ -143,7 +143,7 @@ function runCommand(editor: Editor, command: EditorCommand): boolean {
     case "horizontalRule":
       return chain.setHorizontalRule().run();
     case "table":
-      return chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+      return chain.insertTable({ rows: 3, cols: 3, withHeaderRow: false }).run();
     case "inlineMath":
       return chain.insertContent({ type: "inlineMath", attrs: { latex: "x^2" } }).run();
     case "blockMath":
