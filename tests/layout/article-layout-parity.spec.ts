@@ -519,6 +519,69 @@ test("does not blur the article editor when a formatting action is tapped", asyn
   }
 });
 
+for (const javaScriptEnabled of [false, true]) {
+  test(`uses native document scrolling while reading (JavaScript: ${javaScriptEnabled})`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({ javaScriptEnabled });
+    try {
+      for (const width of [390, 1280]) {
+        const page = await context.newPage();
+        await page.setViewportSize({ width, height: 844 });
+        await page.goto("http://127.0.0.1:4173/sample");
+        const viewport = page.locator("[data-virtual-keyboard-viewport]");
+        // No nested scroll container or containment may intercept native refresh,
+        // including before Qwik's startup code runs.
+        await expect(viewport).toHaveCSS("overflow-y", "visible");
+        await expect(viewport).toHaveCSS("overscroll-behavior-y", "auto");
+        expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeGreaterThan(
+          844,
+        );
+        await viewport.hover({ position: { x: width / 2, y: 400 } });
+        await page.mouse.wheel(0, 1500);
+        await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+        expect(await viewport.evaluate((root) => root.scrollTop)).toBe(0);
+        const readingPosition = await page.evaluate(() => window.scrollY);
+        expect(await viewport.evaluate((root) => root.getBoundingClientRect().top)).toBe(
+          -readingPosition,
+        );
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.mouse.wheel(0, -1500);
+        await page.waitForTimeout(300);
+        expect(await page.evaluate(() => window.scrollY)).toBe(0);
+        expect(await viewport.evaluate((root) => root.scrollTop)).toBe(0);
+        await page.close();
+      }
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+for (const width of [390, 1280]) {
+  test(`preserves the reading position when switching scroll owners at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/sample");
+    const viewport = page.locator("[data-virtual-keyboard-viewport]");
+    await page.evaluate(() => window.scrollTo(0, 500));
+    await page.getByRole("button", { name: "編集", exact: true }).click();
+    await waitForEditShell(page);
+    await expect(viewport).toHaveAttribute("data-internal-scroll", "");
+    await expect.poll(() => viewport.evaluate((root) => root.scrollTop)).toBe(500);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await viewport.evaluate((root) => {
+      root.scrollTop = 800;
+    });
+    await activateDoneButton(page);
+    await waitForViewShell(page);
+    await expect(viewport).not.toHaveAttribute("data-internal-scroll");
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(800);
+    expect(await viewport.evaluate((root) => root.scrollTop)).toBe(0);
+  });
+}
+
 test("keeps unstyled viewport bars at the Chrome viewport edges while content scrolls internally", async ({
   page,
 }) => {
@@ -589,6 +652,8 @@ test("tracks an iOS visual viewport while the virtual keyboard opens and closes"
     Object.defineProperty(window, "testVisualViewport", { configurable: true, value: viewport });
   });
   await page.goto("/sample");
+  await page.getByRole("button", { name: "編集", exact: true }).click();
+  await waitForEditShell(page);
 
   const viewport = page.locator("[data-virtual-keyboard-viewport]");
   await expect
@@ -634,6 +699,26 @@ test("tracks an iOS visual viewport while the virtual keyboard opens and closes"
   await expect
     .poll(() => viewport.evaluate((root) => root.getBoundingClientRect().height))
     .toBe(844);
+
+  await activateDoneButton(page);
+  await waitForViewShell(page);
+  await expect(viewport).not.toHaveAttribute("data-internal-scroll");
+  await page.evaluate(() => {
+    window.scrollTo(0, 400);
+    // Safari's browser chrome can resize the visual viewport while reading too.
+    // The editor's keyboard workaround must no longer resize or scroll the page.
+    window.testVisualViewport.height = 600;
+    window.testVisualViewport.offsetTop = 44;
+    window.testVisualViewport.dispatchEvent(new Event("resize"));
+    window.testVisualViewport.dispatchEvent(new Event("scroll"));
+  });
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+  await expect(viewport).toHaveCSS("overflow-y", "visible");
+  await expect(viewport).not.toHaveAttribute("data-virtual-keyboard-open");
+  expect(
+    await viewport.evaluate((root) => root.style.getPropertyValue("--virtual-keyboard-svh")),
+  ).toBe("");
+  expect(await page.evaluate(() => window.scrollY)).toBe(400);
 });
 
 test("uses focused link and image forms while details insert immediately", async ({ page }) => {
@@ -752,13 +837,10 @@ for (const viewportSize of [
     await page.setViewportSize(viewportSize);
     await page.goto("/sample");
 
-    const viewport = page.locator("[data-virtual-keyboard-viewport]");
     const header = page.getByRole("navigation", { name: "記事の現在位置" });
     await expect(header).toBeHidden();
 
-    await viewport.evaluate((root) => {
-      root.scrollTop = 200;
-    });
+    await page.evaluate(() => window.scrollTo(0, 200));
     await expect(header).toBeVisible();
     await expect(header).toContainText("ブログ名（仮）");
     await expect(header.locator(".article-sticky-title")).toHaveText(
@@ -779,14 +861,10 @@ for (const viewportSize of [
     ).toBeLessThanOrEqual(1);
     expect(dateBox!.x + dateBox!.width).toBeLessThanOrEqual(box!.x + box!.width);
 
-    await viewport.evaluate((root) => {
-      root.scrollTop = root.scrollHeight;
-    });
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await expect.poll(async () => (await header.boundingBox())?.y).toBeCloseTo(0, 0);
 
-    await viewport.evaluate((root) => {
-      root.scrollTop = 0;
-    });
+    await page.evaluate(() => window.scrollTo(0, 0));
     await expect(header).toBeHidden();
   });
 }

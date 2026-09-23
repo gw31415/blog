@@ -339,7 +339,7 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
 
   return (
     <ArticleStyleBoundary>
-      <VirtualKeyboardViewport>
+      <VirtualKeyboardViewport internalScroll={editable.value}>
         <nav q:slot="top" class="article-sticky-header" aria-label="記事の現在位置">
           <a class="article-sticky-site" href="/">
             {BLOG_NAME}
