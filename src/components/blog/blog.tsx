@@ -149,8 +149,8 @@ interface BlogHeaderProps {
 
 /** 記事ヘッダー (カテゴリ・日付・公開状態・題・副題)。 */
 export const BlogHeader = component$((props: BlogHeaderProps) => {
-  // These contentEditable text nodes belong to the browser while editing.
-  // Replacing them on each store update moves the selection back to the start.
+  // Keep the browser-owned text nodes stable while editing. ArticleShell remounts
+  // this component only when switching modes so these values refresh afterward.
   const initialCategory = useConstant(() => props.category);
   const initialTitle = useConstant(() => props.title);
   const initialSubtitle = useConstant(() => props.subtitle);
@@ -270,8 +270,10 @@ export const SectionHeading = component$((props: SectionHeadingProps) => {
 /** 本文段落。 */
 export const ProseP = component$(() => {
   return (
-    <p class="ink">
-      <Slot />
+    <p>
+      <span class="ink">
+        <Slot />
+      </span>
     </p>
   );
 });

@@ -553,14 +553,6 @@ const articleShellStyles = css`
       overflow: visible;
     }
 
-    /* 背景で文字を塗る .ink は箱の外を描けないため、段落は通常の文字描画にする。 */
-    & article > p.ink,
-    & .article-content > .tiptap > p.ink {
-      color: var(--ink-color);
-      -webkit-text-fill-color: var(--ink-color);
-      background-image: none;
-    }
-
     & article > p + p,
     & .article-content > .tiptap > p + p {
       margin-block-start: var(--paragraph-gap);

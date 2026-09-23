@@ -2,6 +2,7 @@ import CodeBlock from "@tiptap/extension-code-block";
 import Heading from "@tiptap/extension-heading";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
+import Paragraph from "@tiptap/extension-paragraph";
 import Placeholder from "@tiptap/extension-placeholder";
 import { TableKit } from "@tiptap/extension-table";
 import TaskItem from "@tiptap/extension-task-item";
@@ -531,14 +532,26 @@ const ArticleHeading = Heading.extend({
   },
 });
 
+const ArticleParagraph = Paragraph.extend({
+  renderHTML({ HTMLAttributes }) {
+    // Keep the ink background on an untrimmed inline box, including while editing.
+    return [
+      "p",
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
+      ["span", { class: "ink" }, 0],
+    ];
+  },
+});
+
 export function createEditorExtensions(options: EditorExtensionOptions = {}): AnyExtension[] {
   return [
     StarterKit.configure({
       link: false,
       codeBlock: false,
-      paragraph: { HTMLAttributes: { class: "ink" } },
+      paragraph: false,
       heading: false,
     }),
+    ArticleParagraph,
     ArticleHeading.configure({ levels: [2, 3], HTMLAttributes: { class: "ink" } }),
     SharedCodeBlock,
     ...(options.additionalExtensions ?? []),

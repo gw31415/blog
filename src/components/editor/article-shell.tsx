@@ -367,6 +367,7 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
         <BlogPaper>
           <Slot />
           <BlogHeader
+            key={ui.mode === "edit" ? "edit" : "view"}
             category={ui.category}
             dateTime={ui.publishedAt}
             dateLabel={presentation.dateLabel}
