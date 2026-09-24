@@ -678,7 +678,7 @@ const articleShellStyles = css`
   }
 
   & i {
-    font-style: italic;
+    font-style: oblique 10deg;
     /* Override the root synthesis ban only for italic fallback (e.g. Japanese). */
     font-synthesis: style;
   }

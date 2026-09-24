@@ -68,11 +68,11 @@ for (const width of [1280, 390]) {
     const strong = editor.locator("strong").first();
     await expect(strong).toHaveCSS("color", "rgb(112, 28, 40)");
     await expect(editor.locator("b").first()).toHaveCSS("font-weight", "700");
-    await expect(editor.locator("i").first()).toHaveCSS("font-style", "italic");
+    await expect(editor.locator("i").first()).toHaveCSS("font-style", "oblique 10deg");
     const title = page.locator("[data-article-field=title]");
     await title.fill("書式確認");
     const measure = async () => {
-      await expect(editor.locator("i").first()).toHaveCSS("font-style", "italic");
+      await expect(editor.locator("i").first()).toHaveCSS("font-style", "oblique 10deg");
       await expect(editor.locator("i").first()).toHaveCSS("font-synthesis", "style");
       return page.evaluate(() => {
         const items = [
