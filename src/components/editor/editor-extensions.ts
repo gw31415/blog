@@ -1,10 +1,23 @@
-import CodeBlock from "@tiptap/extension-code-block";
+import { DocumentTable } from "./document-table";
+import { documentMarkdown } from "./document-markdown";
+import CodeBlock, { type CodeBlockOptions } from "@tiptap/extension-code-block";
 import Heading from "@tiptap/extension-heading";
 import Image from "@tiptap/extension-image";
-import Link from "@tiptap/extension-link";
+import {
+  ArticleBulletList,
+  ArticleOrderedList,
+  ArticleTaskList,
+  ArticleCode,
+  ArticleLink,
+  ListSpacing,
+  SoftBreak,
+  Figure,
+  Callout,
+  Details,
+} from "./document-nodes";
 import Paragraph from "@tiptap/extension-paragraph";
 import Placeholder from "@tiptap/extension-placeholder";
-import { TableKit } from "@tiptap/extension-table";
+import { TableKit, TableCell, TableHeader } from "@tiptap/extension-table";
 import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
 import {
@@ -19,233 +32,25 @@ import {
 import StarterKit from "@tiptap/starter-kit";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 
-import { codeBlockDOMSpec, createCodeBlockControl } from "./code-block-view.ts";
+import {
+  codeBlockDOMSpec,
+  createCodeBlockControl,
+  createCodeBlockSurface,
+} from "./code-block-view.ts";
 import { codeLanguage, replaceCodeLanguage } from "./code-language.ts";
 import { renderMathContentHTML } from "./mathjax-renderer.ts";
 
 export { renderMathContentHTML } from "./mathjax-renderer.ts";
 
-type DirectiveAttributes = Record<string, string>;
-
-function parseAttributes(source: string): DirectiveAttributes {
-  const attributes: DirectiveAttributes = {};
-  const pattern = /([\w-]+)="((?:\\.|[^"])*)"/g;
-  for (const match of source.matchAll(pattern)) {
-    attributes[match[1]] = match[2].replace(/\\([\\"])/g, "$1");
+const SharedCodeBlock = CodeBlock.extend<
+  CodeBlockOptions & {
+    onMermaidEdit?: (position: number) => void;
+    mermaidHTML?: Map<string, string>;
   }
-  return attributes;
-}
-
-function quoteAttribute(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-}
-
-function leafDirective(name: string, attributes: readonly string[]) {
-  return Node.create({
-    name,
-    group: "block",
-    atom: true,
-    selectable: true,
-
-    addAttributes() {
-      return Object.fromEntries(attributes.map((attribute) => [attribute, { default: "" }]));
-    },
-
-    parseHTML() {
-      return [{ tag: `[data-article-node="${name}"]` }];
-    },
-
-    renderHTML({ HTMLAttributes }) {
-      if (name === "figure") {
-        return [
-          "figure",
-          mergeAttributes(HTMLAttributes, { "data-article-node": name }),
-          [
-            "div",
-            { class: "figure-field" },
-            [
-              "img",
-              {
-                src: HTMLAttributes.src,
-                alt: HTMLAttributes.alt,
-                width: "1200",
-                height: "715",
-                loading: "lazy",
-                decoding: "async",
-              },
-            ],
-          ],
-          ["figcaption", {}, HTMLAttributes.caption],
-        ];
-      }
-
-      return [
-        "figure",
-        mergeAttributes(HTMLAttributes, { "data-article-node": name }),
-        ["div", { class: "figure-field" }, ["div", { class: "figure-mark" }, HTMLAttributes.mark]],
-        ["figcaption", {}, HTMLAttributes.caption],
-      ];
-    },
-
-    markdownTokenizer: {
-      name,
-      level: "block",
-      start: (source: string) => source.indexOf(`:::${name}{`),
-      tokenize: (source: string) => {
-        const pattern = new RegExp(`^:::${name}\\{([^\\n]*)\\}\\n:::(?:\\n|$)`);
-        const match = pattern.exec(source);
-        if (!match) return undefined;
-        return { type: name, raw: match[0], attributes: parseAttributes(match[1]) };
-      },
-    },
-
-    parseMarkdown: (token) => {
-      const directive = token as MarkdownToken & { attributes?: DirectiveAttributes };
-      return {
-        type: name,
-        attrs: directive.attributes ?? {},
-      };
-    },
-
-    renderMarkdown: (node) => {
-      const serialized = attributes
-        .map(
-          (attribute) => `${attribute}="${quoteAttribute(String(node.attrs?.[attribute] ?? ""))}"`,
-        )
-        .join(" ");
-      return `:::${name}{${serialized}}\n:::`;
-    },
-  });
-}
-
-const Figure = leafDirective("figure", ["src", "alt", "caption"]);
-const MarkFigure = leafDirective("mark-figure", ["mark", "caption"]);
-
-const Callout = Node.create({
-  name: "callout",
-  priority: 1_000,
-  group: "block",
-  content: "block+",
-  defining: true,
-
-  addAttributes() {
-    return { label: { default: "補足" } };
+>({
+  addInputRules() {
+    return [];
   },
-
-  parseHTML() {
-    return [{ tag: 'aside[data-article-node="callout"]' }];
-  },
-
-  renderHTML({ HTMLAttributes }) {
-    return [
-      "aside",
-      mergeAttributes(HTMLAttributes, {
-        class: "aside ink ink-muted",
-        "data-article-node": "callout",
-      }),
-      ["span", { class: "aside-label", contenteditable: "false" }, HTMLAttributes.label],
-      ["div", { class: "callout-content" }, 0],
-    ];
-  },
-
-  markdownTokenizer: {
-    name: "callout",
-    level: "block",
-    start: (source: string) => source.indexOf("> [!NOTE"),
-    tokenize: (source: string, _tokens, lexer) => {
-      const match = /^> \[!NOTE(?: ([^\]]+))?\]\n((?:>[^\n]*(?:\n|$))+)/.exec(source);
-      if (!match) return undefined;
-      const body = match[2]
-        .split("\n")
-        .map((line) => line.replace(/^> ?/, ""))
-        .join("\n")
-        .trimEnd();
-      return {
-        type: "callout",
-        raw: match[0],
-        label: match[1] ?? "補足",
-        tokens: lexer.blockTokens(body),
-      };
-    },
-  },
-
-  parseMarkdown: (token, helpers) => {
-    const callout = token as MarkdownToken & { label?: string };
-    return {
-      type: "callout",
-      attrs: { label: callout.label ?? "補足" },
-      content: (helpers.parseBlockChildren ?? helpers.parseChildren)(callout.tokens ?? []),
-    };
-  },
-
-  renderMarkdown: (node, helpers) => {
-    const label = String(node.attrs?.label ?? "補足");
-    const body = helpers.renderChildren(node.content ?? [], "\n\n");
-    return `> [!NOTE ${label}]\n${body
-      .split("\n")
-      .map((line) => `> ${line}`.trimEnd())
-      .join("\n")}`;
-  },
-});
-
-const Details = Node.create({
-  name: "details",
-  group: "block",
-  atom: true,
-  selectable: true,
-
-  addAttributes() {
-    return {
-      summary: { default: "" },
-      body: { default: "" },
-    };
-  },
-
-  parseHTML() {
-    return [{ tag: 'details[data-article-node="details"]' }];
-  },
-
-  renderHTML({ HTMLAttributes }) {
-    return [
-      "details",
-      mergeAttributes(HTMLAttributes, { "data-article-node": "details" }),
-      ["summary", {}, HTMLAttributes.summary],
-      ["div", { class: "details-body" }, HTMLAttributes.body],
-    ];
-  },
-
-  markdownTokenizer: {
-    name: "details",
-    level: "block",
-    start: (source: string) => source.indexOf(":::details{"),
-    tokenize: (source: string) => {
-      const match = /^:::details\{([^\n]*)\}\n([\s\S]*?)\n:::(?:\n|$)/.exec(source);
-      if (!match) return undefined;
-      return {
-        type: "details",
-        raw: match[0],
-        attributes: parseAttributes(match[1]),
-        body: match[2],
-      };
-    },
-  },
-
-  parseMarkdown: (token) => {
-    const details = token as MarkdownToken & { attributes?: DirectiveAttributes; body?: string };
-    return {
-      type: "details",
-      attrs: {
-        summary: details.attributes?.summary ?? "",
-        body: details.body ?? "",
-      },
-    };
-  },
-
-  renderMarkdown: (node) =>
-    `:::details{summary="${quoteAttribute(String(node.attrs?.summary ?? ""))}"}\n${String(node.attrs?.body ?? "")}\n:::`,
-});
-
-const SharedCodeBlock = CodeBlock.extend({
   addAttributes() {
     return {
       language: {
@@ -284,13 +89,46 @@ const SharedCodeBlock = CodeBlock.extend({
   },
 
   addNodeView() {
+    const options = this.options;
     return ({ node: initialNode, view, getPos }) => {
+      if (initialNode.attrs.language === "mermaid") {
+        let current = initialNode;
+        const dom = view.dom.ownerDocument.createElement("figure");
+        dom.className = "mermaid-diagram";
+        dom.contentEditable = "false";
+        const preview = view.dom.ownerDocument.createElement("div");
+        preview.className = "figure-field mermaid-preview";
+        dom.appendChild(preview);
+        const render = () => {
+          dom.dataset.mermaidSource = current.textContent;
+          const cached = options.mermaidHTML?.get(current.textContent);
+          if (cached) preview.innerHTML = cached;
+          else
+            void import("./mermaid-renderer").then(({ renderMermaidPreview }) =>
+              renderMermaidPreview(preview, current.textContent, true),
+            );
+        };
+        dom.addEventListener("click", () => {
+          const position = getPos();
+          if (view.editable && typeof position === "number") options.onMermaidEdit?.(position);
+        });
+        render();
+        return {
+          dom,
+          update(node) {
+            if (node.type !== current.type || node.attrs.language !== "mermaid") return false;
+            const changed = node.textContent !== current.textContent;
+            current = node;
+            if (changed) render();
+            return true;
+          },
+          ignoreMutation: () => true,
+          stopEvent: () => true,
+        };
+      }
       let currentNode = initialNode;
       const ownerDocument = view.dom.ownerDocument;
-      const dom = ownerDocument.createElement("pre");
-      dom.className = "code-block";
-
-      const contentDOM = ownerDocument.createElement("code");
+      const { pre: dom, code: contentDOM } = createCodeBlockSurface(ownerDocument);
       const control = createCodeBlockControl(
         String(currentNode.attrs.language ?? ""),
         (language) => {
@@ -309,7 +147,6 @@ const SharedCodeBlock = CodeBlock.extend({
       );
       dom.appendChild(control.control);
       dom.appendChild(contentDOM);
-
       const updateDOM = () => {
         const languageInfo = String(currentNode.attrs.language ?? "");
         const language = codeLanguage(languageInfo);
@@ -323,11 +160,14 @@ const SharedCodeBlock = CodeBlock.extend({
         dom,
         contentDOM,
         update(node) {
-          if (node.type !== currentNode.type) return false;
+          if (node.type !== currentNode.type || node.attrs.language === "mermaid") return false;
           currentNode = node;
           updateDOM();
           return true;
         },
+        // Preview and language controls are UI, not editable source content.
+        ignoreMutation: (mutation) =>
+          mutation.type !== "selection" && !contentDOM.contains(mutation.target),
         stopEvent: (event) =>
           event.target instanceof HTMLElement && control.control.contains(event.target),
       };
@@ -416,9 +256,9 @@ const SharedInlineMath = Node.create<MathNodeOptions>({
     level: "inline",
     start: (source: string) => source.indexOf("$"),
     tokenize: (source: string) => {
-      const match = /^\$([^$]+)\$(?!\$)/.exec(source);
-      if (!match) return undefined;
-      return { type: "inlineMath", raw: match[0], latex: match[1].trim() };
+      const match = /^\$((?:\\.|[^$\\\n])+)\$(?![$0-9])/.exec(source);
+      if (!match || /^\s|\s$/.test(match[1])) return undefined;
+      return { type: "inlineMath", raw: match[0], latex: match[1] };
     },
   },
 
@@ -432,9 +272,13 @@ const SharedInlineMath = Node.create<MathNodeOptions>({
   addInputRules() {
     return [
       new InputRule({
-        find: /(?<!\$)(\$\$([^$\n]+?)\$\$)(?!\$)/,
+        find: /(?<![\\$])\$((?:\\.|[^$\\\n])+)\$ $/,
         handler: ({ state, range, match }) => {
-          state.tr.replaceWith(range.from, range.to, this.type.create({ latex: match[2] }));
+          if (/^\s|\s$/.test(match[1])) return null;
+          state.tr.replaceWith(range.from, range.to, [
+            this.type.create({ latex: match[1] }),
+            state.schema.text(" "),
+          ]);
         },
       }),
     ];
@@ -475,9 +319,9 @@ const SharedBlockMath = Node.create<MathNodeOptions>({
     level: "block",
     start: (source: string) => source.indexOf("$$"),
     tokenize: (source: string) => {
-      const match = /^\$\$([^$]+)\$\$/.exec(source);
+      const match = /^\$\$\n([\s\S]*?)\n\$\$(?:\n|$)/.exec(source);
       if (!match) return undefined;
-      return { type: "blockMath", raw: match[0], latex: match[1].trim() };
+      return { type: "blockMath", raw: match[0], latex: match[1] };
     },
   },
 
@@ -489,27 +333,7 @@ const SharedBlockMath = Node.create<MathNodeOptions>({
   renderMarkdown: (node) => ["$$", String(node.attrs?.latex ?? ""), "$$"].join("\n"),
 
   addInputRules() {
-    return [
-      new InputRule({
-        find: /^\$\$\$([^$]+)\$\$\$$/,
-        handler: ({ state, range, match }) => {
-          const $from = state.doc.resolve(range.from);
-          const replacementRange =
-            $from.depth > 0 &&
-            $from.parent.isTextblock &&
-            range.from === $from.start() &&
-            range.to === $from.end() &&
-            $from.node(-1).canReplaceWith($from.index(-1), $from.indexAfter(-1), this.type)
-              ? { from: $from.before(), to: $from.after() }
-              : range;
-          state.tr.replaceWith(
-            replacementRange.from,
-            replacementRange.to,
-            this.type.create({ latex: match[1] }),
-          );
-        },
-      }),
-    ];
+    return [];
   },
 
   addNodeView: sharedMathNodeView(true),
@@ -517,12 +341,14 @@ const SharedBlockMath = Node.create<MathNodeOptions>({
 
 interface EditorExtensionOptions {
   additionalExtensions?: AnyExtension[];
+  onMermaidEdit?: (position: number) => void;
+  mermaidHTML?: Map<string, string>;
   onMathEdit?: (request: { kind: "inline" | "block"; latex: string; position: number }) => void;
 }
 
 const ArticleHeading = Heading.extend({
   addInputRules() {
-    return ([2, 3] as const).map((level) =>
+    return ([2, 3, 4, 5, 6] as const).map((level) =>
       textblockTypeInputRule({
         find: new RegExp(`^#{${level - 1}}\\s$`),
         type: this.type,
@@ -533,6 +359,7 @@ const ArticleHeading = Heading.extend({
 });
 
 const ArticleParagraph = Paragraph.extend({
+  parseMarkdown: (token, h) => ({ type: "paragraph", content: h.parseInline(token.tokens ?? []) }),
   renderHTML({ HTMLAttributes }) {
     // Keep the ink background on an untrimmed inline box, including while editing.
     return [
@@ -545,21 +372,62 @@ const ArticleParagraph = Paragraph.extend({
 
 export function createEditorExtensions(options: EditorExtensionOptions = {}): AnyExtension[] {
   return [
-    StarterKit.configure({
+    StarterKit.extend({
+      addExtensions() {
+        return (this.parent?.() ?? []).map((extension) =>
+          ["bold", "italic", "strike"].includes(extension.name)
+            ? extension.extend({
+                parseMarkdown: (token: MarkdownToken, helpers: any) =>
+                  helpers.parseInline(token.tokens ?? []).map((node: any) => ({
+                    ...node,
+                    marks: [...(node.marks ?? []), { type: extension.name }],
+                  })),
+              })
+            : extension,
+        );
+      },
+    }).configure({
       link: false,
+      code: false,
+      orderedList: false,
+      bulletList: false,
+      underline: false,
+      trailingNode: false,
+      document: false,
       codeBlock: false,
       paragraph: false,
       heading: false,
     }),
+    Node.create({
+      name: "doc",
+      topNode: true,
+      content: "block+",
+      renderMarkdown: documentMarkdown,
+    }),
     ArticleParagraph,
-    ArticleHeading.configure({ levels: [2, 3], HTMLAttributes: { class: "ink" } }),
-    SharedCodeBlock,
+    ArticleHeading.configure({ levels: [2, 3, 4, 5, 6], HTMLAttributes: { class: "ink" } }),
+    SharedCodeBlock.configure({
+      onMermaidEdit: options.onMermaidEdit,
+      mermaidHTML: options.mermaidHTML,
+    }),
     ...(options.additionalExtensions ?? []),
-    Link.configure({ openOnClick: false, autolink: true }),
-    TableKit.configure({ table: { resizable: false } }),
-    TaskList,
+    ArticleLink,
+    ArticleCode,
+    ListSpacing,
+    ArticleBulletList,
+    ArticleOrderedList,
+    SoftBreak,
+    TableKit.configure({ table: false, tableCell: false, tableHeader: false }),
+    DocumentTable,
+    TableCell.extend({ content: "paragraph" }),
+    TableHeader.extend({ content: "paragraph" }),
+    ArticleTaskList,
     TaskItem.configure({ nested: true }),
-    Image.configure({ inline: false, allowBase64: false }),
+    Image.extend({
+      addAttributes() {
+        return { src: { default: "" }, alt: { default: null }, title: { default: null } };
+      },
+    }).configure({ inline: true, allowBase64: false }),
     SharedInlineMath.configure({
       onClick: (node, position) =>
         options.onMathEdit?.({ kind: "inline", latex: String(node.attrs.latex), position }),
@@ -571,7 +439,6 @@ export function createEditorExtensions(options: EditorExtensionOptions = {}): An
     Placeholder.configure({ placeholder: "ここに書き始めます…" }),
     Callout,
     Figure,
-    MarkFigure,
     Details,
   ];
 }

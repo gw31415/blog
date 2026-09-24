@@ -5,7 +5,7 @@ import {
 import render from "./entry.ssr";
 
 declare global {
-  type QwikRouterPlatform = PlatformCloudflarePages & { env: { DB: D1Database } };
+  type QwikRouterPlatform = PlatformCloudflarePages & { env: Env };
 }
 
 export const fetch = createQwikRouter({ render });

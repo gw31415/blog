@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "qwik build",
-    "build.client": "vp build",
+    "build.client": "node scripts/prepare-mermaid.mjs && vp build",
     "build.server": "qwik check-client src dist && vp build -c adapters/cloudflare-workers/vite.config.ts",
     "build.types": "wrangler types && tsc --incremental --noEmit",
     "check": "vp check",
@@ -12,18 +12,25 @@
     "check.fmt": "vp fmt --check",
     "db:migrate:local": "wrangler d1 migrations apply blog-posts --local",
     "deploy": "pnpm run build && wrangler deploy",
-    "dev": "vp dev -c adapters/cloudflare-workers/vite.config.ts --mode ssr --host 0.0.0.0",
+    "dev": "node scripts/prepare-mermaid.mjs && vp dev -c adapters/cloudflare-workers/vite.config.ts --mode ssr --host 0.0.0.0",
     "fmt": "vp fmt",
     "lint": "vp lint",
     "preview": "pnpm run build && wrangler dev",
-    "test": "vp test run"
+    "test": "vp test run",
+    "db:seed:local": "node scripts/seed-document.mjs && wrangler d1 execute blog-posts --local --file scripts/seed-document.sql",
+    "db:reset:local": "node scripts/reset-local-db.mjs --discard-test-data"
   },
   "dependencies": {
+    "@cloudflare/puppeteer": "^1.4.0",
+    "@mathjax/mathjax-tex-font": "4.1.3",
+    "@mathjax/src": "4.1.3",
     "@tiptap/core": "3.31.3",
+    "@tiptap/extension-code": "3.31.3",
     "@tiptap/extension-code-block": "3.31.3",
     "@tiptap/extension-heading": "3.31.3",
     "@tiptap/extension-image": "3.31.3",
     "@tiptap/extension-link": "3.31.3",
+    "@tiptap/extension-list": "3.31.3",
     "@tiptap/extension-paragraph": "3.31.3",
     "@tiptap/extension-placeholder": "3.31.3",
     "@tiptap/extension-table": "3.31.3",
@@ -33,7 +40,10 @@
     "@tiptap/pm": "3.31.3",
     "@tiptap/starter-kit": "3.31.3",
     "@tiptap/static-renderer": "3.31.3",
-    "lowlight": "3.3.0"
+    "entities": "^8.1.0",
+    "lowlight": "3.3.0",
+    "marked": "17.0.6",
+    "mermaid": "12.0.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.54.3",
@@ -46,7 +56,6 @@
     "@unocss/reset": "^66.10.5",
     "eslint-plugin-qwik": "2.0.0-beta.43",
     "highlight.js": "^11.12.0",
-    "mathjax-full": "^3.2.2",
     "typescript": "^7.0.2",
     "vite-plus": "^0.3.0",
     "wrangler": "^4.128.0"

@@ -1,9 +1,13 @@
+import type { JSONContent } from "@tiptap/core";
 export interface ArticleDraft {
   category: string;
   publishedAt: string;
   title: string;
   subtitle: string;
-  bodyMarkdown: string;
+  body: JSONContent;
+  editingState?: Record<string, unknown> | null;
+  description: string;
+  tags: string[];
 }
 
 export const BLOG_NAME = "ブログ名（仮）";

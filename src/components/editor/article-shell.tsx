@@ -11,6 +11,7 @@ import {
   useVisibleTask$,
   type NoSerialize,
   type QRL,
+  type Signal,
 } from "@qwik.dev/core";
 import type { JSONContent } from "@tiptap/core";
 
@@ -28,7 +29,6 @@ import {
   createEditorController,
   type EditorCommand,
   type EditorController,
-  type MathEditRequest,
   type ToolbarState,
 } from "./editor-controller";
 import { ArticleStyleBoundary } from "./article-styles";
@@ -79,12 +79,12 @@ interface EditorUiState {
   publishedAt: string;
   title: string;
   subtitle: string;
-  bodyMarkdown: string;
+  body: JSONContent;
+  description: string;
+  tags: string[];
   status: "draft" | "published";
   alias: string;
-  aliasDialog: string | null;
   insertDialog: InsertDialogState | null;
-  math: (MathEditRequest & { preview: string; error: string }) | null;
   toolbar: ToolbarState;
 }
 
@@ -101,6 +101,23 @@ interface ArticleShellProps {
   >;
 }
 
+const ArticleBody = component$(
+  (props: { html: string; elementRef: Signal<HTMLElement | undefined> }) => {
+    const html = useConstant(() => props.html);
+    return (
+      <RenderOnce>
+        <article
+          class="article-content"
+          data-layout-key="article"
+          data-editor-mount
+          ref={props.elementRef}
+          dangerouslySetInnerHTML={html}
+        ></article>
+      </RenderOnce>
+    );
+  },
+);
+
 export const ArticleShell = component$((props: ArticleShellProps) => {
   const article = props.article;
   const initialHtml = useConstant(() => props.initialHtml);
@@ -116,12 +133,12 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
     publishedAt: article.publishedAt,
     title: article.title,
     subtitle: article.subtitle,
-    bodyMarkdown: article.bodyMarkdown,
+    body: article.body,
+    description: article.description,
+    tags: article.tags,
     status: props.publicationStatus ?? "published",
     alias: props.canonicalAlias ?? "",
-    aliasDialog: null,
     insertDialog: null,
-    math: null,
     toolbar: {
       paragraph: true,
       bold: false,
@@ -199,16 +216,6 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
     void loadEditorRuntime();
   });
 
-  const openMathEditor$ = $(async (request: MathEditRequest) => {
-    const { validateLatex } = await import("./math-dialog");
-    const result = validateLatex(request.latex, request.kind === "block");
-    ui.math = {
-      ...request,
-      preview: result.ok ? result.html : "",
-      error: result.ok ? "" : result.message,
-    };
-  });
-
   const enterEdit$ = $(async () => {
     const mount = editorMount.value ?? document.querySelector<HTMLElement>("[data-editor-mount]");
     if (!mount || ui.mode !== "view") return;
@@ -221,13 +228,14 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
         }
         await controller.value?.enterEdit(mount, {
           content: props.initialContent,
-          onUpdate: (markdown) => {
-            ui.bodyMarkdown = markdown;
+          workingState: props.article.editingState,
+          onUpdate: (content) => {
+            ui.body = content;
           },
           onSelectionChange: (state) => {
             ui.toolbar = state;
           },
-          onMathEdit: (request) => void openMathEditor$(request),
+          onMathEdit: () => {},
         });
         ui.editorReady = true;
         ui.mode = "edit";
@@ -271,7 +279,10 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
           publishedAt: ui.publishedAt,
           title: ui.title,
           subtitle: ui.subtitle,
-          bodyMarkdown: controller.value?.getMarkdown() ?? ui.bodyMarkdown,
+          body: controller.value?.getJSON() ?? ui.body,
+          editingState: controller.value?.getWorkingState() ?? null,
+          description: ui.description,
+          tags: ui.tags,
           status: ui.status,
           alias: ui.alias.trim(),
         });
@@ -287,8 +298,17 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
     }
     controller.value?.enterView();
     ui.insertDialog = null;
-    ui.math = null;
     ui.mode = "view";
+  });
+
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(({ cleanup }) => {
+    const saveDraft = () => {
+      ui.status = "draft";
+      void enterView$();
+    };
+    window.addEventListener("document-save-draft", saveDraft);
+    cleanup(() => window.removeEventListener("document-save-draft", saveDraft));
   });
 
   const applyInsert$ = $(() => {
@@ -310,30 +330,6 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
       return;
     }
     ui.insertDialog = null;
-  });
-
-  const updateMathPreview$ = $(async (latex: string) => {
-    if (!ui.math) return;
-    ui.math.latex = latex;
-    const { validateLatex } = await import("./math-dialog");
-    const result = validateLatex(latex, ui.math.kind === "block");
-    ui.math.preview = result.ok ? result.html : "";
-    ui.math.error = result.ok ? "" : result.message;
-  });
-
-  const applyMath$ = $((latex: string) => {
-    if (!ui.math || ui.math.error || !latex.trim()) return;
-    const applied = controller.value?.run({
-      type: "updateMath",
-      kind: ui.math.kind,
-      position: ui.math.position,
-      latex,
-    });
-    if (!applied) {
-      ui.math.error = "数式の位置を特定できませんでした。もう一度数式を選択してください。";
-      return;
-    }
-    ui.math = null;
   });
 
   return (
@@ -368,7 +364,7 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
           <Slot />
           <BlogHeader
             key={ui.mode === "edit" ? "edit" : "view"}
-            category={ui.category}
+            category={ui.tags.join("、")}
             dateTime={ui.publishedAt}
             dateLabel={presentation.dateLabel}
             publicationStatus={props.publicationStatus ? ui.status : undefined}
@@ -381,24 +377,15 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
             onEditIntent$={preloadEditor$}
             onEditRequest$={enterEdit$}
             onDoneRequest$={enterView$}
-            onCategoryInput$={$((value) => (ui.category = value))}
-            onDateInput$={$((value) => (ui.publishedAt = value))}
             onPublicationToggle$={$(() => {
               ui.status = ui.status === "published" ? "draft" : "published";
             })}
+            onCategoryInput$={$((value) => (ui.tags = value.split("、")))}
             onTitleInput$={$((value) => (ui.title = value))}
             onSubtitleInput$={$((value) => (ui.subtitle = value))}
           />
           {/* After mounting, Tiptap owns this DOM; mode updates must not restore the SSR HTML. */}
-          <RenderOnce>
-            <article
-              class="article-content"
-              data-layout-key="article"
-              data-editor-mount
-              ref={editorMount}
-              dangerouslySetInnerHTML={initialHtml}
-            ></article>
-          </RenderOnce>
+          <ArticleBody key="article-body" html={initialHtml} elementRef={editorMount} />
           <BlogFooter left="日々の記録" right={presentation.footerRight} />
         </BlogPaper>
 
@@ -420,124 +407,18 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
               </button>
               <button
                 type="button"
-                aria-pressed={ui.toolbar.paragraph}
-                onClick$={() => command$({ type: "paragraph" })}
+                onClick$={() => command$({ type: "palette", command: "table" })}
               >
-                本文
+                表を挿入
               </button>
               <button
                 type="button"
-                aria-pressed={ui.toolbar.heading === 2}
-                onClick$={() => command$({ type: "heading", level: 2 })}
+                onClick$={() => command$({ type: "palette", command: "upload-image" })}
               >
-                見出し
+                画像をアップロード
               </button>
-              <button
-                type="button"
-                aria-pressed={ui.toolbar.heading === 3}
-                onClick$={() => command$({ type: "heading", level: 3 })}
-              >
-                小見出し
-              </button>
-              <button
-                type="button"
-                aria-label="太字"
-                aria-pressed={ui.toolbar.bold}
-                onClick$={() => command$({ type: "bold" })}
-              >
-                <b>B</b>
-              </button>
-              <button
-                type="button"
-                aria-label="斜体"
-                aria-pressed={ui.toolbar.italic}
-                onClick$={() => command$({ type: "italic" })}
-              >
-                <i>I</i>
-              </button>
-              <button
-                type="button"
-                aria-label="打ち消し線"
-                aria-pressed={ui.toolbar.strike}
-                onClick$={() => command$({ type: "strike" })}
-              >
-                <s>S</s>
-              </button>
-              <button
-                type="button"
-                aria-pressed={ui.toolbar.bulletList}
-                onClick$={() => command$({ type: "bulletList" })}
-              >
-                箇条書き
-              </button>
-              <button
-                type="button"
-                aria-pressed={ui.toolbar.orderedList}
-                onClick$={() => command$({ type: "orderedList" })}
-              >
-                番号
-              </button>
-              <button
-                type="button"
-                aria-pressed={ui.toolbar.taskList}
-                onClick$={() => command$({ type: "taskList" })}
-              >
-                ToDo
-              </button>
-              <button
-                type="button"
-                aria-pressed={ui.toolbar.blockquote}
-                onClick$={() => command$({ type: "blockquote" })}
-              >
-                引用
-              </button>
-              <button type="button" onClick$={() => (ui.insertDialog = createInsertDialog("link"))}>
-                リンク
-              </button>
-              {props.onSave$ && (
-                <button type="button" onClick$={() => (ui.aliasDialog = ui.alias)}>
-                  記事URL
-                </button>
-              )}
-              <button
-                type="button"
-                aria-pressed={ui.toolbar.codeBlock}
-                onClick$={() => command$({ type: "codeBlock" })}
-              >
-                コード
-              </button>
-              <button type="button" onClick$={() => command$({ type: "table" })}>
-                表
-              </button>
-              <button type="button" onClick$={() => command$({ type: "horizontalRule" })}>
-                区切り
-              </button>
-              <button type="button" onClick$={() => command$({ type: "inlineMath" })}>
-                文中数式
-              </button>
-              <button type="button" onClick$={() => command$({ type: "blockMath" })}>
-                別行数式
-              </button>
-              <button type="button" onClick$={() => command$({ type: "callout", label: "補足" })}>
-                補足
-              </button>
-              <button
-                type="button"
-                onClick$={() => (ui.insertDialog = createInsertDialog("image"))}
-              >
-                画像
-              </button>
-              <button
-                type="button"
-                onClick$={() =>
-                  command$({
-                    type: "details",
-                    summary: "補足",
-                    body: "詳しい内容を書きます。",
-                  })
-                }
-              >
-                折り畳み
+              <button type="button" onClick$={() => command$({ type: "palette" })}>
+                コマンド
               </button>
             </div>
           </aside>
@@ -635,101 +516,7 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
         </div>
       )}
 
-      {ui.aliasDialog !== null && (
-        <div
-          class="editor-dialog-backdrop"
-          role="presentation"
-          onClick$={() => (ui.aliasDialog = null)}
-        >
-          <form
-            class="editor-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="alias-dialog-title"
-            onClick$={(event) => event.stopPropagation()}
-            preventdefault:submit
-            onSubmit$={(_, form) => {
-              const value = new FormData(form).get("alias");
-              ui.alias = typeof value === "string" ? value.trim() : "";
-              ui.aliasDialog = null;
-            }}
-          >
-            <div class="editor-dialog-heading">
-              <p>記事の設定</p>
-              <h2 id="alias-dialog-title">記事URL</h2>
-            </div>
-            <div class="editor-dialog-fields">
-              <label>
-                エイリアス（任意）
-                <input
-                  name="alias"
-                  value={ui.aliasDialog}
-                  pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-                  maxLength={80}
-                  autoFocus
-                  onInput$={(_, element) => (ui.aliasDialog = element.value)}
-                />
-              </label>
-            </div>
-            <div class="editor-dialog-actions">
-              <button type="button" onClick$={() => (ui.aliasDialog = null)}>
-                キャンセル
-              </button>
-              <button type="submit">決定</button>
-            </div>
-          </form>
-        </div>
-      )}
 
-      {ui.math && (
-        <div class="editor-dialog-backdrop" role="presentation" onClick$={() => (ui.math = null)}>
-          <form
-            class="editor-dialog math-dialog"
-            data-math-position={ui.math.position}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="math-dialog-title"
-            onClick$={(event) => event.stopPropagation()}
-            preventdefault:submit
-            onSubmit$={(_, form) => {
-              const value = new FormData(form).get("latex");
-              void applyMath$(typeof value === "string" ? value : "");
-            }}
-          >
-            <h2 id="math-dialog-title">
-              {ui.math.kind === "block" ? "別行数式" : "文中数式"}を編集
-            </h2>
-            <label>
-              LaTeX
-              <textarea
-                name="latex"
-                value={ui.math.latex}
-                rows={4}
-                autoFocus
-                onInput$={(_, el) => updateMathPreview$(el.value)}
-              ></textarea>
-            </label>
-            <div
-              class="math-dialog-preview"
-              aria-label="数式プレビュー"
-              dangerouslySetInnerHTML={ui.math.preview}
-            ></div>
-            {ui.math.error && (
-              <p class="math-dialog-error" role="alert">
-                {ui.math.error}
-              </p>
-            )}
-            <div class="math-dialog-actions">
-              <button type="button" onClick$={() => (ui.math = null)}>
-                キャンセル
-              </button>
-              <button type="submit" disabled={!!ui.math.error || !ui.math.latex.trim()}>
-                適用
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
     </ArticleStyleBoundary>
   );
 });

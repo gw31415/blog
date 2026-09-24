@@ -1,3 +1,6 @@
+import { finalizeWorkingDocument } from "../../content/document";
+import { DocumentTypingRules } from "./typing-rules";
+import { createCommandPalette, paletteExtension } from "./command-palette";
 import { Editor, Extension, findChildren } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
@@ -143,7 +146,7 @@ function runCommand(editor: Editor, command: EditorCommand): boolean {
     case "horizontalRule":
       return chain.setHorizontalRule().run();
     case "table":
-      return chain.insertTable({ rows: 3, cols: 3, withHeaderRow: false }).run();
+      return chain.insertTable({ rows: 3, cols: 2, withHeaderRow: true }).run();
     case "inlineMath":
       return chain.insertContent({ type: "inlineMath", attrs: { latex: "x^2" } }).run();
     case "blockMath":
@@ -156,7 +159,7 @@ function runCommand(editor: Editor, command: EditorCommand): boolean {
       return chain
         .insertContent({
           type: "callout",
-          attrs: { label: command.label },
+          attrs: { kind: "note", title: command.label || null },
           content: [{ type: "paragraph", content: [{ type: "text", text: "補足を書きます。" }] }],
         })
         .run();
@@ -164,7 +167,13 @@ function runCommand(editor: Editor, command: EditorCommand): boolean {
       return chain
         .insertContent({
           type: "details",
-          attrs: { summary: command.summary, body: command.body },
+          attrs: { title: command.summary },
+          content: [
+            {
+              type: "paragraph",
+              content: command.body ? [{ type: "text", text: command.body }] : [],
+            },
+          ],
         })
         .run();
   }
@@ -175,36 +184,43 @@ export async function mountArticleEditor(
   options: MountArticleEditorOptions,
 ): Promise<EditorHandle> {
   const { highlightCode } = await import("./editor-syntax-highlighting");
-  let lastMarkdown = serializeArticleMarkdown(options.content);
+
   let editor: Editor;
+  let palette: ReturnType<typeof createCommandPalette> | undefined;
   editor = new Editor({
     element: null,
     extensions: createEditorExtensions({
       additionalExtensions: [
         createSyntaxHighlighting(highlightCode),
+        paletteExtension(() => palette),
+        DocumentTypingRules,
         Extension.create({
           name: "articleTableControls",
           addProseMirrorPlugins: () => [createTableControlsPlugin()],
         }),
       ],
+      mermaidHTML: new Map(
+        [...options.element.querySelectorAll<HTMLElement>(".mermaid-diagram")].map((element) => [
+          element.dataset.mermaidSource ?? "",
+          element.querySelector(".mermaid-preview")?.innerHTML ?? "",
+        ]),
+      ),
+      onMermaidEdit: (position) => {
+        if (!editor.isEditable) return;
+        editor.commands.setNodeSelection(position);
+        palette?.open(undefined, "edit-element");
+      },
       onMathEdit: (request) => {
-        const current = editor.state.doc.nodeAt(request.position);
-        requestMathEditWhenEditable(
-          editor.isEditable,
-          {
-            ...request,
-            latex: String(current?.attrs.latex ?? request.latex),
-          },
-          (currentRequest) => options.onMathEdit(currentRequest),
-        );
+        if (!editor.isEditable) return;
+        editor.commands.setNodeSelection(request.position);
+        palette?.open(undefined, "edit-element");
       },
     }),
-    content: options.content,
+    content: (options.workingState?.document as typeof options.content) ?? options.content,
     editable: false,
     injectCSS: false,
     onUpdate: ({ editor: current }) => {
-      lastMarkdown = serializeArticleMarkdown(current.getJSON());
-      options.onUpdate(lastMarkdown);
+      options.onUpdate(current.getJSON());
     },
     onSelectionUpdate: ({ editor: current }) => {
       options.onSelectionChange(toolbarState(current));
@@ -221,6 +237,10 @@ export async function mountArticleEditor(
   options.element.querySelectorAll("details").forEach((details, index) => {
     details.open = detailsOpen[index] ?? false;
   });
+  palette = createCommandPalette(editor);
+  const pending = options.workingState?.pending;
+  if (pending)
+    queueMicrotask(() => palette?.resume(pending as Parameters<typeof palette.resume>[0]));
   options.element.dataset.editorReady = "";
   options.onSelectionChange(toolbarState(editor));
 
@@ -230,14 +250,25 @@ export async function mountArticleEditor(
       options.element.dataset.editorMode = editable ? "edit" : "view";
     },
     run(command) {
+      if (command.type === "palette") {
+        palette?.open(undefined, command.command);
+        return true;
+      }
       const result = runCommand(editor, command);
       options.onSelectionChange(toolbarState(editor));
       return result;
     },
+    getWorkingState() {
+      return { document: editor.getJSON(), pending: palette?.getState() ?? null };
+    },
+    getJSON() {
+      return finalizeWorkingDocument(palette?.documentForSave() ?? editor.getJSON());
+    },
     getMarkdown() {
-      return lastMarkdown;
+      return serializeArticleMarkdown(editor.getJSON());
     },
     destroy() {
+      palette?.destroy();
       editor.destroy();
       delete options.element.dataset.editorReady;
       delete options.element.dataset.editorMode;

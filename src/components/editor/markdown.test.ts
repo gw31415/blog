@@ -32,24 +32,11 @@ describe("article Markdown", () => {
   });
 
   it.each([
-    ["callout", "> [!NOTE 補足]\n> 本文\n", "> [!NOTE 補足]\n> 本文"],
-    [
-      "figure",
-      ':::figure{src="/image.jpg" alt="代替" caption="図の説明"}\n:::\n',
-      ':::figure{src="/image.jpg" alt="代替" caption="図の説明"}\n:::',
-    ],
-    [
-      "mark figure",
-      ':::mark-figure{mark="秋" caption="文字図"}\n:::\n',
-      ':::mark-figure{mark="秋" caption="文字図"}\n:::',
-    ],
-    [
-      "details",
-      ':::details{summary="詳細"}\n本文です。\n:::\n',
-      ':::details{summary="詳細"}\n本文です。\n:::',
-    ],
-  ])("round-trips the %s extension", (_name, source, expected) => {
-    expect(roundTrip(source)).toContain(expected);
+    ['callout', ':::{note} 補足\n本文\n:::'],
+    ['figure', ':::{figure} /image.jpg\n:alt: 代替\n\n図の説明\n:::'],
+    ['details', ':::{dropdown} 詳細\n本文です。\n:::'],
+  ])('round-trips the %s extension', (_name, source) => {
+    expect(roundTrip(source)).toBe(source);
   });
 
   it("treats escaped dollar signs as text", () => {

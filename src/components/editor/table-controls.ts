@@ -94,6 +94,7 @@ export function tableActionTransaction(
   if (target.position < 0 || target.position > state.doc.content.size) return null;
   const table = state.doc.nodeAt(target.position);
   if (!table || table.type.name !== "table" || table !== target.table) return null;
+  if (action.type === "delete" && action.axis === "column" && table.firstChild?.childCount === 1 && table.firstChild.firstChild?.type.name === "tableHeader") return state.tr.delete(target.position,target.position+table.nodeSize);
   const result = transformTable(table, action);
   return result.ok
     ? state.tr.replaceWith(target.position, target.position + table.nodeSize, result.table)
@@ -218,10 +219,12 @@ class TableControls {
         item.type = "button";
         item.dataset.tableAction = action;
         item.setAttribute("role", "menuitem");
-        item.textContent = labels[index];
+        const profile = handle.table.firstChild?.firstChild?.type.name === "tableHeader";
+        item.textContent = action === "delete" && handle.axis === "column" && length === 1 && profile ? "最終列を削除（表全体）" : labels[index];
         item.disabled =
           !!reorderDisabledReason(handle.table) ||
-          (action === "delete" && length === 1) ||
+          (action === "delete" && length === 1 && !(profile && handle.axis === "column")) ||
+          (profile && handle.axis === "row" && ((handle.index === 0 && ["delete","previous","next"].includes(action)) || (handle.index === 1 && action === "previous"))) ||
           (action === "previous" && handle.index === 0) ||
           (action === "next" && handle.index === length - 1);
         if (reorderDisabledReason(handle.table)) {

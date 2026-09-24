@@ -17,13 +17,19 @@ vite-plus が dev / build / lint / fmt を兼ねるため、専用の ESLint・P
 
 ## 記事編集
 
-記事ページの右上の「編集」で、カテゴリ・公開日・タイトル・副題とMarkdown本文を編集できます。本文は見出し、各種リスト、引用、コード、表、リンク、画像、折りたたみ、補足、インライン／ブロック数式に対応します。見出し番号は本文データに持たず、見出しからCSS counterで自動生成されます。
+記事ページの「編集」でタイトル・副題・タグと本文を編集します。本文の正本は **Tiptap JSON** です。通常の保存・再読込でMarkdownへ変換しません。初回公開日時は初めて公開したときに記録し、再公開でも保持します。
 
-編集内容は保存すると D1 の記事に反映されます。フッターの年号は公開日から生成する表示項目なので直接編集しません。
+段落の先頭または空白の後で `/`、選択範囲には `Mod+/`、タッチ操作では「コマンド」を使用します。固定ツールバーには表挿入と画像アップロードを配置しています。図のキャプション、入れ子の補足・トグル、H2〜H6、数式、Mermaidも編集できます。未確定の入力は下書きの編集状態に保持できます。
+
+保存済み記事の正規化Markdownは `/blog/{IDまたはalias}.md` から取得します。`?type=github`、`?type=zenn`、`?type=qiita` でサイト別形式を指定できます。書き出しメニューや目次は表示しません。タグはヘッダーの既存位置で直接編集し、「、」で区切ります。説明の編集UIは提供しません。
+
+文書データ仕様の正本は [tiptap-document-spec-v2.md](tiptap-document-spec-v2.md) です。構造や意味を変える際は、[ローカルSkill](.agents/skills/blog-document-contract/SKILL.md) に従い、仕様書を先に変更します。
+
+ローカルDBを初期化して長文サンプルを作る場合は `pnpm db:reset:local` を実行します。**ローカルの記事・画像をすべて破棄します。** 初期マイグレーションを適用し、`/blog/document-showcase` に全コンポーネントを含む記事を生成します。リモートDBは変更しません。
 
 記事の初期表示は、MathJaxでTeXからSVGと支援技術向けMathMLを生成したSSR済みHTMLです。TipTap、ProseMirror、編集用MathJaxランタイムは最初に「編集」を押したときだけ動的に読み込み、その後は同じエディターインスタンスのeditable状態だけを切り替えます。
 
-アプリ固有のスタイルは `src/components/editor/article-styles.tsx` の module-local な qstyle tagged template で管理し、同一モジュールの `css` prop から適用します。MathJaxは自己完結したSVGを出力するため、数式用の外部CSSやWebフォントは読み込みません。
+アプリ固有のスタイルは `src/components/editor/article-styles.tsx` の module-local な qstyle tagged template で管理し、同一モジュールの `css` prop から適用します。body直下のコマンドダイアログ等の共通規則は `src/reset.css` にあります。MathJaxは自己完結したSVGを出力するため、数式用の外部CSSやWebフォントは読み込みません。
 
 ## プロジェクト構成
 
@@ -58,6 +64,12 @@ pnpm build.types    # TypeScript の型チェック（wrangler types 生成付�
 pnpm check.fmt      # フォーマットチェック
 pnpm fmt            # フォーマット
 ```
+
+## 数式・Mermaidの描画キャッシュ
+
+数式・Mermaidはソース・描画バージョン・種別をキーにした共通のD1永続キャッシュを使います。時間TTLはなく、中間テーブル `post_render_refs` の外部キーと削除トリガーで、最後のソース参照がなくなった結果を削除します。キャッシュ取得はキー一覧を渡す一括JOINで、記事JSONの全体走査は行いません。編集ブラウザーが生成したMermaid SVGは本文と同時に保存し、閲覧時にはSVG画像として初期HTMLへ含めます。欠落したMermaidだけCloudflare Browser Rendering（`BROWSER` binding）で補完します。数式の欠落はWorkers内のMathJaxで補完し、SVGと支援MathMLを保持します。閲覧側のJavaScriptは不要です。編集フォームのプレビューのみブラウザー側で描画します。Mermaidの配布ファイルは開発・ビルド時に依存パッケージから生成し、外部CDNへ依存しません。
+
+`pnpm dev` / `pnpm preview` はローカルChromiumを使います。初回はWranglerがChromiumをダウンロードします。本番実行にはCloudflare側のBrowser Renderingが必要です（今回の変更はローカルで検証、デプロイは行っていません）。[公式の設定・ローカル実行手順](https://developers.cloudflare.com/browser-run/reference/wrangler/)
 
 ## カスタマイズ
 

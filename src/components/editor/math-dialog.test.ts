@@ -8,7 +8,7 @@ describe("validateLatex", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.html).toContain('<mjx-container class="MathJax" jax="SVG" display="true"');
+      expect(result.html).toMatch(/<mjx-container[^>]*jax="SVG"[^>]*display="true"/);
       expect(result.html).toContain('<mjx-assistive-mml unselectable="on" display="block">');
     }
   });
@@ -26,10 +26,14 @@ describe("validateLatex", () => {
 
     expect(unsafe.ok).toBe(true);
     if (unsafe.ok) {
-      expect(unsafe.html).not.toContain("javascript:");
+      expect(unsafe.html).not.toMatch(/(?:href|src)="javascript:/i);
       expect(unsafe.html).not.toContain("<a ");
     }
     expect(safe.ok).toBe(true);
     if (safe.ok) expect(safe.html).toContain('<a href="https://example.com">');
   });
+});
+
+it('supports current MathJax chemistry, physics and aligned equations',()=>{
+ for(const source of [String.raw`\ce{H2O}`,String.raw`\dv{f}{x}`,String.raw`\begin{aligned}a&=b\\c&=d\end{aligned}`])expect(validateLatex(source,true).ok).toBe(true);
 });

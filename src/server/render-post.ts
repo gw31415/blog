@@ -3,7 +3,7 @@ import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
 import { codeBlockDOMSpec } from "~/components/editor/code-block-view";
 import { createEditorExtensions } from "~/components/editor/editor-extensions";
 import { highlightCode } from "~/components/editor/editor-syntax-highlighting";
-import { parseArticleMarkdown } from "~/components/editor/markdown";
+import { normalizeDocument } from "~/content/document";
 import { validateLatex } from "~/components/editor/mathjax-renderer";
 
 function escapeHtml(value: unknown): string {
@@ -32,17 +32,28 @@ function renderDOMSpec(spec: unknown, holeContent: string): string {
     .join("")}</${tag}>`;
 }
 
-export function renderPost(markdown: string) {
-  const content = parseArticleMarkdown(markdown);
+export function renderPost(
+  document: unknown,
+  diagrams: string[] = [],
+  math: import("../content/render-contract").RenderResult[] = [],
+) {
+  const content = normalizeDocument(document);
+  let diagramIndex = 0;
+  let mathIndex = 0;
   const body = renderToHTMLString({
     content,
     extensions: createEditorExtensions(),
     options: {
       nodeMapping: {
-        inlineMath: ({ node }) => mathHtml(node, false),
-        blockMath: ({ node }) => mathHtml(node, true),
+        inlineMath: ({ node }) => mathHtml(node, false, math[mathIndex], mathIndex++),
+        blockMath: ({ node }) => mathHtml(node, true, math[mathIndex], mathIndex++),
         codeBlock: ({ node }) => {
           const language = typeof node.attrs.language === "string" ? node.attrs.language : "";
+          if (language === "mermaid") {
+            const diagram =
+              diagrams[diagramIndex++] ?? '<p role="alert">Mermaidの描画を確認してください。</p>';
+            return `<figure class="mermaid-diagram" data-mermaid-source="${escapeHtml(node.textContent)}"><div class="figure-field mermaid-preview">${diagram}</div></figure>`;
+          }
           const highlighted = highlightCode(language, node.textContent)
             .map(({ classes, text }) =>
               classes.length
@@ -58,13 +69,24 @@ export function renderPost(markdown: string) {
   return { content, html: `<div class="tiptap ProseMirror">${body}</div>` };
 }
 
-function mathHtml(node: { attrs: Record<string, unknown> }, displayMode: boolean): string {
+function mathHtml(
+  node: { attrs: Record<string, unknown> },
+  displayMode: boolean,
+  cached?: import("../content/render-contract").RenderResult,
+  index = 0,
+): string {
   const latex = typeof node.attrs.latex === "string" ? node.attrs.latex : "";
-  const rendered = validateLatex(latex, displayMode);
+  const rendered = cached
+    ? cached.output !== null
+      ? { ok: true as const, html: cached.output }
+      : { ok: false as const }
+    : validateLatex(latex, displayMode);
   if (!rendered.ok) return `<code>${escapeHtml(latex)}</code>`;
+  // Cached MathJax glyph IDs must be unique for each occurrence in the page.
+  const ids = new Map([...rendered.html.matchAll(/\bid="([^"]+)"/g)].map(match => [match[1], `math-${index}-${match[1]}`]));
+  const html = rendered.html.replace(/(id="|href="#)([^"#]+)(")/g, (original, prefix, id, end) =>
+    ids.has(id) ? `${prefix}${ids.get(id)}${end}` : original);
   const tag = displayMode ? "div" : "span";
-  const inner = displayMode
-    ? `<div class="block-math-inner">${rendered.html}</div>`
-    : rendered.html;
+  const inner = displayMode ? `<div class="block-math-inner">${html}</div>` : html;
   return `<${tag} class="tiptap-mathematics-render" data-type="${displayMode ? "block-math" : "inline-math"}" data-latex="${escapeHtml(latex)}" contenteditable="false">${inner}</${tag}>`;
 }

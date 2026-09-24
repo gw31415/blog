@@ -32,7 +32,7 @@ export default component$(() => {
     <main>
       <h1>記事一覧</h1>
       {canManage && (
-        <Form action={create}>
+        <Form action={create} reloadDocument>
           <button type="submit" disabled={create.isRunning}>
             新規記事
           </button>
@@ -46,7 +46,7 @@ export default component$(() => {
           {posts.value.map((post) => (
             <li key={post.id}>
               <a href={canonicalPath(post)}>{post.title}</a>{" "}
-              <time dateTime={post.published_at}>{post.published_at}</time>{" "}
+              <time dateTime={post.published_at ?? undefined}>{post.published_at}</time>{" "}
               {post.status === "draft" && <span>下書き</span>}
               {canManage && (
                 <>

@@ -9,7 +9,7 @@ const html = existsSync("dist/index.html")
   ? readFileSync("dist/index.html", "utf8")
   : previewUrl
     ? await (async () => {
-        const response = await fetch(new URL("/", previewUrl));
+        const response = await fetch(new URL(previewUrl));
         if (!response.ok) throw new Error(`Preview / returned ${response.status}`);
         return response.text();
       })()

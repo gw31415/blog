@@ -71,3 +71,11 @@ export function createCodeBlockControl(
 
   return { control, label, select, update };
 }
+
+/** Shared code block surface for body nodes and fixed-language source fields. */
+export function createCodeBlockSurface(ownerDocument: Document = document) {
+  const pre = ownerDocument.createElement("pre");
+  pre.className = "code-block";
+  const code = ownerDocument.createElement("code");
+  return { pre, code };
+}

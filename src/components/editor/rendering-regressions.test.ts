@@ -1,12 +1,15 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
+import { parseArticleMarkdown } from "./markdown";
 import { renderPost } from "~/server/render-post";
 
 import { renderMathContentHTML } from "./editor-extensions";
 import { requestMathEditWhenEditable } from "./editor-runtime";
 
 describe("editor rendering regressions", () => {
-  const renderedHtml = renderPost("## 見出し\n\n```html\n<p>本文</p>\n```\n\n数式 $x^2$。").html;
+  const renderedHtml = renderPost(
+    parseArticleMarkdown("## 見出し\n\n```html\n<p>本文</p>\n```\n\n数式 $x^2$。"),
+  ).html;
 
   it("does not request math editing while the editor is read-only", () => {
     const onMathEdit = vi.fn();
@@ -46,4 +49,53 @@ describe("editor rendering regressions", () => {
     expect(html).toContain("<mjx-assistive-mml");
     expect(html).toMatch(new RegExp(`<mtext(?: [^>]*)?>${textPattern}</mtext>`));
   });
+});
+
+describe("plain source rendering", () => {
+  it.each([null, "plaintext", "text", "unregistered-language"])(
+    "keeps literal source for %s",
+    (language) => {
+      const source = "plain text\n  ┌─入力─┐\n\t<&>";
+      const html = renderPost({
+        type: "doc",
+        content: [
+          { type: "codeBlock", attrs: { language }, content: [{ type: "text", text: source }] },
+        ],
+      }).html;
+      expect(html).toContain("plain text\n  ┌─入力─┐\n\t&lt;&amp;&gt;");
+      expect(html).not.toContain('class="hljs-');
+    },
+  );
+});
+
+describe("Mermaid server markup", () => {
+  it("uses server SVG in the image frame and keeps source out of the visible body", () => {
+    const source = 'flowchart LR\nA["<test>"] --> B';
+    const rendered = renderPost(
+      {
+        type: "doc",
+        content: [
+          {
+            type: "codeBlock",
+            attrs: { language: "mermaid" },
+            content: [{ type: "text", text: source }],
+          },
+        ],
+      },
+      ['<svg role="img"><text>diagram</text></svg>'],
+    );
+    expect(rendered.html).toContain('class="figure-field mermaid-preview"><svg');
+    expect(rendered.html).not.toContain("<pre");
+    expect(rendered.html).not.toContain("<code");
+    expect(rendered.html).toContain("&quot;&lt;test&gt;&quot;");
+    expect(rendered.content.content?.[0].content?.[0].text).toBe(source);
+  });
+});
+
+
+it("keeps separate browser-rendered formulas free of duplicate glyph IDs", () => {
+  const first = renderMathContentHTML("x^2", false);
+  const second = renderMathContentHTML("y^2", false);
+  const ids = [...(first + second).matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
+  expect(new Set(ids).size).toBe(ids.length);
 });

@@ -1,5 +1,6 @@
 export const CODE_LANGUAGES = [
   "plaintext",
+  "text",
   "html",
   "css",
   "javascript",

@@ -1,18 +1,49 @@
+import { renderEntries } from "../content/render-contract";
+import { acceptRenderArtifacts } from "./accept-render-artifacts";
+import { syncRenderReferences } from "./render-cache";
+import { validatePublication } from "./validate-publication";
 import type { RequestEventBase, RequestEventCommon } from "@qwik.dev/router";
 
 import { canonicalPath } from "~/content/post-url";
 
+import { normalizeDocument, EMPTY_DOCUMENT } from "../content/document";
+import type { JSONContent } from "@tiptap/core";
 export interface Post {
   id: string;
   status: "draft" | "published";
   canonical_alias: string | null;
-  category: string;
-  published_at: string;
+  format_version: number;
+  body_format: string;
+  content_schema_version: number;
   title: string;
-  subtitle: string;
-  body_markdown: string;
+  subtitle: string | null;
+  description: string | null;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+  published_at: string | null;
+  body: JSONContent;
+  editing_state: Record<string, unknown> | null;
 }
-
+type PostRow = Omit<Post, "tags" | "body" | "editing_state"> & {
+  tags: string;
+  body_json: string;
+  editing_state: string | null;
+};
+function decodePost(row: PostRow): Post {
+  if (
+    row.format_version !== 2 ||
+    row.content_schema_version !== 1 ||
+    row.body_format !== "tiptap-json"
+  )
+    throw new Error("未対応の文書形式です。元データを保持しています。");
+  return {
+    ...row,
+    tags: JSON.parse(row.tags),
+    body: normalizeDocument(JSON.parse(row.body_json)),
+    editing_state: row.editing_state ? JSON.parse(row.editing_state) : null,
+  };
+}
 const ULID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/i;
 const ALIAS_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -58,123 +89,160 @@ export function database(event: RequestEventBase): D1Database {
 
 export async function listPosts(db: D1Database): Promise<Post[]> {
   const { results } = await db
-    .prepare(
-      "SELECT id, status, canonical_alias, category, published_at, title, subtitle, body_markdown FROM posts ORDER BY created_at DESC, id DESC",
-    )
-    .all<Post>();
-  return results;
+    .prepare("SELECT * FROM posts ORDER BY created_at DESC, id DESC")
+    .all<PostRow>();
+  return results.map(decodePost);
 }
 
 export async function findPost(db: D1Database, identifier: string): Promise<Post | null> {
-  const columns =
-    "p.id, p.status, p.canonical_alias, p.category, p.published_at, p.title, p.subtitle, p.body_markdown";
-  if (isUlid(identifier)) {
-    return db
-      .prepare(`SELECT ${columns} FROM posts p WHERE p.id = ?`)
-      .bind(identifier.toUpperCase())
-      .first<Post>();
-  }
-  return db
-    .prepare(
-      `SELECT ${columns} FROM post_aliases a JOIN posts p ON p.id = a.post_id WHERE a.alias = ?`,
-    )
-    .bind(identifier)
-    .first<Post>();
+  const row = isUlid(identifier)
+    ? await db
+        .prepare("SELECT * FROM posts WHERE id = ?")
+        .bind(identifier.toUpperCase())
+        .first<PostRow>()
+    : await db
+        .prepare(
+          "SELECT p.* FROM post_aliases a JOIN posts p ON p.id = a.post_id WHERE a.alias = ?",
+        )
+        .bind(identifier)
+        .first<PostRow>();
+  return row ? decodePost(row) : null;
 }
-
-export interface PostInput {
-  category: string;
-  publishedAt: string;
-  title: string;
-  subtitle: string;
-  bodyMarkdown: string;
-}
-
-export function parsePostInput(values: Record<string, unknown>): PostInput {
-  const title = formText(values.title).trim();
-  const publishedAt = formText(values.publishedAt).trim();
-  const bodyMarkdown = formText(values.bodyMarkdown);
-  if (!title || title.length > 200) throw new Error("タイトルは1〜200文字で入力してください。");
-  const date = new Date(`${publishedAt}T00:00:00Z`);
+export function parsePostInput(values: Record<string, unknown>) {
   if (
-    !/^\d{4}-\d{2}-\d{2}$/.test(publishedAt) ||
-    Number.isNaN(date.getTime()) ||
-    date.toISOString().slice(0, 10) !== publishedAt
-  ) {
-    throw new Error("公開日を入力してください。");
-  }
-  if (bodyMarkdown.length > 500_000) throw new Error("本文が長すぎます。");
+    Number(values.formatVersion) !== 2 ||
+    Number(values.contentSchemaVersion) !== 1 ||
+    values.bodyFormat !== "tiptap-json"
+  )
+    throw new Error("未対応の文書形式です");
+  const status = values.status;
+  if (status !== "draft" && status !== "published") throw new Error("公開状態を選択してください");
+  if (typeof values.title !== "string") throw new Error("タイトルは文字列です");
+  for (const key of ["subtitle", "description"])
+    if (values[key] != null && typeof values[key] !== "string")
+      throw new Error(`${key}は文字列またはnullです`);
+  const title = values.title;
+  if (title.length > 200 || (status === "published" && !title.trim()))
+    throw new Error("公開時はタイトルが必要です（200文字以内）");
+  const raw = typeof values.body === "string" ? JSON.parse(values.body) : values.body;
+  if (JSON.stringify(raw).length > 500_000) throw new Error("本文が長すぎます");
+  let tags: unknown =
+    typeof values.tags === "string" ? JSON.parse(values.tags) : (values.tags ?? []);
+  if (!Array.isArray(tags) || tags.some((t) => typeof t !== "string"))
+    throw new Error("タグは文字列配列です");
+  tags = [...new Set((tags as string[]).map((t) => t.trim()).filter(Boolean))];
   return {
-    category: formText(values.category).trim().slice(0, 100),
-    publishedAt,
     title,
-    subtitle: formText(values.subtitle).trim().slice(0, 500),
-    bodyMarkdown,
+    subtitle: values.subtitle == null ? null : formText(values.subtitle),
+    description: values.description == null ? null : formText(values.description),
+    tags: tags as string[],
+    body: normalizeDocument(raw),
+    status,
   };
 }
-
 export async function createDraft(db: D1Database): Promise<string> {
   const id = newUlid();
-  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+  const now = new Date().toISOString();
   await db
-    .prepare("INSERT INTO posts (id, status, published_at, title) VALUES (?, 'draft', ?, '無題')")
-    .bind(id, today)
+    .prepare("INSERT INTO posts (id,created_at,updated_at,body_json,title) VALUES (?,?,?,?,'無題')")
+    .bind(id, now, now, JSON.stringify(EMPTY_DOCUMENT))
     .run();
   return id;
 }
-
 export async function savePostContent(
   db: D1Database,
   id: string,
   values: Record<string, unknown>,
 ): Promise<void> {
-  const input = parsePostInput(values);
-  const status = values.status;
-  if (status !== "draft" && status !== "published") {
-    throw new Error("公開状態を選択してください。");
+  const old = await findPost(db, id);
+  if (!old) throw new Error("記事が見つかりません");
+  let input: ReturnType<typeof parsePostInput>;
+  let useSubmittedArtifacts = true;
+  try {
+    input = parsePostInput(values);
+  } catch (error) {
+    if (values.status !== "draft") throw error;
+    const raw = typeof values.body === "string" ? JSON.parse(values.body) : values.body;
+    normalizeDocument(raw, { editing: true });
+    input = parsePostInput({ ...values, body: old.body });
+    useSubmittedArtifacts = false;
+    values.editingState = {
+      ...((values.editingState as object) ?? {}),
+      document: raw,
+      diagnostic: String(error),
+    };
   }
+  if (values.editingState) {
+    const working = values.editingState as Record<string, unknown>;
+    if (JSON.stringify(working).length > 750_000) throw new Error("編集状態が長すぎます");
+    if (working.document) normalizeDocument(working.document, { editing: true });
+    if (input.status === "published" && working.pending)
+      throw new Error("未確定フォームを完了するか、下書きとして保存してください");
+  }
+  if (input.status === "published") await validatePublication(input.body);
   const alias = normalizeAlias(values.alias);
+  const now = new Date().toISOString();
+  const previous = {
+    title: old.title,
+    subtitle: old.subtitle,
+    description: old.description,
+    tags: old.tags,
+    body: old.body,
+    status: old.status,
+  };
+  const changed =
+    JSON.stringify(previous) !== JSON.stringify(input) || alias !== old.canonical_alias;
+  const publishedAt = old.published_at ?? (input.status === "published" ? now : null);
   const statements: D1PreparedStatement[] = [];
-  if (alias) {
+  if (alias)
     statements.push(
-      db
-        .prepare("INSERT OR IGNORE INTO post_aliases (alias, post_id) VALUES (?, ?)")
-        .bind(alias, id),
+      db.prepare("INSERT OR IGNORE INTO post_aliases(alias,post_id) VALUES (?,?)").bind(alias, id),
     );
-  }
   statements.push(
     db
-      .prepare(`UPDATE posts
-        SET category = ?, published_at = ?, title = ?, subtitle = ?, body_markdown = ?,
-            status = ?, canonical_alias = ?
-        WHERE id = ? AND (? IS NULL OR EXISTS
-          (SELECT 1 FROM post_aliases WHERE alias = ? AND post_id = ?))`)
+      .prepare(
+        `UPDATE posts SET title=?,subtitle=?,description=?,tags=?,body_json=?,status=?,canonical_alias=?,published_at=?,updated_at=?,editing_state=? WHERE id=? AND (? IS NULL OR EXISTS(SELECT 1 FROM post_aliases WHERE alias=? AND post_id=?))`,
+      )
       .bind(
-        input.category,
-        input.publishedAt,
         input.title,
         input.subtitle,
-        input.bodyMarkdown,
-        status,
+        input.description,
+        JSON.stringify(input.tags),
+        JSON.stringify(input.body),
+        input.status,
         alias,
+        publishedAt,
+        changed ? now : old.updated_at,
+        values.editingState ? JSON.stringify(values.editingState) : null,
         id,
         alias,
         alias,
         id,
       ),
   );
-  const results = await db.batch(statements);
-  if (!results.at(-1)?.meta.changes) {
-    throw new Error(alias ? "エイリアスが他の記事で使用されています。" : "記事が見つかりません。");
-  }
+  const postStatementIndex = statements.length - 1;
+  const artifacts = await acceptRenderArtifacts(
+    db,
+    input.body,
+    useSubmittedArtifacts ? values.renderArtifacts : undefined,
+    id,
+  );
+  statements.push(
+    ...artifacts,
+    ...syncRenderReferences(
+      db,
+      { id, body: JSON.stringify(input.body) },
+      await renderEntries(input.body),
+    ),
+  );
+  const result = await db.batch(statements);
+  if (!result[postStatementIndex]?.meta.changes)
+    throw new Error("エイリアスが他の記事で使用されています");
 }
 
 export async function deletePost(db: D1Database, id: string): Promise<boolean> {
-  const results = await db.batch([
-    db.prepare("DELETE FROM post_aliases WHERE post_id = ?").bind(id),
-    db.prepare("DELETE FROM posts WHERE id = ?").bind(id),
-  ]);
-  return (results[1].meta.changes ?? 0) > 0;
+  const result = await db.prepare("DELETE FROM posts WHERE id=?").bind(id).run();
+  return (result.meta.changes ?? 0) > 0;
 }
 
 export function redirectCanonical(event: RequestEventCommon, path: string): never {

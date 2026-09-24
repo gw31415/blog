@@ -1,8 +1,9 @@
 import type { JSONContent } from "@tiptap/core";
 
 export type EditorCommand =
+  | { type: "palette"; command?: string }
   | { type: "undo" | "redo" | "paragraph" | "bold" | "italic" | "strike" }
-  | { type: "heading"; level: 2 | 3 }
+  | { type: "heading"; level: 2 | 3 | 4 | 5 | 6 }
   | { type: "bulletList" | "orderedList" | "taskList" | "blockquote" | "codeBlock" }
   | { type: "horizontalRule" | "table" | "inlineMath" | "blockMath" }
   | { type: "link"; href: string }
@@ -17,7 +18,7 @@ export interface ToolbarState {
   bold: boolean;
   italic: boolean;
   strike: boolean;
-  heading: 2 | 3 | null;
+  heading: 2 | 3 | 4 | 5 | 6 | null;
   bulletList: boolean;
   orderedList: boolean;
   taskList: boolean;
@@ -36,6 +37,8 @@ export interface MathEditRequest {
 export interface EditorHandle {
   setEditable(editable: boolean): void;
   run(command: EditorCommand): boolean;
+  getWorkingState?(): Record<string, unknown>;
+  getJSON(): JSONContent;
   getMarkdown(): string;
   destroy(): void;
 }
@@ -43,7 +46,8 @@ export interface EditorHandle {
 export interface MountArticleEditorOptions {
   element: HTMLElement;
   content: JSONContent;
-  onUpdate(markdown: string): void;
+  workingState?: Record<string, unknown> | null;
+  onUpdate(content: JSONContent): void;
   onSelectionChange(state: ToolbarState): void;
   onMathEdit(request: MathEditRequest): void;
 }
@@ -60,6 +64,8 @@ export interface EditorController {
     options?: Omit<MountArticleEditorOptions, "element">,
   ): Promise<EditorHandle>;
   enterView(): void;
+  getWorkingState(): Record<string, unknown> | undefined;
+  getJSON(): JSONContent | undefined;
   getMarkdown(): string | undefined;
   run(command: EditorCommand): boolean;
   isReady(): boolean;
@@ -89,6 +95,7 @@ export function createEditorController(loadRuntime: EditorRuntimeLoader): Editor
         handle = await runtime.mountArticleEditor({
           element,
           content: options?.content ?? EMPTY_DOCUMENT,
+          workingState: options?.workingState,
           onUpdate: options?.onUpdate ?? NOOP,
           onSelectionChange: options?.onSelectionChange ?? NOOP,
           onMathEdit: options?.onMathEdit ?? NOOP,
@@ -104,6 +111,9 @@ export function createEditorController(loadRuntime: EditorRuntimeLoader): Editor
     enterView() {
       handle?.setEditable(false);
     },
+
+    getWorkingState() { return handle?.getWorkingState?.(); },
+    getJSON() { return handle?.getJSON(); },
 
     getMarkdown() {
       return handle?.getMarkdown();

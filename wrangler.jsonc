@@ -10,6 +10,7 @@
     "binding": "ASSETS",
     "directory": "./dist",
   },
+  "browser": { "binding": "BROWSER" },
   "observability": {
     "enabled": true,
   },

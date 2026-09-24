@@ -45,3 +45,5 @@ lerna-debug.log*
 # Yarn
 .yarn/*
 !.yarn/releases
+
+/public/mermaid/

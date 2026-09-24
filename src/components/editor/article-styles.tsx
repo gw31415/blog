@@ -1069,6 +1069,7 @@ const articleShellStyles = css`
     background: transparent;
 
     font: inherit;
+    min-height: 1lh;
   }
 
   & .hljs-comment,
@@ -1412,6 +1413,18 @@ const articleShellStyles = css`
   /*
      * 写真は紙面に馴染むよう彩度を落とし、わずかに暖色へ寄せる。
      */
+  & .article-content p img {
+    max-width: 100%;
+    height: auto;
+    vertical-align: middle;
+  }
+
+  & .article-content > .tiptap > p:has(img),
+  & .article-content p:has(img) {
+    text-box-trim: none;
+    text-align: start;
+  }
+
   & .figure-field img {
     display: block;
 
@@ -1615,7 +1628,10 @@ const articleShellStyles = css`
 
   & .editor-formatting {
     display: flex;
+    justify-content: space-evenly;
     gap: 0;
+    width: min(36rem, calc(100% - 2 * var(--paper-inset)));
+    margin-inline: auto;
     height: 32px;
     padding: 2px 4px;
     overflow-x: auto;
@@ -1763,6 +1779,10 @@ const articleShellStyles = css`
       width: 100vw;
     }
 
+    & .editor-formatting {
+      width: calc(100% - 42px);
+    }
+
     & .editor-dialog {
       width: min(100%, 420px);
     }
@@ -1775,6 +1795,109 @@ const articleShellStyles = css`
       margin-inline: -4px;
     }
   }
+
+  & .editor-dock--source {
+    background: var(--paper);
+    max-height: calc(100 * var(--virtual-keyboard-svh, 1svh) - 32px);
+    display: flex;
+    flex-direction: column;
+  }
+  & .editor-dock--source .editor-formatting { display: none; }
+  & .render-source-dialog {
+    position: static;
+    flex: 0 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+  }
+  & .render-source-dialog:not([open]) { display: none; }
+  & .render-source-preview {
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    width: min(var(--render-article-width), calc(100% - 24px));
+    min-height: 0;
+    margin: 10px auto;
+    overflow: hidden;
+    background: var(--paper);
+  }
+  & .render-source-preview figure,
+  & .render-source-preview .math-block { margin: 0; min-height: 0; overflow: auto; }
+  & .render-source-preview figure { display: flex; }
+  & .render-source-preview .figure-field { min-height: 0; width: 100%; overflow: auto; }
+  & .render-source-preview .mermaid-preview { padding: 20px; }
+  & .render-source-code .hljs-operator { color: var(--syn-purple); -webkit-text-fill-color: var(--syn-purple); }
+  & .render-source-preview [role="alert"]:empty { display: none; }
+  & .render-source-panel {
+    flex: 0 0 auto;
+    width: min(var(--render-article-width), calc(100% - 24px));
+    min-height: 0;
+    margin: 0 auto;
+    padding: 0 0 4px;
+    overflow: hidden;
+    background: var(--paper);
+    border: 0;
+  }
+  & .render-source-panel pre.code-block { margin: 0; padding-top: 15px; padding-bottom: 15px; }
+  & .render-source-surface { position: relative; height: clamp(64px, 14svh, 120px); }
+  & .render-source-surface code,
+  & .render-source-surface textarea {
+    box-sizing: border-box;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    font: inherit;
+    letter-spacing: normal;
+    white-space: pre;
+    overflow: auto;
+    tab-size: 2;
+  }
+  & .render-source-surface code { pointer-events: none; scrollbar-width: none; }
+  & .render-source-surface textarea {
+    resize: none;
+    background: transparent;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    caret-color: var(--syn-text);
+    outline: none;
+  }
+  & .render-source-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0;
+    margin-top: 8px;
+    border-top: 1px solid var(--line-soft);
+  }
+  & .render-source-actions button {
+    min-width: 72px;
+    min-height: 30px;
+    padding: 2px 10px;
+    border-left: 1px solid var(--line-soft);
+    border-radius: 0;
+    font-size: 11px;
+  }
+  & .render-source-actions button[type="submit"] {
+    color: #fffaf0;
+    -webkit-text-fill-color: #fffaf0;
+    background: #352f25;
+  }
+  & .render-source-actions button[type="submit"]:disabled { opacity: 0.48; }
 `;
 
 export const ArticleStyleBoundary = component$(() => (

@@ -161,7 +161,7 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
         <span
           class="meta-category"
           data-article-field="category"
-          contentEditable={props.editable ? "true" : undefined}
+          contentEditable={props.editable && props.onCategoryInput$ ? "true" : undefined}
           onInput$={(_, element) => props.onCategoryInput$?.(element.textContent ?? "")}
         >
           <RenderOnce>{initialCategory}</RenderOnce>
@@ -187,7 +187,7 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
               props.dateLabel
             )}
           </time>
-          {props.editable && (
+          {props.editable && props.onDateInput$ && (
             <input
               class="article-date-input"
               type="date"

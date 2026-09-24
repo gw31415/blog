@@ -7,9 +7,10 @@ export default defineConfig({
   outputDir: ".cache/playwright-results",
   reporter: "line",
   use: {
-    baseURL: `http://127.0.0.1:${port}`,
+    baseURL: process.env.BLOG_TEST_URL ?? `http://127.0.0.1:${port}`,
   },
-  webServer: {
+  workers: 1,
+  webServer: process.env.BLOG_TEST_URL ? undefined : {
     command: `pnpm dev --host 127.0.0.1 --port ${port} --strictPort`,
     url: `http://127.0.0.1:${port}`,
     reuseExistingServer: !process.env.CI,
