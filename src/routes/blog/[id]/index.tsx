@@ -109,7 +109,9 @@ export default component$(() => {
           throw new Error(
             "message" in result.value ? String(result.value.message) : "保存できませんでした。",
           );
-        window.location.replace(`/blog/${draft.alias || post.id}`);
+        const savedPath = `/blog/${draft.alias || post.id}`;
+        // Same-URL reloads let Safari restore an old scroll position on the next edit.
+        if (window.location.pathname !== savedPath) window.location.replace(savedPath);
       })}
     >
       <div class="article-topbar">
