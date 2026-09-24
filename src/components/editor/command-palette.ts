@@ -161,23 +161,21 @@ export function createCommandPalette(editor: Editor) {
   let saved = editor.state.selection;
   let slash: { from: number; to: number } | null = null;
   const dialogHost = editor.view.dom.closest("[data-qstyle-boundary]") ?? document.body;
+  let suggestions: HTMLDivElement | null = null;
+  let releaseSuggestions: (() => void) | undefined;
+  let releasePopover: (() => void) | undefined;
   const close = () => {
+    releaseSuggestions?.();
+    releaseSuggestions = undefined;
+    suggestions?.remove();
+    suggestions = null;
+    releasePopover?.();
+    releasePopover = undefined;
     const dock = dialog?.closest(".editor-dock");
     dock?.classList.remove("editor-dock--source");
     if (dialog?.open) dialog.close();
     dialog?.remove();
     dialog = null;
-  };
-  const begin = () => {
-    saved = editor.state.selection;
-    close();
-    dialog = document.createElement("dialog");
-    dialog.className = "document-command-dialog";
-    dialog.setAttribute("aria-label", "本文コマンド");
-    dialogHost.appendChild(dialog);
-    dialog.addEventListener("cancel", () => close());
-    dialog.showModal();
-    return dialog;
   };
   const restore = () => {
     editor.view.dispatch(editor.state.tr.setSelection(saved));
@@ -247,24 +245,39 @@ export function createCommandPalette(editor: Editor) {
     const source = fields.find((field) => field.mermaid || field.name === "latex");
     if (source) {
       const math = ancestor(editor, ["inlineMath", "blockMath"]);
-      createRenderSourceDialog({
-        dialog,
-        host: editor.view.dom,
-        title,
-        name: source.name,
-        source: source.value ?? "",
-        kind: source.mermaid
-          ? "mermaid"
-          : math?.node.type.name === "inlineMath" || currentCommand === "math-inline"
-            ? "inlineMath"
-            : "blockMath",
-        cancel: () => {
-          close();
-          editor.view.focus();
-        },
-        apply: (value) => commit(() => apply({ [source.name]: value })),
-      });
-      dialog.addEventListener("cancel", () => close());
+      const sourceDialog = dialog;
+      let observer: MutationObserver | undefined;
+      const mountSource = () => {
+        if (
+          !editor.view.dom
+            .closest("[data-virtual-keyboard-viewport]")
+            ?.querySelector(".editor-dock")
+        )
+          return;
+        observer?.disconnect();
+        createRenderSourceDialog({
+          dialog: sourceDialog,
+          host: editor.view.dom,
+          title,
+          name: source.name,
+          source: source.value ?? "",
+          kind: source.mermaid
+            ? "mermaid"
+            : math?.node.type.name === "inlineMath" || currentCommand === "math-inline"
+              ? "inlineMath"
+              : "blockMath",
+          cancel: () => {
+            close();
+            editor.view.focus();
+          },
+          apply: (value) => commit(() => apply({ [source.name]: value })),
+        });
+        sourceDialog.addEventListener("cancel", () => close());
+      };
+      observer = new MutationObserver(mountSource);
+      observer.observe(dialogHost, { childList: true, subtree: true });
+      releasePopover = () => observer?.disconnect();
+      mountSource();
       return;
     }
 
@@ -306,15 +319,10 @@ export function createCommandPalette(editor: Editor) {
       close();
       editor.view.focus();
     };
-    const saveDraft = document.createElement("button");
-    saveDraft.type = "button";
-    saveDraft.textContent = "未確定のまま下書き保存";
-    saveDraft.className = "document-command-draft";
-    saveDraft.onclick = () => window.dispatchEvent(new Event("document-save-draft"));
     const actions = document.createElement("div");
     actions.className = "document-command-actions";
     [cancel, applyButton].forEach((child) => actions.appendChild(child));
-    [fieldGroup, alert, saveDraft, actions].forEach((child) => f.appendChild(child));
+    [fieldGroup, alert, actions].forEach((child) => f.appendChild(child));
     f.onsubmit = (e) => {
       e.preventDefault();
       commit(() => apply(Object.fromEntries(new FormData(f)) as Record<string, string>));
@@ -322,7 +330,56 @@ export function createCommandPalette(editor: Editor) {
     [heading, f].forEach((child) => dialog!.appendChild(child));
     dialogHost.appendChild(dialog);
     dialog.addEventListener("cancel", () => close());
-    dialog.showModal();
+    if (currentCommand === "table" || currentCommand === "link") {
+      dialog.classList.add(
+        "document-insert-popover",
+        currentCommand === "table" ? "document-table-popover" : "document-link-popover",
+      );
+      heading.remove();
+      if (currentCommand === "table") {
+        const times = document.createElement("span");
+        times.textContent = "×";
+        times.setAttribute("aria-hidden", "true");
+        fieldGroup.insertBefore(times, fieldGroup.children[1]);
+        for (const input of fieldGroup.querySelectorAll("input")) {
+          input.min = input.name === "cols" ? "1" : "0";
+          input.max = input.name === "cols" ? "30" : "100";
+          input.required = true;
+        }
+      }
+      const popup = dialog;
+      const anchor = dialogHost.querySelector(
+        currentCommand === "table" ? "[data-insert-table]" : "[data-insert-link]",
+      );
+      const position = () => {
+        const rect = anchor?.getBoundingClientRect() ?? editor.view.dom.getBoundingClientRect();
+        popup.style.left = `${Math.max(8, Math.min(window.innerWidth - popup.offsetWidth - 8, rect.left + rect.width / 2 - popup.offsetWidth / 2))}px`;
+        popup.style.top = `${Math.max(8, rect.top - popup.offsetHeight - 8)}px`;
+      };
+      const dismiss = (event: Event) => {
+        if (!popup.contains(event.target as Node) && !anchor?.contains(event.target as Node))
+          close();
+      };
+      const escape = (event: KeyboardEvent) => {
+        if (event.key === "Escape") {
+          close();
+          editor.view.focus();
+        }
+      };
+      popup.show();
+      position();
+      document.addEventListener("pointerdown", dismiss);
+      document.addEventListener("keydown", escape);
+      window.addEventListener("resize", position);
+      window.addEventListener("scroll", position, true);
+      releasePopover = () => {
+        document.removeEventListener("pointerdown", dismiss);
+        document.removeEventListener("keydown", escape);
+        window.removeEventListener("resize", position);
+        window.removeEventListener("scroll", position, true);
+      };
+      fieldGroup.querySelector("input")?.focus();
+    } else dialog.showModal();
   };
   const insert = (node: JSONContent) => {
     if (!editor.schema.nodes[node.type!].isBlock) return editor.commands.insertContent(node);
@@ -334,6 +391,81 @@ export function createCommandPalette(editor: Editor) {
       node,
     );
   };
+  const uploadStatus = document.createElement("p");
+  uploadStatus.className = "document-upload-status";
+  uploadStatus.setAttribute("role", "status");
+  const uploadImages = async (files: File[], position = saved.from) => {
+    // Map the insertion point through edits made while the request is in flight.
+    let bookmark: import("@tiptap/pm/state").SelectionBookmark = TextSelection.create(
+      editor.state.doc,
+      position,
+    ).getBookmark();
+    const mapPosition = ({
+      transaction,
+    }: {
+      transaction: import("@tiptap/pm/state").Transaction;
+    }) => {
+      bookmark = bookmark.map(transaction.mapping);
+    };
+    editor.on("transaction", mapPosition);
+    dialogHost.appendChild(uploadStatus);
+    uploadStatus.textContent = "画像をアップロード中…";
+    try {
+      for (const file of files) {
+        const payload = new FormData();
+        payload.set("image", file);
+        const response = await fetch("/api/images", { method: "POST", body: payload });
+        const result = (await response.json()) as { url?: string; error?: string };
+        if (!response.ok || !result.url) throw new Error(result.error ?? "アップロード失敗");
+        if (editor.isDestroyed) return;
+        editor.view.dispatch(
+          closeHistory(editor.state.tr.setSelection(bookmark.resolve(editor.state.doc))),
+        );
+        if (slash) {
+          editor.commands.deleteRange(slash);
+          slash = null;
+        }
+        if (
+          !insert({
+            type: "figure",
+            attrs: { src: result.url, alt: "" },
+            content: [{ type: "paragraph" }],
+          })
+        )
+          throw new Error("この位置には画像を挿入できません");
+        editor.view.dispatch(closeHistory(editor.state.tr));
+        bookmark = editor.state.selection.getBookmark();
+      }
+      uploadStatus.remove();
+      editor.view.focus();
+    } catch (error) {
+      uploadStatus.textContent = String(error);
+    } finally {
+      editor.off("transaction", mapPosition);
+    }
+  };
+  const drop = (event: DragEvent) => {
+    const files = Array.from(event.dataTransfer?.files ?? []).filter((file) =>
+      file.type.startsWith("image/"),
+    );
+    if (!files.length) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const position = editor.view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
+    close();
+    slash = null;
+    void uploadImages(files, position ?? editor.state.selection.from);
+  };
+  const dragover = (event: DragEvent) => {
+    if (
+      Array.from(event.dataTransfer?.items ?? []).some(
+        (item) => item.kind === "file" && item.type.startsWith("image/"),
+      )
+    )
+      event.preventDefault();
+  };
+  editor.view.dom.addEventListener("drop", drop, true);
+  editor.view.dom.addEventListener("dragover", dragover);
   const fields = (
     label: string,
     definitions: Field[],
@@ -453,24 +585,36 @@ export function createCommandPalette(editor: Editor) {
                 attrs: { latex: v.latex },
               }),
       );
-    if (id === "link")
+    if (id === "link") {
+      restore();
+      if (editor.state.selection.empty && editor.isActive("link")) {
+        editor.commands.extendMarkRange("link");
+        saved = editor.state.selection;
+      }
+      const originalText = editor.state.doc.textBetween(saved.from, saved.to, " ");
+      const existing = editor.getAttributes("link");
       return fields(
-        "リンク",
+        "リンクを挿入",
         [
-          { name: "href", label: "URL", value: editor.getAttributes("link").href ?? "" },
-          {
-            name: "title",
-            label: "title（任意）",
-            value: editor.getAttributes("link").title ?? "",
-          },
+          { name: "text", label: "文章", value: originalText },
+          { name: "href", label: "URL", value: existing.href ?? "" },
         ],
-        (v) =>
-          editor
-            .chain()
-            .extendMarkRange("link")
-            .setLink({ href: v.href, ...{ title: v.title || null } })
-            .run(),
+        (v) => {
+          const href = v.href.trim();
+          if (!href || /^(?:javascript|data|vbscript):/i.test(href))
+            throw new Error("リンク先のURLを入力してください");
+          if (!v.text.trim()) throw new Error("文章を入力してください");
+          const attrs = { href, title: existing.title ?? null };
+          if (v.text === originalText && !editor.state.selection.empty)
+            return editor.chain().setLink(attrs).run();
+          return editor.commands.insertContent({
+            type: "text",
+            text: v.text,
+            marks: [{ type: "link", attrs }],
+          });
+        },
       );
+    }
     if (
       id === "image" ||
       id === "figure" ||
@@ -685,32 +829,15 @@ export function createCommandPalette(editor: Editor) {
       return;
     }
     if (id === "upload-image") {
-      fields(
-        "画像をアップロード",
-        [
-          { name: "file", label: "画像ファイル", type: "file" },
-          { name: "figure", label: "キャプション付きの図として挿入", type: "checkbox" },
-        ],
-        () => false,
-      );
-      const f = dialog!.querySelector("form")!;
-      f.onsubmit = async (e) => {
-        e.preventDefault();
-        const file = (f.querySelector("input") as HTMLInputElement).files?.[0];
-        if (!file) return;
-        try {
-          const payload = new FormData();
-          payload.set("image", file);
-          const response = await fetch("/api/images", { method: "POST", body: payload });
-          const result = (await response.json()) as { url?: string; error?: string };
-          if (!response.ok || !result.url) throw new Error(result.error ?? "アップロード失敗");
-          run(f.querySelector<HTMLInputElement>("[name=figure]")?.checked ? "figure" : "image");
-          const src = dialog?.querySelector<HTMLInputElement>("[name=src]");
-          if (src) src.value = result.url;
-        } catch (error) {
-          f.querySelector("[role=alert]")!.textContent = String(error);
-        }
+      close();
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/png,image/jpeg,image/gif,image/webp";
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (file) void uploadImages([file]);
       };
+      input.click();
       return;
     }
     commit(() => {
@@ -829,7 +956,8 @@ export function createCommandPalette(editor: Editor) {
     initial: Record<string, string> = {},
   ) => {
     slash = range ?? null;
-    begin();
+    saved = editor.state.selection;
+    close();
     if (direct) {
       run(direct);
       for (const [name, value] of Object.entries(initial)) {
@@ -844,60 +972,152 @@ export function createCommandPalette(editor: Editor) {
       }
       return;
     }
-    const input = document.createElement("input");
-    input.setAttribute("aria-label", "コマンド検索");
-    input.placeholder = "コマンドを検索";
+    const panel = document.createElement("div");
+    suggestions = panel;
+    panel.className = "document-command-suggestions";
+    panel.setAttribute("aria-label", "本文コマンド");
     const list = document.createElement("div");
+    list.id = "document-command-options";
     list.setAttribute("role", "listbox");
-    const alert = document.createElement("p");
-    alert.setAttribute("role", "alert");
-    [input, list, alert].forEach((child) => dialog!.appendChild(child));
+    list.setAttribute("aria-label", "本文コマンド");
+    const input = range ? null : document.createElement("input");
+    if (input) {
+      input.setAttribute("aria-label", "コマンド検索");
+      input.placeholder = "コマンドを検索";
+      panel.appendChild(input);
+    }
+    panel.appendChild(list);
+    dialogHost.appendChild(panel);
     let index = 0;
-    let commands = searchCommands("");
+    let commands: PaletteCommand[] = [];
+    let query = "";
+    const position = () => {
+      const rect = editor.view.coordsAtPos(saved.from);
+      const viewport = window.visualViewport;
+      const top = viewport?.offsetTop ?? 0;
+      const bottom = Math.min(
+        top + (viewport?.height ?? window.innerHeight),
+        dialogHost.querySelector(".editor-dock")?.getBoundingClientRect().top ?? window.innerHeight,
+      );
+      panel.style.left = `${Math.max(8, Math.min(window.innerWidth - panel.offsetWidth - 8, rect.left))}px`;
+      const below = bottom - rect.bottom - 8;
+      const above = rect.top - top - 8;
+      const useBelow = below >= Math.min(panel.scrollHeight, 200) || below >= above;
+      panel.style.maxHeight = `${Math.max(48, Math.min(224, useBelow ? below : above))}px`;
+      panel.style.top = `${useBelow ? rect.bottom + 4 : Math.max(top + 4, rect.top - panel.offsetHeight - 4)}px`;
+    };
+    const choose = (command: PaletteCommand) => {
+      releaseSuggestions?.();
+      releaseSuggestions = undefined;
+      panel.remove();
+      suggestions = null;
+      run(command.id, query);
+    };
     const render = () => {
-      commands = searchCommands(input.value);
+      commands = searchCommands(query).filter((command) => !reason(editor, command));
+      index = Math.min(index, Math.max(0, commands.length - 1));
       list.replaceChildren();
-      commands.forEach((c, i) => {
+      if (!commands.length) {
+        const empty = document.createElement("p");
+        empty.textContent = "候補なし";
+        list.appendChild(empty);
+      }
+      commands.forEach((command, i) => {
         const button = document.createElement("button");
         button.type = "button";
+        button.id = `document-command-option-${i}`;
         button.setAttribute("role", "option");
         button.setAttribute("aria-selected", String(i === index));
-        const why = reason(editor, c);
-        button.disabled = !!why;
-        button.textContent = `${c.label}  /${c.id}${why ? " — " + why : c.hint ? " · " + c.hint : ""}`;
-        button.onclick = () => run(c.id, input.value);
+        button.textContent = command.label;
+        button.onpointerdown = (event) => event.preventDefault();
+        button.onclick = () => choose(command);
         list.appendChild(button);
       });
+      const owner = input ?? editor.view.dom;
+      owner.setAttribute("aria-controls", list.id);
+      if (commands.length)
+        owner.setAttribute("aria-activedescendant", `document-command-option-${index}`);
+      else owner.removeAttribute("aria-activedescendant");
+      position();
     };
-    input.oninput = () => {
+    const update = () => {
+      if (!range) return;
+      const selection = editor.state.selection;
+      if (!selection.empty || selection.from < range.from + 1) {
+        close();
+        return;
+      }
+      const text = editor.state.doc.textBetween(range.from, selection.from, "\n");
+      if (!text.startsWith("/") || /\s/.test(text)) {
+        close();
+        return;
+      }
+      saved = selection;
+      slash = { from: range.from, to: selection.from };
+      query = text.slice(1);
       index = 0;
       render();
     };
-    dialog!.onkeydown = (e) => {
-      if (e.key === "Tab" || e.key === "Escape") {
-        e.preventDefault();
+    const keydown = (event: KeyboardEvent) => {
+      if (event.isComposing || editor.view.composing) return;
+      if (!["Escape", "ArrowDown", "ArrowUp", "Enter", "Tab"].includes(event.key)) return;
+      if (event.key === "Escape" || event.key === "Tab") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
         close();
         editor.view.focus();
+        return;
       }
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        e.preventDefault();
-        index = (index + (e.key === "ArrowDown" ? 1 : -1) + commands.length) % commands.length;
+      if (!commands.length) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (event.key === "Enter") choose(commands[index]);
+      else {
+        index = (index + (event.key === "ArrowDown" ? 1 : -1) + commands.length) % commands.length;
         render();
         list.children[index]?.scrollIntoView({ block: "nearest" });
       }
-      if (e.key === "Enter") {
-        e.preventDefault();
-        const c = commands[index];
-        if (c && !reason(editor, c)) run(c.id, input.value);
-      }
     };
-    render();
-    input.focus();
+    const dismiss = (event: Event) => {
+      if (!panel.contains(event.target as Node)) close();
+    };
+    const keyTarget = input ?? editor.view.dom;
+    keyTarget.addEventListener("keydown", keydown, true);
+    document.addEventListener("pointerdown", dismiss);
+    window.addEventListener("resize", position);
+    window.addEventListener("scroll", position, true);
+    window.visualViewport?.addEventListener("resize", position);
+    editor.on("transaction", update);
+    releaseSuggestions = () => {
+      keyTarget.removeEventListener("keydown", keydown, true);
+      document.removeEventListener("pointerdown", dismiss);
+      window.removeEventListener("resize", position);
+      window.removeEventListener("scroll", position, true);
+      window.visualViewport?.removeEventListener("resize", position);
+      editor.off("transaction", update);
+      const owner = input ?? editor.view.dom;
+      owner.removeAttribute("aria-controls");
+      owner.removeAttribute("aria-activedescendant");
+    };
+    if (input) {
+      input.oninput = () => {
+        query = input.value;
+        index = 0;
+        render();
+      };
+      render();
+      input.focus();
+    } else update();
   };
   return {
     open,
     close,
-    destroy: close,
+    destroy() {
+      close();
+      uploadStatus.remove();
+      editor.view.dom.removeEventListener("drop", drop, true);
+      editor.view.dom.removeEventListener("dragover", dragover);
+    },
     documentForSave() {
       return slash && dialog
         ? editor.state.tr.delete(slash.from, slash.to).doc.toJSON()

@@ -44,13 +44,15 @@ for (const width of [1280, 390])
         background: getComputedStyle(source).backgroundColor,
         articleBackground: getComputedStyle(articleCodeFrame).backgroundColor,
         articleMargin: getComputedStyle(articleCodeFrame).marginTop,
+        bodyLineHeight: getComputedStyle(article).lineHeight,
       };
     });
     expect(Math.abs(sourceLayout.width - sourceLayout.articleWidth)).toBeLessThan(2);
     expect(sourceLayout.lineHeight).toBe(sourceLayout.articleLineHeight);
     expect(sourceLayout.border).toBe(sourceLayout.articleBorder);
     expect(sourceLayout.background).toBe(sourceLayout.articleBackground);
-    expect(parseFloat(sourceLayout.articleMargin)).toBeGreaterThan(40);
+    // Code spacing follows one body line, including user-adjusted type sizes.
+    expect(parseFloat(sourceLayout.articleMargin)).toBeCloseTo(parseFloat(sourceLayout.bodyLineHeight), 1);
     await expect(page.locator(".editor-dock .render-source-dialog")).toHaveCount(1);
     await expect(page.locator(".editor-formatting")).toBeHidden();
     await expect(dialog).not.toHaveAttribute("aria-modal", "true");
@@ -126,7 +128,7 @@ for (const width of [1280, 390])
     expect(geometry.previewBottom).toBeLessThan(geometry.panelTop);
     expect(geometry.scrolls).toBe(true);
     expect(geometry.border).toBe("solid");
-    expect(geometry.background).toContain("repeating-linear-gradient");
+    expect(geometry.background).toBe(frameStyles[0].background);
     await page.screenshot({ path: `.cache/render-source-${width}.png` });
     await mermaid.getByRole("button", { name: "キャンセル", exact: true }).click();
     await expect(page.locator(".editor-formatting")).toBeVisible();

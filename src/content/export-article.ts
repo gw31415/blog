@@ -1,5 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
-import { documentMarkdown } from "../components/editor/document-markdown";
+import { documentMarkdown, documentMarkdownWithMath } from "../components/editor/document-markdown";
 export type ExportTarget = "canonical" | "github" | "zenn" | "qiita";
 export interface ExportArticle {
   title: string;
@@ -10,7 +10,20 @@ export interface ExportArticle {
 export function exportArticle(article: ExportArticle, target: ExportTarget, origin: string) {
   const diagnostics: string[] = [];
   if (target === "canonical") return { markdown: documentMarkdown(article.body), diagnostics };
-  const canonical = (node: JSONContent) => documentMarkdown({ type: "doc", content: [node] });
+  const canonical = (node: JSONContent) =>
+    documentMarkdownWithMath({ type: "doc", content: [node] }, (latex) => {
+      if (target === "zenn") return `$${latex}$`;
+      if (latex.includes("`"))
+        diagnostics.push(
+          "インライン数式にバッククォートがあります。出力先の区切りを確認してください。",
+        );
+      return "$`" + latex + "`$";
+    });
+  const paragraph = (text: string) =>
+    canonical({
+      type: "paragraph",
+      content: [{ type: "text", text }],
+    });
   function convert(node: JSONContent, depth = 0): string {
     const attrs = node.attrs ?? {},
       children = node.content ?? [];
@@ -74,6 +87,37 @@ export function exportArticle(article: ExportArticle, target: ExportTarget, orig
       diagnostics.push(
         "Mermaidが2000文字を超えています。出力先の制限を確認してください。原文は保持しました。",
       );
+    if (node.type === "codeBlock" && attrs.language === "mermaid" && attrs.caption) {
+      diagnostics.push("Mermaidのキャプションを通常段落に分離しました。");
+      return (
+        canonical({ ...node, attrs: { ...attrs, caption: null } }) +
+        "\n\n" +
+        paragraph(String(attrs.caption))
+      );
+    }
+    if (node.type === "table") {
+      let rows = children;
+      if (children[0]?.content?.[0]?.type === "tableCell") {
+        diagnostics.push(
+          "ヘッダーなし表に空のヘッダー行を追加しました。元の行はデータ行として保持しました。",
+        );
+        rows = [
+          {
+            type: "tableRow",
+            content: children[0].content.map((cell) => ({
+              type: "tableHeader",
+              attrs: { ...cell.attrs },
+              content: [{ type: "paragraph" }],
+            })),
+          },
+          ...children,
+        ];
+      }
+      const table = canonical({ ...node, attrs: { ...attrs, title: null }, content: rows });
+      if (!attrs.title) return table;
+      diagnostics.push("表題を通常段落に分離しました。");
+      return paragraph(String(attrs.title)) + "\n\n" + table;
+    }
     if (node.type === "blockquote")
       return children
         .map((c) => convert(c, depth + 1))
@@ -84,7 +128,7 @@ export function exportArticle(article: ExportArticle, target: ExportTarget, orig
     // Convert nested containers without changing the article's source JSON.
     if (
       ["bulletList", "orderedList", "taskList"].includes(node.type ?? "") &&
-      JSON.stringify(node).match(/"type":"(?:callout|details|figure|blockMath)"/)
+      JSON.stringify(node).match(/"type":"(?:callout|details|figure|blockMath|table|codeBlock)"/)
     ) {
       return children
         .map((item, i) => {
@@ -107,23 +151,7 @@ export function exportArticle(article: ExportArticle, target: ExportTarget, orig
         })
         .join("\n\n");
     }
-    let output = canonical(node);
-    if (target !== "zenn") {
-      // Operate on the known math nodes, not dollar text in arbitrary code.
-      const collect = (n: JSONContent) => {
-        if (n.type === "inlineMath") {
-          const latex = String(n.attrs?.latex ?? "");
-          if (latex.includes("`"))
-            diagnostics.push(
-              "インライン数式にバッククォートがあります。出力先の区切りを確認してください。",
-            );
-          output = output.replace(`$${latex}$`, `$\`${latex}\`$`);
-        }
-        if (n.type !== "codeBlock") n.content?.forEach(collect);
-      };
-      collect(node);
-    }
-    return output;
+    return canonical(node);
   }
   const body = structuredClone(article.body);
   const urls = (node: JSONContent) => {

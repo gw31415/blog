@@ -272,12 +272,14 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
       ui.error = "";
       ui.saving = true;
       try {
+        if (controller.value?.getWorkingState()?.pending)
+          throw new Error("入力中のフォームを適用するかキャンセルしてください。");
         await props.onSave$({
           publishedAt: ui.publishedAt,
           title: ui.title,
           subtitle: ui.subtitle,
           body: controller.value?.getJSON() ?? ui.body,
-          editingState: controller.value?.getWorkingState() ?? null,
+          editingState: null,
           description: ui.description,
           tags: ui.tags,
           status: ui.status,
@@ -296,16 +298,6 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
     controller.value?.enterView();
     ui.insertDialog = null;
     ui.mode = "view";
-  });
-
-  // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(({ cleanup }) => {
-    const saveDraft = () => {
-      ui.status = "draft";
-      void enterView$();
-    };
-    window.addEventListener("document-save-draft", saveDraft);
-    cleanup(() => window.removeEventListener("document-save-draft", saveDraft));
   });
 
   const applyInsert$ = $(() => {
@@ -377,6 +369,7 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
             onPublicationToggle$={$(() => {
               ui.status = ui.status === "published" ? "draft" : "published";
             })}
+            onDateInput$={$((value) => { if (value) ui.publishedAt = value; })}
             onTagsChange$={$((tags) => (ui.tags = tags))}
             onTitleInput$={$((value) => (ui.title = value))}
             onSubtitleInput$={$((value) => (ui.subtitle = value))}
@@ -396,26 +389,20 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
               preventdefault:mousedown
               onMouseDown$={() => {}}
             >
-              <button type="button" title="元に戻す" onClick$={() => command$({ type: "undo" })}>
-                ↶
+              <button type="button" title="元に戻す" aria-label="元に戻す" onClick$={() => command$({ type: "undo" })}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5-5 5 5 5M4 10h10a6 6 0 0 1 0 12" /></svg>
               </button>
-              <button type="button" title="やり直す" onClick$={() => command$({ type: "redo" })}>
-                ↷
+              <button type="button" title="やり直す" aria-label="やり直す" onClick$={() => command$({ type: "redo" })}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 5 5-5 5M20 10H10a6 6 0 0 0 0 12" /></svg>
               </button>
-              <button
-                type="button"
-                onClick$={() => command$({ type: "palette", command: "table" })}
-              >
-                表を挿入
+              <button type="button" title="表を挿入" aria-label="表を挿入" data-insert-table onClick$={() => command$({ type: "palette", command: "table" })}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
               </button>
-              <button
-                type="button"
-                onClick$={() => command$({ type: "palette", command: "upload-image" })}
-              >
-                画像をアップロード
+              <button type="button" title="画像をアップロード" aria-label="画像をアップロード" onClick$={() => command$({ type: "palette", command: "upload-image" })}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v18H3zM3 17l6-6 5 5 3-3 4 4" /><circle cx="16" cy="8" r="1.5" /></svg>
               </button>
-              <button type="button" onClick$={() => command$({ type: "palette" })}>
-                コマンド
+              <button type="button" title="リンクを挿入" aria-label="リンクを挿入" data-insert-link onClick$={() => command$({ type: "palette", command: "link" })}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 13 4-4M8 16l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 1 1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0" transform="translate(1 0)" /></svg>
               </button>
             </div>
           </aside>

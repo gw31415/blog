@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { formatJapaneseDate, formatJapaneseEraYear, formatShortDate } from "./article";
+import { normalizeSingleLine, formatJapaneseDate, formatJapaneseEraYear, formatShortDate } from "./article";
 
 describe("article presentation", () => {
   it("derives the localized date from the ISO publication date", () => {
@@ -19,4 +19,9 @@ describe("article presentation", () => {
   it("rejects a non-calendar date", () => {
     expect(() => formatJapaneseDate("2026-02-30")).toThrow("Invalid ISO date");
   });
+});
+
+it("normalizes authored metadata line breaks without changing ordinary spacing", () => {
+  expect(normalizeSingleLine("先頭\r\n次\r行\u2028末\u2029尾")).toBe("先頭 次 行 末 尾");
+  expect(normalizeSingleLine(" A  B ")).toBe(" A  B ");
 });

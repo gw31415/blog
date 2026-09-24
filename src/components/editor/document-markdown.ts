@@ -13,7 +13,14 @@ function linkTitle(s: unknown) {
     ? ""
     : ` "${String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
-function inline(nodes: JSONContent[], table = false, heading = false): string {
+type MathWriter = (latex: string) => string;
+const dollarMath: MathWriter = (latex) => `$${latex}$`;
+function inline(
+  nodes: JSONContent[],
+  table = false,
+  heading = false,
+  math: MathWriter = dollarMath,
+): string {
   // Serialize shared mark runs together, including marked soft breaks.
   const run = nodes.findIndex((n) => n.marks?.some((m) => m.type !== "code"));
   if (run >= 0) {
@@ -22,13 +29,11 @@ function inline(nodes: JSONContent[], table = false, heading = false): string {
     const same = (n: JSONContent) =>
       n.marks?.some((m) => JSON.stringify(m) === JSON.stringify(mark));
     while (end < nodes.length && same(nodes[end])) end++;
-    const stripped = nodes
-      .slice(run, end)
-      .map((n) => ({
-        ...n,
-        marks: n.marks?.filter((m) => JSON.stringify(m) !== JSON.stringify(mark)),
-      }));
-    let content = inline(stripped, table, heading);
+    const stripped = nodes.slice(run, end).map((n) => ({
+      ...n,
+      marks: n.marks?.filter((m) => JSON.stringify(m) !== JSON.stringify(mark)),
+    }));
+    let content = inline(stripped, table, heading, math);
     if (mark.type === "link")
       content = `[${content}](${destination(mark.attrs?.href)}${linkTitle(mark.attrs?.title)})`;
     else {
@@ -39,9 +44,9 @@ function inline(nodes: JSONContent[], table = false, heading = false): string {
         delimiter;
     }
     return (
-      inline(nodes.slice(0, run), table, heading) +
+      inline(nodes.slice(0, run), table, heading, math) +
       content +
-      inline(nodes.slice(end), table, heading)
+      inline(nodes.slice(end), table, heading, math)
     );
   }
   return nodes
@@ -64,7 +69,7 @@ function inline(nodes: JSONContent[], table = false, heading = false): string {
           out = `&#${out.charCodeAt(0)};` + out.slice(1);
       } else if (n.type === "image")
         out = `![${title(n.attrs?.alt)}](${destination(n.attrs?.src)}${linkTitle(n.attrs?.title)})`;
-      else if (n.type === "inlineMath") out = `$${n.attrs?.latex}$`;
+      else if (n.type === "inlineMath") out = math(String(n.attrs?.latex ?? ""));
       else if (n.type === "hardBreak")
         out =
           table || heading || i === nodes.length - 1 || nodes[i + 1]?.type?.endsWith("Break")
@@ -91,6 +96,10 @@ function inline(nodes: JSONContent[], table = false, heading = false): string {
     .join("");
 }
 export function documentMarkdown(document: JSONContent): string {
+  return documentMarkdownWithMath(document, dollarMath);
+}
+
+export function documentMarkdownWithMath(document: JSONContent, math: MathWriter): string {
   function sequence(nodes: JSONContent[]): string {
     return nodes.map((node, i) => block(node, nodes[i - 1], i)).join("\n\n");
   }
@@ -101,9 +110,9 @@ export function documentMarkdown(document: JSONContent): string {
       case "doc":
         return sequence(children);
       case "paragraph":
-        return inline(children);
+        return inline(children, false, false, math);
       case "heading":
-        return "#".repeat(a.level) + " " + inline(children, false, true);
+        return "#".repeat(a.level) + " " + inline(children, false, true, math);
       case "horizontalRule":
         return "---";
       case "blockquote":
@@ -156,7 +165,7 @@ export function documentMarkdown(document: JSONContent): string {
           (row) =>
             "| " +
             (row.content ?? [])
-              .map((cell) => inline(cell.content?.[0].content ?? [], true))
+              .map((cell) => inline(cell.content?.[0].content ?? [], true, false, math))
               .join(" | ") +
             " |",
         );

@@ -1,3 +1,4 @@
+import { normalizeSingleLine, formatShortDate } from "../content/article";
 import { renderEntries } from "../content/render-contract";
 import { acceptRenderArtifacts } from "./accept-render-artifacts";
 import { syncRenderReferences } from "./render-cache";
@@ -39,7 +40,9 @@ function decodePost(row: PostRow): Post {
     throw new Error("未対応の文書形式です。元データを保持しています。");
   return {
     ...row,
-    tags: JSON.parse(row.tags),
+    title: normalizeSingleLine(row.title),
+    subtitle: row.subtitle === null ? null : normalizeSingleLine(row.subtitle),
+    tags: [...new Set((JSON.parse(row.tags) as string[]).map(tag => normalizeSingleLine(tag).trim()).filter(Boolean))],
     body: normalizeDocument(JSON.parse(row.body_json)),
     editing_state: row.editing_state ? JSON.parse(row.editing_state) : null,
   };
@@ -121,7 +124,7 @@ export function parsePostInput(values: Record<string, unknown>) {
   for (const key of ["subtitle", "description"])
     if (values[key] != null && typeof values[key] !== "string")
       throw new Error(`${key}は文字列またはnullです`);
-  const title = values.title;
+  const title = normalizeSingleLine(values.title);
   if (title.length > 200 || (status === "published" && !title.trim()))
     throw new Error("公開時はタイトルが必要です（200文字以内）");
   const raw = typeof values.body === "string" ? JSON.parse(values.body) : values.body;
@@ -130,10 +133,10 @@ export function parsePostInput(values: Record<string, unknown>) {
     typeof values.tags === "string" ? JSON.parse(values.tags) : (values.tags ?? []);
   if (!Array.isArray(tags) || tags.some((t) => typeof t !== "string"))
     throw new Error("タグは文字列配列です");
-  tags = [...new Set((tags as string[]).map((t) => t.trim()).filter(Boolean))];
+  tags = [...new Set((tags as string[]).map((t) => normalizeSingleLine(t).trim()).filter(Boolean))];
   return {
     title,
-    subtitle: values.subtitle == null ? null : formText(values.subtitle),
+    subtitle: values.subtitle == null ? null : normalizeSingleLine(formText(values.subtitle)),
     description: values.description == null ? null : formText(values.description),
     tags: tags as string[],
     body: normalizeDocument(raw),
@@ -156,29 +159,9 @@ export async function savePostContent(
 ): Promise<void> {
   const old = await findPost(db, id);
   if (!old) throw new Error("記事が見つかりません");
-  let input: ReturnType<typeof parsePostInput>;
-  let useSubmittedArtifacts = true;
-  try {
-    input = parsePostInput(values);
-  } catch (error) {
-    if (values.status !== "draft") throw error;
-    const raw = typeof values.body === "string" ? JSON.parse(values.body) : values.body;
-    normalizeDocument(raw, { editing: true });
-    input = parsePostInput({ ...values, body: old.body });
-    useSubmittedArtifacts = false;
-    values.editingState = {
-      ...((values.editingState as object) ?? {}),
-      document: raw,
-      diagnostic: String(error),
-    };
-  }
-  if (values.editingState) {
-    const working = values.editingState as Record<string, unknown>;
-    if (JSON.stringify(working).length > 750_000) throw new Error("編集状態が長すぎます");
-    if (working.document) normalizeDocument(working.document, { editing: true });
-    if (input.status === "published" && working.pending)
-      throw new Error("未確定フォームを完了するか、下書きとして保存してください");
-  }
+  const input = parsePostInput(values);
+  if ((values.editingState as Record<string, unknown> | undefined)?.pending)
+    throw new Error("入力中のフォームを適用するかキャンセルしてください");
   if (input.status === "published") await validatePublication(input.body);
   const alias = normalizeAlias(values.alias);
   const now = new Date().toISOString();
@@ -190,9 +173,15 @@ export async function savePostContent(
     body: old.body,
     status: old.status,
   };
+  let publishedAt = old.published_at ?? (input.status === "published" ? now : null);
+  if (values.publishedAt != null && values.publishedAt !== "") {
+    if (typeof values.publishedAt !== "string") throw new Error("公開日を確認してください");
+    formatShortDate(values.publishedAt); // Strict calendar validation, including leap days.
+    if (values.publishedAt !== old.published_at?.slice(0, 10))
+      publishedAt = values.publishedAt + "T00:00:00.000Z";
+  }
   const changed =
-    JSON.stringify(previous) !== JSON.stringify(input) || alias !== old.canonical_alias;
-  const publishedAt = old.published_at ?? (input.status === "published" ? now : null);
+    JSON.stringify(previous) !== JSON.stringify(input) || alias !== old.canonical_alias || publishedAt !== old.published_at;
   const statements: D1PreparedStatement[] = [];
   if (alias)
     statements.push(
@@ -213,7 +202,7 @@ export async function savePostContent(
         alias,
         publishedAt,
         changed ? now : old.updated_at,
-        values.editingState ? JSON.stringify(values.editingState) : null,
+        null,
         id,
         alias,
         alias,
@@ -224,7 +213,7 @@ export async function savePostContent(
   const artifacts = await acceptRenderArtifacts(
     db,
     input.body,
-    useSubmittedArtifacts ? values.renderArtifacts : undefined,
+    values.renderArtifacts,
     id,
   );
   statements.push(

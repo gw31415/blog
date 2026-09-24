@@ -9,8 +9,19 @@
  * dangerouslySetInnerHTML で埋め込む。初期表示でクライアント側の
  * MathJax / highlight.js 実行や CDN スクリプトは不要。
  */
-import { RenderOnce, Slot, component$, useConstant, type QRL } from "@qwik.dev/core";
+import { RenderOnce, Slot, $, sync$, component$, useConstant, type QRL } from "@qwik.dev/core";
 import { articleSurface } from "~/components/editor/article-surface-contract";
+
+const singleLineInput = sync$((event: InputEvent) => {
+  if (event.inputType === "insertParagraph" || event.inputType === "insertLineBreak") event.preventDefault();
+});
+const singleLinePaste = sync$((event: ClipboardEvent) => {
+  event.preventDefault();
+  document.execCommand("insertText", false, (event.clipboardData?.getData("text/plain") ?? "").replace(/[\r\n\u2028\u2029]+/g, " "));
+});
+const singleLineKey = sync$((event: KeyboardEvent) => {
+  if (!event.isComposing && event.key === "Enter") event.preventDefault();
+});
 
 const tagSeparators = /[,，、\s]+/u;
 
@@ -248,8 +259,15 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
       <h1
         class="ink"
         data-article-field="title"
+        data-placeholder="タイトルを入力"
+        onBeforeInput$={singleLineInput}
+        onPaste$={singleLinePaste}
+        onKeyDown$={singleLineKey}
         contentEditable={props.editable ? "true" : undefined}
-        onInput$={(_, element) => props.onTitleInput$?.(element.textContent ?? "")}
+        onInput$={(event, element) => {
+          if (!event.isComposing && !element.textContent) element.replaceChildren();
+          props.onTitleInput$?.(element.textContent ?? "");
+        }}
       >
         <RenderOnce>{initialTitle}</RenderOnce>
       </h1>
@@ -257,9 +275,14 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
       <p
         class="subtitle ink ink-muted"
         data-article-field="subtitle"
+        data-placeholder="サブタイトルを入力"
         data-empty={props.subtitle?.trim() ? undefined : "true"}
+        onBeforeInput$={singleLineInput}
+        onPaste$={singleLinePaste}
+        onKeyDown$={singleLineKey}
         contentEditable={props.editable ? "true" : undefined}
-        onInput$={(_, element) => {
+        onInput$={(event, element) => {
+          if (!event.isComposing && !element.textContent) element.replaceChildren();
           const value = element.textContent ?? "";
           element.toggleAttribute("data-empty", !value.trim());
           props.onSubtitleInput$?.(value);
@@ -272,14 +295,18 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
         <span
           class="meta-tags"
           data-article-field="tags"
+        data-placeholder="タグを入力"
           data-editable={props.editable ? "true" : undefined}
           data-empty={props.tags.length ? undefined : "true"}
           contentEditable={props.editable ? "true" : undefined}
           role={props.editable ? "textbox" : undefined}
           aria-label={props.editable ? "タグ" : undefined}
           aria-multiline={props.editable ? "false" : undefined}
+          onBeforeInput$={singleLineInput}
+          onPaste$={singleLinePaste}
           onInput$={props.editable ? (event, element) => {
             if (event.isComposing) return;
+            if (!element.textContent) element.replaceChildren();
             commitTagTextAtCaret(element);
             const tags = tagsInEditor(element);
             element.toggleAttribute("data-empty", tags.length === 0);
@@ -291,14 +318,14 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
             element.toggleAttribute("data-empty", tags.length === 0);
             if (tags.join("\0") !== props.tags.join("\0")) props.onTagsChange$?.(tags);
           } : undefined}
-          onKeyDown$={props.editable ? (event, element) => {
+          onKeyDown$={props.editable ? [singleLineKey, $((event: KeyboardEvent, element: HTMLSpanElement) => {
             if (event.isComposing || event.key !== "Enter") return;
             event.preventDefault();
             commitTagTextAtCaret(element, true);
             const tags = tagsInEditor(element);
             element.toggleAttribute("data-empty", tags.length === 0);
             if (tags.join("\0") !== props.tags.join("\0")) props.onTagsChange$?.(tags);
-          } : undefined}
+          })] : undefined}
           onBlur$={props.editable ? (_, element) => {
             commitAllTagText(element);
             const tags = tagsInEditor(element);
@@ -335,6 +362,9 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
             <input
               class="article-date-input"
               type="date"
+              onClick$={sync$((_, element: HTMLInputElement) => {
+                try { element.showPicker?.(); } catch { element.focus(); }
+              })}
               aria-label="公開日"
               value={props.dateTime}
               onInput$={(_, element) => props.onDateInput$?.(element.value)}

@@ -74,3 +74,8 @@ export function formatJapaneseEraYear(isoDate: string): string {
   const date = parseIsoDate(isoDate);
   return `${japaneseEraYear(date, isoDate)} / ${date.getUTCFullYear()}`;
 }
+
+/** Metadata fields have no authored line breaks; visual wrapping is independent. */
+export function normalizeSingleLine(value: string): string {
+  return value.replace(/[\r\n\u2028\u2029]+/g, " ");
+}

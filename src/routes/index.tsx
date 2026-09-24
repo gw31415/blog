@@ -47,7 +47,7 @@ export default component$(() => {
             <li key={post.id}>
               <a href={canonicalPath(post)}>{post.title}</a>{" "}
               <time dateTime={post.published_at ?? undefined}>{post.published_at}</time>{" "}
-              {post.status === "draft" && <span>下書き</span>}
+              {post.status === "draft" && <span>非公開</span>}
               {canManage && (
                 <>
                   {" "}

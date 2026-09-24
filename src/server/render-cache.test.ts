@@ -297,3 +297,36 @@ describe("shared persistent rendering cache", () => {
     for (const reference of html.matchAll(/href="#([^"]+)"/g)) expect(ids).toContain(reference[1]);
   });
 });
+
+it("saves single-line metadata and explicit publication date corrections", async () => {
+  const { db } = database();
+  const id = await createDraft(db);
+  const values = {
+    title: "題\r\n名", subtitle: "副\u2028題", tags: ["長\n名"],
+    status: "draft", alias: null, body: {type: "doc", content: [{type: "paragraph"}]},
+    formatVersion: 2, bodyFormat: "tiptap-json", contentSchemaVersion: 1,
+    publishedAt: "2024-02-29",
+  };
+  await savePostContent(db, id, values);
+  const post = await findPost(db, id);
+  expect(post).toMatchObject({title: "題 名", subtitle: "副 題", tags: ["長 名"], published_at: "2024-02-29T00:00:00.000Z"});
+  await expect(savePostContent(db, id, {...values, publishedAt: "2025-02-29"})).rejects.toThrow();
+  expect((await findPost(db, id))!.published_at).toBe(post!.published_at);
+});
+
+
+it("rejects unfinished saves regardless of publication status and does not persist working copies", async () => {
+  const { db } = database();
+  const id = await createDraft(db);
+  const body = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "confirmed" }] }] };
+  const values = { title: "confirmed", status: "draft", alias: null, tags: [], body,
+    formatVersion: 2, bodyFormat: "tiptap-json", contentSchemaVersion: 1 };
+  await savePostContent(db, id, values);
+  for (const status of ["draft", "published"]) {
+    await expect(savePostContent(db, id, { ...values, status, editingState: { pending: { command: "link", values: { href: "unfinished" } } } })).rejects.toThrow("適用するかキャンセル");
+    await expect(savePostContent(db, id, { ...values, status, body: { type: "doc", content: [{ type: "blockMath", attrs: { latex: "" } }] } })).rejects.toThrow();
+  }
+  await savePostContent(db, id, { ...values, editingState: { document: body } });
+  expect((await findPost(db, id))!.editing_state).toBeNull();
+  expect((await findPost(db, id))!.body).toEqual(body);
+});

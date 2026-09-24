@@ -118,10 +118,15 @@ const articleSurfaceStyles = css`
     pointer-events: none;
   }
 
+  & [data-blog-surface="code"] [data-blog-role="language-select"] option {
+    color: #352f25;
+    background: #f2ead5;
+  }
+
   & [data-editor-mode="edit"] [data-blog-surface="code"] [data-blog-role="language-control"],
   & [data-blog-role="source-code"] [data-blog-role="language-control"] {
     border-color: var(--line-soft);
-    background: rgb(255 253 247 / 58%);
+    background: transparent;
   }
 
   & [data-editor-mode="edit"] [data-blog-surface="code"] [data-blog-role="language-select"] {

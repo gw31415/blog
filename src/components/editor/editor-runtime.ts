@@ -1,3 +1,4 @@
+import { createInvisibleCharacterMarkers } from "./invisible-character-markers";
 import { finalizeWorkingDocument } from "../../content/document";
 import { DocumentTypingRules } from "./typing-rules";
 import { createCommandPalette, paletteExtension } from "./command-palette";
@@ -272,12 +273,14 @@ export async function mountArticleEditor(
     pending = undefined;
     palette?.resume(state);
   };
+  const invisibleCharacters = createInvisibleCharacterMarkers(editor);
   options.element.dataset.editorReady = "";
   options.onSelectionChange(toolbarState(editor));
 
   return {
     setEditable(editable) {
       editor.setEditable(editable, false);
+      invisibleCharacters.update();
       options.element.dataset.editorMode = editable ? "edit" : "view";
       options.element
         .querySelectorAll<HTMLInputElement>('ul[data-type="taskList"] input[type="checkbox"]')
@@ -318,6 +321,7 @@ export async function mountArticleEditor(
     destroy() {
       options.element.removeEventListener("click", editCalloutLabel);
       pendingObserver?.disconnect();
+      invisibleCharacters.destroy();
       palette?.destroy();
       editor.destroy();
       delete options.element.dataset.editorReady;

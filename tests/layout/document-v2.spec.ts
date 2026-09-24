@@ -3,7 +3,7 @@ test("sample renders all nodes and keeps metadata/body through edit and save", a
   test.setTimeout(120000);
   await page.goto("/blog/document-showcase");
   await expect(page.locator("h1")).toHaveCount(1);
-  for (const level of [2, 3, 4, 5])
+  for (const level of [2, 3, 4])
     await expect(page.locator(`article h${level}`).first()).toBeVisible();
   await expect(page.locator("article mjx-container").first()).toBeVisible();
   await expect(page.locator("article .mermaid-preview img.mermaid-image").first()).toBeVisible({
@@ -21,11 +21,13 @@ test("sample renders all nodes and keeps metadata/body through edit and save", a
   const toolbar = page.locator(".editor-formatting");
   await expect(toolbar.getByRole("button", { name: "表を挿入", exact: true })).toBeVisible();
   await expect(toolbar.getByRole("button", { name: "太字", exact: true })).toHaveCount(0);
-  await toolbar.getByRole("button", { name: "コマンド", exact: true }).click();
+  await page.locator("article .ProseMirror p").first().click();
+  await page.keyboard.press("ControlOrMeta+/");
   await page.getByRole("textbox", { name: "コマンド検索" }).fill("warning");
-  await expect(page.getByRole("dialog").getByRole("option")).toHaveCount(1);
+  await expect(page.getByRole("listbox", { name: "本文コマンド" }).getByRole("option")).toHaveCount(
+    1,
+  );
   await page.keyboard.press("Escape");
-  const savedNavigation = page.waitForNavigation();
   await page
     .locator(
       (await page.locator(".article-sticky-edit").isVisible())
@@ -38,7 +40,6 @@ test("sample renders all nodes and keeps metadata/body through edit and save", a
     "true",
     { timeout: 30000 },
   );
-  await savedNavigation;
   await page.reload();
   await expect(page.locator("article figure:not(.mermaid-diagram)")).toHaveCount(1);
   await expect(page.locator("article a img")).toHaveCount(1);
@@ -51,11 +52,11 @@ test("slash creates a heading and cancel preserves slash input", async ({ page }
   const editor = page.locator("article .ProseMirror");
   await editor.click();
   await page.keyboard.type("/");
-  await expect(page.getByRole("dialog", { name: "本文コマンド" })).toBeVisible();
-  await page.getByRole("textbox", { name: "コマンド検索" }).fill("heading-5");
+  await expect(page.getByRole("listbox", { name: "本文コマンド" })).toBeVisible();
+  await page.keyboard.type("heading-3");
   await page.keyboard.press("Enter");
-  await page.keyboard.type("見出し五");
-  await expect(editor.locator("h5")).toHaveText("見出し五");
+  await page.keyboard.type("見出し三");
+  await expect(editor.locator("h3")).toHaveText("見出し三");
   await page.keyboard.press("Enter");
   await page.keyboard.type("/");
   await page.keyboard.press("Escape");
@@ -73,32 +74,23 @@ test("slash creates a heading and cancel preserves slash input", async ({ page }
     { timeout: 30000 },
   );
   await page.reload();
-  await expect(page.locator("article h5")).toHaveText("見出し五");
+  await expect(page.locator("article h3")).toHaveText("見出し三");
 });
-test("unfinished form survives draft save and resumes with its original source", async ({
-  page,
-}) => {
-  test.setTimeout(90000);
-  await page.goto("/");
-  await page.getByRole("button", { name: "新規記事" }).click();
-  await expect(page.locator("[data-editor-mode=edit]")).toBeVisible({ timeout: 45000 });
-  await page.getByRole("button", { name: "コマンド", exact: true }).click();
+test("unfinished forms cannot be saved and no draft-save action is offered", async ({ page }) => {
+  await page.goto("/blog/document-showcase");
+  await page.locator(".article-header-edit").click();
+  await expect(page.locator("article .ProseMirror")).toHaveAttribute("contenteditable", "true");
+  await page.locator("article .ProseMirror p").first().click();
+  await page.keyboard.press("ControlOrMeta+/");
   await page.getByRole("textbox", { name: "コマンド検索" }).fill("math-block");
   await page.keyboard.press("Enter");
   const source = page.getByRole("textbox", { name: "LaTeX" });
   await source.fill("\\frac{unfinished");
-  await page.evaluate(() => window.dispatchEvent(new Event("document-save-draft")));
-  await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 30000 });
-  await page
-    .locator(
-      (await page.locator(".article-sticky-edit").isVisible())
-        ? ".article-sticky-edit"
-        : ".article-header-edit",
-    )
-    .click();
-  await expect(page.getByRole("textbox", { name: "LaTeX" })).toHaveValue("\\frac{unfinished", {
-    timeout: 30000,
-  });
+  await expect(page.getByText("未確定のまま下書き保存", { exact: true })).toHaveCount(0);
+  await page.locator(".article-header-edit").click();
+  await expect(page.locator(".editor-error")).toContainText("適用するかキャンセル");
+  await expect(source).toHaveValue("\\frac{unfinished");
+  await expect(page.locator("article")).toHaveAttribute("data-editor-mode", "edit");
   await page.getByRole("button", { name: "キャンセル", exact: true }).click();
 });
 test("mobile selected text formatting and table context remain reachable", async ({ page }) => {
@@ -127,8 +119,9 @@ test("mobile selected text formatting and table context remain reachable", async
   await expect(editor.locator("td").first().locator("p")).toHaveCount(1);
   await page.keyboard.press("ControlOrMeta+/");
   await page.getByRole("textbox", { name: "コマンド検索" }).fill("math-block");
-  await expect(page.getByRole("dialog").getByRole("option")).toBeDisabled();
-  await expect(page.getByRole("dialog").getByRole("option")).toContainText("表セル内");
+  await expect(page.getByRole("listbox", { name: "本文コマンド" }).getByRole("option")).toHaveCount(
+    0,
+  );
   await page.keyboard.press("Escape");
 });
 test("one undo restores slash and source paste stays literal", async ({ page }) => {
@@ -139,12 +132,12 @@ test("one undo restores slash and source paste stays literal", async ({ page }) 
   const editor = page.locator("article .ProseMirror");
   await editor.click();
   await page.keyboard.type("/");
-  await page.getByRole("textbox", { name: "コマンド検索" }).fill("heading-3");
+  await page.keyboard.type("heading-3");
   await page.keyboard.press("Enter");
   await expect(editor.locator("h3")).toHaveCount(1);
   await page.keyboard.press("ControlOrMeta+z");
   await expect(editor.locator("h3")).toHaveCount(0);
-  await expect(editor.locator("p")).toHaveText("/");
+  await expect(editor.locator("p")).toHaveText("/heading-3");
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.press("Backspace");
   await page.keyboard.type("```text");
