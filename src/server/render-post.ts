@@ -53,7 +53,11 @@ export function renderPost(
           if (language === "mermaid") {
             const diagram =
               diagrams[diagramIndex++] ?? '<p role="alert">Mermaidの描画を確認してください。</p>';
-            return renderDOMSpec(mermaidFigureDOMSpec(node.textContent), diagram);
+            const caption = typeof node.attrs.caption === "string" ? node.attrs.caption : null;
+            return renderDOMSpec(
+              mermaidFigureDOMSpec(node.textContent, caption),
+              caption ? diagram.replace('alt="Mermaid図"', `alt="${escapeHtml(caption)}"`) : diagram,
+            );
           }
           const highlighted = highlightCode(language, node.textContent)
             .map(({ classes, text }) =>

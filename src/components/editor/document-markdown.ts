@@ -116,7 +116,14 @@ export function documentMarkdown(document: JSONContent): string {
         const fence = "`".repeat(
           Math.max(2, ...Array.from(source.matchAll(/`+/g), (m) => m[0].length)) + 1,
         );
-        return `${fence}${a.language ?? ""}\n${source}\n${fence}`;
+        const code = `${fence}${a.language ?? ""}\n${source}\n${fence}`;
+        if (a.language === "mermaid" && a.caption) {
+          const wrapper = ":".repeat(
+            Math.max(2, ...Array.from(code.matchAll(/^(:{3,})/gm), (m) => m[1].length)) + 1,
+          );
+          return `${wrapper}{figure}\n${code}\n\n${title(a.caption)}\n${wrapper}`;
+        }
+        return code;
       }
       case "blockMath":
         return `$$\n${a.latex}\n$$`;
@@ -167,7 +174,10 @@ export function documentMarkdown(document: JSONContent): string {
             )
             .join(" | ") +
           " |";
-        return [rows[0], delimiters, ...rows.slice(1)].join("\n");
+        const table = [rows[0], delimiters, ...rows.slice(1)].join("\n");
+        if (children[0]?.content?.[0]?.type === "tableCell")
+          return `:::{table}${a.title ? " " + title(a.title) : ""}\n:header: false\n\n${table}\n:::`;
+        return a.title ? `:::{table} ${title(a.title)}\n${table}\n:::` : table;
       }
       case "callout":
       case "details":

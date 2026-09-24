@@ -179,7 +179,7 @@ class TableControls {
     }
     if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
-    const items = [...this.menu.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
+    const items = [...this.menu.querySelectorAll<HTMLElement>('input[type="checkbox"], button:not(:disabled)')];
     const current = items.findIndex((item) => item === document.activeElement);
     const next =
       event.key === "Home"
@@ -213,6 +213,20 @@ class TableControls {
         : ["左へ追加", "右へ追加", "列を複製", "列を削除", "左へ移動", "右へ移動"];
     const length =
       handle.axis === "row" ? handle.table.childCount : handle.table.firstChild!.childCount;
+    if (handle.axis === "row" && handle.index === 0) {
+      const label = document.createElement("label");
+      label.className = "table-header-toggle";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = handle.table.firstChild?.firstChild?.type.name === "tableHeader";
+      checkbox.setAttribute("aria-label", "先頭行を見出しにする");
+      checkbox.addEventListener("change", () =>
+        this.apply(handle, { type: "setHeader", enabled: checkbox.checked }),
+      );
+      label.appendChild(checkbox);
+      label.appendChild(document.createTextNode("先頭行を見出しにする"));
+      menu.appendChild(label);
+    }
     (["before", "after", "duplicate", "delete", "previous", "next"] as const).forEach(
       (action, index) => {
         const item = document.createElement("button");
@@ -239,7 +253,7 @@ class TableControls {
     this.menu = menu;
     this.root.appendChild(menu);
     this.position();
-    menu.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+    menu.querySelector<HTMLElement>('input[type="checkbox"], button')?.focus({ preventScroll: true });
   }
 
   private apply(handle: Handle, action: TableAction): void {

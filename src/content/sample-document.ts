@@ -11,9 +11,9 @@ const heading = (level: number, label: string): JSONContent => ({
   attrs: { level },
   content: [text(label)],
 });
-const code = (language: string | null, source: string): JSONContent => ({
+const code = (language: string | null, source: string, caption: string | null = null): JSONContent => ({
   type: "codeBlock",
-  attrs: { language },
+  attrs: { language, caption },
   content: source ? [text(source)] : [],
 });
 const item = (...content: JSONContent[]): JSONContent => ({ type: "listItem", content });
@@ -62,18 +62,15 @@ export const sampleDocument = normalizeDocument({
       { type: "hardBreak" },
       text("この行は意図して改行しています。記号 # * _ | $ と ©、絵文字🌱も文字のまま残ります。"),
     ),
-    heading(3, "階層を細かくする"),
     p(
       text(
         "小見出しは本文の情報を整理します。ページのタイトルとは区別し、見出しの階層を再読込のたびに変えないことが重要です。",
       ),
     ),
-    heading(4, "第四階層"),
+    heading(3, "第三階層"),
     p(text("ここには具体的な観察結果を書きます。文章を編集するときにも、この深さは維持されます。")),
-    heading(5, "第五階層"),
+    heading(4, "第四階層"),
     p(text("複雑な説明の小項目にも、独立した見出しが必要です。")),
-    heading(6, "第六階層"),
-    p(text("最も深い本文見出しです。タイトルのH1とは混同しません。")),
     { type: "horizontalRule" },
     heading(2, "リストと引用"),
     {
@@ -160,10 +157,12 @@ export const sampleDocument = normalizeDocument({
     code(
       "mermaid",
       "flowchart TD\n  A[文書を入力] --> B{検証}\n  B -->|適合| C[JSONとして保存]\n  B -->|要修正| D[原文と診断を保持]\n  C --> E[閲覧と再編集]",
+      "文書の保存と診断",
     ),
     code(
       "mermaid",
       "sequenceDiagram\n  participant U as 編集者\n  participant E as エディター\n  participant D as 保存先\n  U->>E: 本文を変更\n  E->>D: JSONを保存\n  D-->>E: 保存完了",
+      "図の説明だよ",
     ),
     heading(2, "補足と折り畳み"),
     {
@@ -224,6 +223,7 @@ export const sampleDocument = normalizeDocument({
     heading(2, "表と境界"),
     {
       type: "table",
+      attrs: { title: "文書要素の対応" },
       content: [
         ["要素", "中央の説明", "値"],
         ["改行", "一行目\n二行目", "1"],

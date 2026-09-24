@@ -1,6 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
 export interface ArticleDraft {
-  category: string;
   publishedAt: string;
   title: string;
   subtitle: string;

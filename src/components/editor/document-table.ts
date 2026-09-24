@@ -1,4 +1,5 @@
 import { Table } from "@tiptap/extension-table";
+import type { MarkdownToken } from "@tiptap/core";
 function cells(line: string): string[] {
   const result: string[] = [];
   let current = "";
@@ -16,11 +17,86 @@ function cells(line: string): string[] {
   return result;
 }
 export const DocumentTable = Table.extend({
+  addAttributes() {
+    return { ...(this.parent?.() ?? {}), title: { default: null, rendered: false } };
+  },
+  renderHTML({ node, HTMLAttributes }) {
+    return [
+      "table",
+      { ...HTMLAttributes, "data-article-table": "" },
+      ...(node.attrs.title ? [["caption", {}, String(node.attrs.title)]] : []),
+      ["tbody", 0],
+    ];
+  },
+  addNodeView() {
+    return ({ node, view, getPos }) => {
+      let currentNode = node;
+      const document = view.dom.ownerDocument;
+      const dom = document.createElement("table");
+      dom.dataset.articleTable = "";
+      const caption = document.createElement("caption");
+      caption.dataset.articleRole = "table-title";
+      const contentDOM = document.createElement("tbody");
+      dom.appendChild(caption);
+      dom.appendChild(contentDOM);
+      const render = () => {
+        caption.hidden = !currentNode.attrs.title && !view.editable;
+        caption.contentEditable = view.editable ? "plaintext-only" : "false";
+        if (document.activeElement !== caption)
+          caption.textContent = String(currentNode.attrs.title ?? "");
+      };
+      caption.addEventListener("blur", () => {
+        if (!view.editable) return;
+        const position = getPos();
+        if (typeof position !== "number") return;
+        view.dispatch(view.state.tr.setNodeMarkup(position, undefined, {
+          ...currentNode.attrs,
+          title: caption.textContent?.trim() || null,
+        }));
+      });
+      render();
+      return {
+        dom,
+        contentDOM,
+        update(updated) {
+          if (updated.type !== currentNode.type) return false;
+          currentNode = updated;
+          render();
+          return true;
+        },
+        ignoreMutation: (mutation) => caption.contains(mutation.target),
+        stopEvent: (event) => caption.contains(event.target as globalThis.Node),
+      };
+    };
+  },
+  parseMarkdown(token, helpers) {
+    const t = token as unknown as {
+      title?: string | null;
+      hasHeader?: boolean;
+      header?: Array<{ tokens?: MarkdownToken[] }>;
+      rows?: Array<Array<{ tokens?: MarkdownToken[] }>>;
+      align?: Array<string | null>;
+    };
+    const alignments = Array.isArray(t.align) ? t.align : [];
+    const rows = [];
+    for (const [rowIndex, row] of [t.header ?? [], ...(t.rows ?? [])].entries()) {
+      rows.push(helpers.createNode("tableRow", {}, row.map((cell, index) =>
+        helpers.createNode(rowIndex === 0 && t.hasHeader !== false ? "tableHeader" : "tableCell", {
+          align: alignments[index] ?? null,
+        }, [{ type: "paragraph", content: helpers.parseInline(cell.tokens ?? []) }]),
+      )));
+    }
+    return helpers.createNode("table", { title: t.title ?? null }, rows);
+  },
   markdownTokenizer: {
     name: "table",
     level: "block",
-    start: () => -1,
+    start: (source) => /^:{3,}\{table\}/m.exec(source)?.index ?? -1,
     tokenize(source, _tokens, lexer) {
+      const wrapper = /^(:{3,})\{table\}(?:[ \t]+([^\n]+))?\n(?:(:header:[ \t]*false)\n\n?)?([\s\S]*?)\n\1(?=\n|$)/.exec(source);
+      const original = source;
+      const title = wrapper?.[2]?.replace(/\\([!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~])/g, "$1") ?? null;
+      if (wrapper) source = wrapper[4];
       const lines = source.split("\n");
       if (lines.length < 2 || !lines[0].includes("|") || !lines[1].includes("|")) return undefined;
       const delimiters = cells(lines[1]);
@@ -53,10 +129,12 @@ export const DocumentTable = Table.extend({
       }
       return {
         type: "table",
-        raw: lines.slice(0, used).join("\n") + (used < lines.length ? "\n" : ""),
+        raw: wrapper ? original.slice(0, wrapper[0].length) : lines.slice(0, used).join("\n") + (used < lines.length ? "\n" : ""),
         header: parse(header),
         rows,
         align,
+        title,
+        hasHeader: !wrapper?.[3],
       };
     },
   },

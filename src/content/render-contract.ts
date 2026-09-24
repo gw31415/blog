@@ -1,6 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 export const RENDERERS = {
-  mermaid: "mermaid@12.0.0:strict:default:v1",
+  mermaid: "mermaid@12.0.0:strict:paper:v2",
   inlineMath: "mathjax@4.1.3:tex-font@4.1.3:safe:packages-v1:inline",
   blockMath: "mathjax@4.1.3:tex-font@4.1.3:safe:packages-v1:block",
 } as const;

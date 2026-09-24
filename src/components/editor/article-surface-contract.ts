@@ -29,7 +29,7 @@ export function createFigureField(ownerDocument: Document): HTMLDivElement {
   return setSurface(field, articleSurface.figure);
 }
 
-export function mermaidFigureDOMSpec(source: string): DOMOutputSpec {
+export function mermaidFigureDOMSpec(source: string, caption?: string | null): DOMOutputSpec {
   return [
     "figure",
     {
@@ -46,6 +46,7 @@ export function mermaidFigureDOMSpec(source: string): DOMOutputSpec {
       },
       0,
     ],
+    ...(caption ? [["figcaption", {}, caption]] : []),
   ];
 }
 

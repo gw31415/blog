@@ -1,3 +1,4 @@
+import { finalizeMermaidSVG } from "./mermaid-svg";
 import {
   MERMAID_CONFIG,
   MERMAID_RENDERER,
@@ -14,7 +15,22 @@ async function svgFor(source: string): Promise<string> {
     engine ??= import("mermaid");
     const { default: mermaid } = await engine;
     mermaid.initialize(MERMAID_CONFIG);
-    return (await mermaid.render(`blog-diagram-${++counter}`, source)).svg;
+    if (/^sankey(?:-beta)?\b/.test(source.trim())) {
+      const parsed = await mermaid.mermaidAPI.getDiagramFromText(source);
+      const graph = (parsed.db as { getGraph(): { nodes: { id: string }[] } }).getGraph();
+      mermaid.initialize({
+        ...MERMAID_CONFIG,
+        sankey: {
+          nodeColors: Object.fromEntries(
+            graph.nodes.map((node, index) => [
+              node.id,
+              MERMAID_CONFIG.themeVariables["cScale" + (index % 12)],
+            ]),
+          ),
+        },
+      });
+    }
+    return finalizeMermaidSVG((await mermaid.render(`blog-diagram-${++counter}`, source)).svg);
   })();
   if (rendered.size >= 64) rendered.delete(rendered.keys().next().value!);
   rendered.set(source, job);

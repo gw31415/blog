@@ -75,7 +75,6 @@ interface EditorUiState {
   editorReady: boolean;
   saving: boolean;
   error: string;
-  category: string;
   publishedAt: string;
   title: string;
   subtitle: string;
@@ -129,7 +128,6 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
     editorReady: false,
     saving: false,
     error: "",
-    category: article.category,
     publishedAt: article.publishedAt,
     title: article.title,
     subtitle: article.subtitle,
@@ -275,7 +273,6 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
       ui.saving = true;
       try {
         await props.onSave$({
-          category: ui.category,
           publishedAt: ui.publishedAt,
           title: ui.title,
           subtitle: ui.subtitle,
@@ -364,7 +361,7 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
           <Slot />
           <BlogHeader
             key={ui.mode === "edit" ? "edit" : "view"}
-            category={ui.tags.join("、")}
+            tags={ui.tags}
             dateTime={ui.publishedAt}
             dateLabel={presentation.dateLabel}
             publicationStatus={props.publicationStatus ? ui.status : undefined}
@@ -380,13 +377,13 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
             onPublicationToggle$={$(() => {
               ui.status = ui.status === "published" ? "draft" : "published";
             })}
-            onCategoryInput$={$((value) => (ui.tags = value.split("、")))}
+            onTagsChange$={$((tags) => (ui.tags = tags))}
             onTitleInput$={$((value) => (ui.title = value))}
             onSubtitleInput$={$((value) => (ui.subtitle = value))}
           />
           {/* After mounting, Tiptap owns this DOM; mode updates must not restore the SSR HTML. */}
           <ArticleBody key="article-body" html={initialHtml} elementRef={editorMount} />
-          <BlogFooter left="日々の記録" right={presentation.footerRight} />
+          <BlogFooter left={BLOG_NAME} right={presentation.footerRight} />
         </BlogPaper>
 
         {ui.mode === "edit" && (

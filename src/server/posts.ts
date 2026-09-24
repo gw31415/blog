@@ -6,7 +6,7 @@ import type { RequestEventBase, RequestEventCommon } from "@qwik.dev/router";
 
 import { canonicalPath } from "~/content/post-url";
 
-import { normalizeDocument, EMPTY_DOCUMENT } from "../content/document";
+import { normalizeDocument, EMPTY_DOCUMENT, CONTENT_SCHEMA_VERSION } from "../content/document";
 import type { JSONContent } from "@tiptap/core";
 export interface Post {
   id: string;
@@ -33,7 +33,7 @@ type PostRow = Omit<Post, "tags" | "body" | "editing_state"> & {
 function decodePost(row: PostRow): Post {
   if (
     row.format_version !== 2 ||
-    row.content_schema_version !== 1 ||
+    row.content_schema_version !== CONTENT_SCHEMA_VERSION ||
     row.body_format !== "tiptap-json"
   )
     throw new Error("未対応の文書形式です。元データを保持しています。");
@@ -111,7 +111,7 @@ export async function findPost(db: D1Database, identifier: string): Promise<Post
 export function parsePostInput(values: Record<string, unknown>) {
   if (
     Number(values.formatVersion) !== 2 ||
-    Number(values.contentSchemaVersion) !== 1 ||
+    Number(values.contentSchemaVersion) !== CONTENT_SCHEMA_VERSION ||
     values.bodyFormat !== "tiptap-json"
   )
     throw new Error("未対応の文書形式です");

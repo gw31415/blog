@@ -5,67 +5,10 @@
   line-height: normal;
 }
 
-.document-command-dialog {
-  width: min(36rem, calc(100vw - 2rem));
-  max-height: 80dvh;
-  overflow: auto;
-  background: #fffaf0;
-  color: #352f25;
-  border: 1px solid #352f25;
-  padding: 1rem;
-}
-.document-command-dialog::backdrop {
-  background: #352f2533;
-}
-.document-command-dialog input,
-.document-command-dialog textarea {
-  display: block;
-  box-sizing: border-box;
-  width: 100%;
-  border: 1px solid #8c8070;
-  padding: 0.5rem;
-  margin-block: 0.3rem 0.8rem;
-}
-.document-command-dialog textarea {
-  min-height: 10rem;
-}
-.document-command-dialog [role="listbox"] {
-  max-height: 50dvh;
-  overflow: auto;
-}
-.document-command-dialog [role="option"] {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 0.5rem;
-  border: 0;
-  background: transparent;
-}
-.document-command-dialog [role="option"][aria-selected="true"] {
-  background: #352f25;
-  color: #fffaf0;
-}
-.document-command-dialog button:disabled {
-  opacity: 0.5;
-}
-.document-command-dialog [role="alert"] {
-  color: #8c4037;
-}
-
-.article-content h4,
-.article-content h5,
-.article-content h6 {
+.article-content h4 {
   margin-block: 1.5em 0.5em;
   font-weight: 600;
-}
-.article-content h4 {
   font-size: 1.1em;
-}
-.article-content h5 {
-  font-size: 1em;
-}
-.article-content h6 {
-  font-size: 0.95em;
 }
 .article-content .ProseMirror {
   white-space: pre-wrap;

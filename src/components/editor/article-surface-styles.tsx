@@ -6,9 +6,10 @@ const articleSurfaceStyles = css`
   display: contents;
 
   & [data-blog-surface="math"] {
-    margin: calc(var(--body-leading) * 2) 0;
+    position: relative;
+    margin: var(--body-leading) 0;
 
-    padding: 12px 14px;
+    padding: 0.5lh 2.5em 0.5lh 1em;
 
     overflow-x: auto;
     overflow-y: hidden;
@@ -21,13 +22,30 @@ const articleSurfaceStyles = css`
 
     text-align: center;
 
+    /* The article's justified last-line rule must not override display math. */
+    text-align-last: auto;
+
     text-autospace: no-autospace;
   }
 
   & [data-blog-surface="math"] mjx-container[display="true"] {
-    margin: 0.5em 0 !important;
+    margin: 0 !important;
 
-    font-size: 112% !important;
+    font-size: 1em !important;
+  }
+
+  & .article-content [data-blog-surface="math"] {
+    counter-increment: equation;
+  }
+
+  & .article-content [data-blog-surface="math"]::after {
+    content: "(" counter(equation) ")";
+    position: absolute;
+    inset-inline-end: 0.5em;
+    inset-block-start: 50%;
+    transform: translateY(-50%);
+    font-family: var(--serif);
+    font-size: var(--small-size);
   }
 
   /* ─────────────────────────────
@@ -37,7 +55,7 @@ const articleSurfaceStyles = css`
   & [data-blog-surface="code"] {
     position: relative;
 
-    margin: calc(var(--body-leading) * 2) 0;
+    margin: var(--body-leading) 0;
 
     overflow: hidden;
 
@@ -49,18 +67,19 @@ const articleSurfaceStyles = css`
     border-left: 3px double var(--line-strong);
   }
 
-  & pre[data-blog-surface="code"] {
-    padding-top: 34px;
-  }
-
   & [data-blog-surface="code"] [data-blog-role="language-control"] {
     position: absolute;
     z-index: 1;
-    top: 7px;
-    right: 9px;
+    top: 0.5em;
+    right: 0.5em;
 
-    inline-size: 108px;
-    block-size: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    inline-size: max-content;
+    min-inline-size: 7em;
+    max-inline-size: calc(100% - 1em);
+    block-size: 1.8em;
 
     border: 1px solid transparent;
     border-radius: 0;
@@ -69,28 +88,25 @@ const articleSurfaceStyles = css`
     color: var(--muted);
     -webkit-text-fill-color: var(--muted);
 
-    font: 11px/1.4 var(--mono);
+    font: var(--small-size)/1.5 var(--mono);
     letter-spacing: normal;
     text-transform: lowercase;
   }
 
-  & [data-blog-surface="code"] [data-blog-role="language-label"],
-  & [data-blog-surface="code"] [data-blog-role="language-select"] {
-    position: absolute;
-    inset: -1px;
-    inline-size: calc(100% + 2px);
-    block-size: calc(100% + 2px);
-    padding: 1px 6px;
-  }
-
   & [data-blog-surface="code"] [data-blog-role="language-label"] {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
+    overflow: hidden;
+    padding: 0.1em 0.4em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     pointer-events: none;
   }
 
   & [data-blog-surface="code"] [data-blog-role="language-select"] {
+    position: absolute;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    padding: 0;
     color: transparent;
     border: 0;
     border-radius: 0;
@@ -130,28 +146,28 @@ const articleSurfaceStyles = css`
 
     gap: 1rem;
 
-    padding: 7px 11px;
+    padding: 0.5em;
 
     color: var(--muted);
 
     border-bottom: 1px dashed var(--line-soft);
 
     font-family: var(--sans);
-    font-size: 9px;
+    font-size: var(--small-size);
 
     letter-spacing: 0.08em;
   }
 
   & pre[data-blog-surface="code"],
   & [data-blog-surface="code"] pre {
-    padding: 15px 16px;
+    padding: 1em;
 
     overflow-x: auto;
 
     font-family: var(--mono);
 
-    font-size: 12px;
-    line-height: 1.62;
+    font-size: var(--small-size);
+    line-height: 1.5;
 
     tab-size: 2;
 
@@ -164,6 +180,10 @@ const articleSurfaceStyles = css`
 
   & [data-blog-surface="code"] pre {
     margin: 0;
+  }
+
+  & pre[data-blog-surface="code"] {
+    padding-block-start: 2.5em;
   }
 
   & pre[data-blog-surface="code"] code,
@@ -282,34 +302,23 @@ const articleSurfaceStyles = css`
   }
 
   & [data-blog-surface="figure"] {
-    min-height: 120px;
-
     display: grid;
     place-items: center;
-
-    padding: 20px;
-
-    background: repeating-linear-gradient(
-      -45deg,
-      rgb(117 74 62 / 3%) 0,
-      rgb(117 74 62 / 3%) 1px,
-      transparent 1px,
-      transparent 7px
-    );
+    padding: 0.5lh;
+    background: rgb(255 253 247 / 12%);
 
     border: 1px solid var(--line-soft);
   }
 
   & [data-blog-surface="figure"] img {
     display: block;
-
-    width: 100%;
+    max-width: 100%;
     height: auto;
-
-    filter: sepia(38%) saturate(82%) contrast(96%) brightness(102%);
+    filter: none;
   }
 
   & [data-blog-role="mermaid-field"] {
+    overflow-x: auto;
     white-space: normal;
   }
 

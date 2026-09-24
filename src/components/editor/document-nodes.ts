@@ -1,7 +1,7 @@
 import { Node, Extension, type MarkdownToken } from "@tiptap/core";
 import Code from "@tiptap/extension-code";
 import Link from "@tiptap/extension-link";
-import { figureFieldDOMSpec } from "./article-surface-contract";
+import { createFigureField, figureFieldDOMSpec } from "./article-surface-contract";
 
 export const ArticleCode = Code.extend({ excludes: "" });
 export const ArticleLink = Link.extend({
@@ -78,7 +78,11 @@ function directive(name: "callout" | "details" | "figure") {
           { "data-article-node": name, "data-kind": node.attrs.kind, class: "aside ink ink-muted" },
           [
             "span",
-            { class: "aside-label", contenteditable: "false" },
+            {
+              class: "aside-label",
+              "data-article-role": "callout-label",
+              contenteditable: "false",
+            },
             node.attrs.title ?? (node.attrs.kind === "warning" ? "WARN" : "INFO"),
           ],
           ["div", { class: "callout-content" }, 0],
@@ -87,7 +91,11 @@ function directive(name: "callout" | "details" | "figure") {
         return [
           "details",
           { "data-article-node": name },
-          ["summary", { contenteditable: "false" }, node.attrs.title],
+          [
+            "summary",
+            { contenteditable: "false" },
+            ["span", { "data-article-role": "details-title" }, node.attrs.title],
+          ],
           ["div", { class: "details-body" }, 0],
         ];
       return [
@@ -96,6 +104,149 @@ function directive(name: "callout" | "details" | "figure") {
         figureFieldDOMSpec(["img", { src: node.attrs.src, alt: node.attrs.alt, loading: "lazy" }]),
         ["figcaption", {}, 0],
       ];
+    },
+    addNodeView() {
+      if (name === "figure") {
+        return ({ node, view }) => {
+          let currentNode = node;
+          const document = view.dom.ownerDocument;
+          const dom = document.createElement("figure");
+          dom.dataset.articleNode = "figure";
+          const field = createFigureField(document);
+          const image = document.createElement("img");
+          image.loading = "lazy";
+          field.appendChild(image);
+          const contentDOM = document.createElement("figcaption");
+          const render = () => {
+            image.src = String(currentNode.attrs.src ?? "");
+            image.alt = String(currentNode.attrs.alt ?? "");
+          };
+          dom.appendChild(field);
+          dom.appendChild(contentDOM);
+          render();
+          return {
+            dom,
+            contentDOM,
+            update(updated) {
+              if (updated.type !== currentNode.type) return false;
+              currentNode = updated;
+              render();
+              return true;
+            },
+          };
+        };
+      }
+      if (name !== "details") return null;
+      return ({ node, view, getPos }) => {
+        let currentNode = node;
+        let composing = false;
+        const document = view.dom.ownerDocument;
+        const dom = document.createElement("details");
+        dom.dataset.articleNode = "details";
+        const summary = document.createElement("summary");
+        summary.contentEditable = "false";
+        const title = document.createElement("span");
+        title.dataset.articleRole = "details-title";
+        title.contentEditable = view.editable ? "plaintext-only" : "false";
+        title.textContent = node.attrs.title;
+        summary.appendChild(title);
+        const contentDOM = document.createElement("div");
+        contentDOM.className = "details-body";
+        dom.appendChild(summary);
+        dom.appendChild(contentDOM);
+        const syncTitle = () => {
+          const text = (title.textContent ?? "").replace(/\r?\n/g, " ");
+          if (!text.trim()) return;
+          if (text === currentNode.attrs.title) return;
+          const position = getPos();
+          if (typeof position !== "number") return;
+          view.dispatch(
+            view.state.tr.setNodeMarkup(position, undefined, {
+              ...currentNode.attrs,
+              title: text,
+            }),
+          );
+        };
+        title.addEventListener("click", (event) => {
+          if (view.editable) event.preventDefault();
+        });
+        title.addEventListener("beforeinput", (event) => {
+          if (["insertParagraph", "insertLineBreak"].includes(event.inputType))
+            event.preventDefault();
+        });
+        title.addEventListener("keydown", (event) => {
+          if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "a") {
+            event.preventDefault();
+            event.stopPropagation();
+            const selection = document.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(title);
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+            return;
+          }
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          title.blur();
+        });
+        title.addEventListener("paste", (event) => {
+          if (!view.editable) return;
+          event.preventDefault();
+          const text = (event.clipboardData?.getData("text/plain") ?? "").replace(/\r?\n/g, " ");
+          const selection = document.getSelection();
+          if (!selection?.rangeCount || !title.contains(selection.anchorNode)) return;
+          const range = selection.getRangeAt(0);
+          range.deleteContents();
+          const inserted = document.createTextNode(text);
+          range.insertNode(inserted);
+          range.setStartAfter(inserted);
+          range.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(range);
+          syncTitle();
+        });
+        title.addEventListener("input", () => {
+          if (!composing) syncTitle();
+        });
+        title.addEventListener("compositionstart", () => {
+          composing = true;
+        });
+        title.addEventListener("compositionend", () => {
+          composing = false;
+          syncTitle();
+        });
+        title.addEventListener("blur", () => {
+          if (!(title.textContent ?? "").trim()) {
+            title.textContent = currentNode.attrs.title;
+            return;
+          }
+          syncTitle();
+        });
+        return {
+          dom,
+          contentDOM,
+          update(updated) {
+            if (updated.type !== node.type) return false;
+            currentNode = updated;
+            if (!composing && title.textContent !== updated.attrs.title)
+              title.textContent = updated.attrs.title;
+            return true;
+          },
+          ignoreMutation(mutation) {
+            return (
+              (mutation.type === "attributes" && mutation.attributeName === "open") ||
+              title.contains(mutation.target)
+            );
+          },
+          stopEvent(event) {
+            return (
+              view.editable &&
+              event.target instanceof globalThis.Node &&
+              title.contains(event.target)
+            );
+          },
+        };
+      };
     },
     markdownTokenizer: {
       name,
@@ -149,6 +300,16 @@ function directive(name: "callout" | "details" | "figure") {
     parseMarkdown(token, helpers) {
       const t = token as MarkdownToken & { kind: string; title: string | null; alt: string | null };
       const content = (helpers.parseBlockChildren ?? helpers.parseChildren)(t.tokens ?? []);
+      if (name === "figure" && content[0]?.type === "codeBlock") {
+        if (t.title !== null || content.length !== 2 ||
+          content[0].attrs?.language !== "mermaid" || content[1].type !== "paragraph")
+          throw new Error("Mermaid図のキャプション形式が不正です");
+        const caption = (content[1].content ?? []).map((part) => part.text ?? "").join("");
+        if (!caption) throw new Error("Mermaid図のキャプションが必要です");
+        return { ...content[0], attrs: { language: "mermaid", caption } };
+      }
+      if (name === "figure" && (content.length !== 1 || content[0].type !== "paragraph"))
+        throw new Error("図にはキャプション一段落だけを指定してください");
       return {
         type: name,
         attrs:

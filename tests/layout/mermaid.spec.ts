@@ -1,4 +1,14 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Locator } from "@playwright/test";
+
+async function imageText(image: Locator) {
+  return image.evaluate((element) => {
+    const url = element.getAttribute("src") ?? "";
+    const svg = decodeURIComponent(url.slice(url.indexOf(",") + 1));
+    const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
+    doc.querySelectorAll("style").forEach((style) => style.remove());
+    return doc.documentElement.textContent;
+  });
+}
 
 test("Mermaid is complete in server HTML with JavaScript disabled", async ({
   browser,
@@ -55,47 +65,39 @@ for (const width of [1280, 390])
     await img.evaluate(async (element) => {
       const image = element as HTMLImageElement;
       await image.decode();
-      if (image.getBoundingClientRect().width > Number(image.getAttribute("width")) + 1)
-        throw new Error("Diagram exceeded its SVG width");
+      const field = image.parentElement!;
+      if (field.scrollWidth > field.clientWidth + 1)
+        throw new Error("Mermaid unnecessarily scrolls horizontally");
     });
     const before = await diagram.boundingBox();
     await page.locator(".article-header-edit").click();
     await expect(page.locator("[data-editor-mode=edit]")).toBeVisible({ timeout: 45000 });
     const after = await diagram.boundingBox();
+    expect(await diagram.locator(".figure-field").evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
     expect(after!.width).toBeCloseTo(before!.width, 0);
     expect(after!.height).toBeCloseTo(before!.height, 0);
-    await diagram.click();
+    await diagram.locator("img.mermaid-image").click();
     const dialog = page.getByRole("dialog", { name: "Mermaid", exact: true });
     await expect(dialog).toBeVisible();
     await expect(dialog.locator("textarea")).toHaveValue(source!);
     await dialog.locator("textarea").fill("flowchart LR\nA[Live preview] --> B[Updated]");
     await expect
-      .poll(async () =>
-        decodeURIComponent(
-          (await dialog.locator(".mermaid-preview img").getAttribute("src")) ?? "",
-        ),
-      )
+      .poll(async () => imageText(dialog.locator(".mermaid-preview img")))
       .toContain("Live preview");
     await dialog.getByRole("button", { name: "キャンセル", exact: true }).click();
     await expect(diagram).toHaveAttribute("data-mermaid-source", source!);
-    await diagram.click();
+    await diagram.locator("img.mermaid-image").click();
     await dialog.locator("textarea").fill("flowchart LR\nA[Applied preview] --> B[Updated]");
     await expect
-      .poll(async () =>
-        decodeURIComponent(
-          (await dialog.locator(".mermaid-preview img").getAttribute("src")) ?? "",
-        ),
-      )
+      .poll(async () => imageText(dialog.locator(".mermaid-preview img")))
       .toContain("Applied preview");
     await dialog.getByRole("button", { name: "適用", exact: true }).click();
     await expect
-      .poll(async () =>
-        decodeURIComponent((await diagram.locator("img.mermaid-image").getAttribute("src")) ?? ""),
-      )
+      .poll(async () => imageText(diagram.locator("img.mermaid-image")))
       .toContain("Applied preview");
     await expect(page.locator('article pre[data-code-language="mermaid"]')).toHaveCount(0);
     // Restore the original source without writing to the fixture database.
-    await diagram.click();
+    await diagram.locator("img.mermaid-image").click();
     await dialog.locator("textarea").fill(source!);
     await dialog.getByRole("button", { name: "適用", exact: true }).click();
     await expect(diagram).toHaveAttribute("data-mermaid-source", source!);
@@ -114,11 +116,7 @@ test("a saved Mermaid is server rendered after reload", async ({ page, browser }
     const dialog = page.getByRole("dialog", { name: "Mermaid", exact: true });
     await dialog.locator("textarea").fill("sequenceDiagram\nAlice->>Bob: Saved on server");
     await expect
-      .poll(async () =>
-        decodeURIComponent(
-          (await dialog.locator(".mermaid-preview img").getAttribute("src")) ?? "",
-        ),
-      )
+      .poll(async () => imageText(dialog.locator(".mermaid-preview img")))
       .toContain("Saved on server");
     await dialog.getByRole("button", { name: "適用", exact: true }).click();
     await page.locator(".article-header-edit").click();
@@ -132,11 +130,7 @@ test("a saved Mermaid is server rendered after reload", async ({ page, browser }
       const reader = await context.newPage();
       await reader.goto(new URL(pathname, page.url()).href);
       await expect
-        .poll(async () =>
-          decodeURIComponent(
-            (await reader.locator(".mermaid-diagram img.mermaid-image").getAttribute("src")) ?? "",
-          ),
-        )
+        .poll(async () => imageText(reader.locator(".mermaid-diagram img.mermaid-image")))
         .toContain("Saved on server");
     } finally {
       await context.close();

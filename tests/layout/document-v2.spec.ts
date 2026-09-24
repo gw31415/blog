@@ -3,7 +3,7 @@ test("sample renders all nodes and keeps metadata/body through edit and save", a
   test.setTimeout(120000);
   await page.goto("/blog/document-showcase");
   await expect(page.locator("h1")).toHaveCount(1);
-  for (const level of [2, 3, 4, 5, 6])
+  for (const level of [2, 3, 4, 5])
     await expect(page.locator(`article h${level}`).first()).toBeVisible();
   await expect(page.locator("article mjx-container").first()).toBeVisible();
   await expect(page.locator("article .mermaid-preview img.mermaid-image").first()).toBeVisible({
@@ -52,10 +52,10 @@ test("slash creates a heading and cancel preserves slash input", async ({ page }
   await editor.click();
   await page.keyboard.type("/");
   await expect(page.getByRole("dialog", { name: "本文コマンド" })).toBeVisible();
-  await page.getByRole("textbox", { name: "コマンド検索" }).fill("heading-6");
+  await page.getByRole("textbox", { name: "コマンド検索" }).fill("heading-5");
   await page.keyboard.press("Enter");
-  await page.keyboard.type("見出し六");
-  await expect(editor.locator("h6")).toHaveText("見出し六");
+  await page.keyboard.type("見出し五");
+  await expect(editor.locator("h5")).toHaveText("見出し五");
   await page.keyboard.press("Enter");
   await page.keyboard.type("/");
   await page.keyboard.press("Escape");
@@ -73,7 +73,7 @@ test("slash creates a heading and cancel preserves slash input", async ({ page }
     { timeout: 30000 },
   );
   await page.reload();
-  await expect(page.locator("article h6")).toHaveText("見出し六");
+  await expect(page.locator("article h5")).toHaveText("見出し五");
 });
 test("unfinished form survives draft save and resumes with its original source", async ({
   page,

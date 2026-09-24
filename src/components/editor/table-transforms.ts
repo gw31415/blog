@@ -3,6 +3,7 @@ import { Fragment, type Node as ProseMirrorNode } from "@tiptap/pm/model";
 export type TableAxis = "row" | "column";
 
 export type TableAction =
+  | { type: "setHeader"; enabled: boolean }
   | {
       type: "insertBefore" | "insertAfter" | "duplicate" | "delete";
       axis: TableAxis;
@@ -73,6 +74,16 @@ export function canReorderTable(table: ProseMirrorNode): boolean {
 }
 
 export function transformTable(table: ProseMirrorNode, action: TableAction): TableTransformResult {
+  if (action.type === "setHeader") {
+    const rows = childNodes(table);
+    if (!rows.length) return { ok: false, reason: "out-of-range" };
+    const cellType = table.type.schema.nodes[action.enabled ? "tableHeader" : "tableCell"];
+    const firstRow = rebuildRow(
+      rows[0],
+      childNodes(rows[0]).map((cell) => cellType.create(cell.attrs, cell.content, cell.marks)),
+    );
+    return rebuildTable(table, [firstRow, ...rows.slice(1)]);
+  }
   // These transforms address physical cells, which only match logical columns
   // in an unmerged table. Reject every structural operation before indexing.
   if (!canReorderTable(table)) {

@@ -103,8 +103,26 @@ export function createRenderSourceDialog(options: {
     .closest("[data-virtual-keyboard-viewport]")
     ?.querySelector<HTMLElement>(".editor-dock");
   if (!dock) throw new Error("編集ツールバーが見つかりません");
-  const articleWidth = options.host.getBoundingClientRect().width;
-  dialog.style.setProperty("--render-article-width", `${articleWidth}px`);
+  const alignWithArticle = () => {
+    const article = options.host.getBoundingClientRect();
+    const dockBox = dock.getBoundingClientRect();
+    const dockInset = parseFloat(getComputedStyle(dock).borderInlineStartWidth) || 0;
+    dialog.style.setProperty("--render-article-width", `${article.width}px`);
+    dialog.style.setProperty(
+      "--render-article-inline-start",
+      `${Math.max(0, article.left - dockBox.left - dockInset)}px`,
+    );
+  };
+  alignWithArticle();
+  const sizeObserver = new ResizeObserver(alignWithArticle);
+  sizeObserver.observe(options.host);
+  sizeObserver.observe(dock);
+  const removalObserver = new MutationObserver(() => {
+    if (dialog.isConnected) return;
+    sizeObserver.disconnect();
+    removalObserver.disconnect();
+  });
+  removalObserver.observe(dock, { childList: true });
   dock.classList.add("editor-dock--source");
   dock.appendChild(dialog);
   dialog.setAttribute("open", "");

@@ -11,6 +11,9 @@ export default defineConfig(async ({ command }) => {
       : undefined;
 
   return {
+    // Concurrent local dev servers must not replace each other's optimized
+    // dependency URLs while a page is importing the editor on demand.
+    ...(command === "serve" ? { cacheDir: `node_modules/.vite/dev-${process.pid}` } : {}),
     // qstyle は qwik optimizer より先に css prop を変換する。
     plugins: [
       // UnoCSS(), // 未導入: qstyle() より前に置く（class ユーティリティを css prop へ翻訳するため）

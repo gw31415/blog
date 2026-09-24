@@ -71,6 +71,7 @@ const SharedCodeBlock = CodeBlock.extend<
         },
         rendered: false,
       },
+      caption: { default: null, rendered: false },
     };
   },
 
@@ -96,16 +97,39 @@ const SharedCodeBlock = CodeBlock.extend<
         let current = initialNode;
         const { figure: dom, field: preview } = createMermaidFigure(view.dom.ownerDocument);
         dom.contentEditable = "false";
+        const caption = view.dom.ownerDocument.createElement("figcaption");
+        caption.dataset.articleRole = "mermaid-caption";
+        caption.contentEditable = view.editable ? "plaintext-only" : "false";
+        dom.appendChild(caption);
         const render = () => {
           dom.dataset.mermaidSource = current.textContent;
+          caption.hidden = !current.attrs.caption && !view.editable;
+          caption.contentEditable = view.editable ? "plaintext-only" : "false";
+          if (view.dom.ownerDocument.activeElement !== caption)
+            caption.textContent = String(current.attrs.caption ?? "");
           const cached = options.mermaidHTML?.get(current.textContent);
           if (cached) preview.innerHTML = cached;
           else
             void import("./mermaid-renderer").then(({ renderMermaidPreview }) =>
-              renderMermaidPreview(preview, current.textContent, true),
+              renderMermaidPreview(preview, current.textContent, true).then(() => {
+                const image = preview.querySelector<HTMLImageElement>("img.mermaid-image");
+                if (image) image.alt = String(current.attrs.caption || "Mermaid図");
+              }),
             );
+          const image = preview.querySelector<HTMLImageElement>("img.mermaid-image");
+          if (image) image.alt = String(current.attrs.caption || "Mermaid図");
         };
-        dom.addEventListener("click", () => {
+        caption.addEventListener("blur", () => {
+          if (!view.editable) return;
+          const position = getPos();
+          if (typeof position !== "number") return;
+          view.dispatch(view.state.tr.setNodeMarkup(position, undefined, {
+            ...current.attrs,
+            caption: caption.textContent?.trim() || null,
+          }));
+        });
+        dom.addEventListener("click", (event) => {
+          if (caption.contains(event.target as globalThis.Node)) return;
           const position = getPos();
           if (view.editable && typeof position === "number") options.onMermaidEdit?.(position);
         });
@@ -114,7 +138,7 @@ const SharedCodeBlock = CodeBlock.extend<
           dom,
           update(node) {
             if (node.type !== current.type || node.attrs.language !== "mermaid") return false;
-            const changed = node.textContent !== current.textContent;
+            const changed = node.textContent !== current.textContent || node.attrs.caption !== current.attrs.caption;
             current = node;
             if (changed) render();
             return true;
@@ -346,7 +370,7 @@ interface EditorExtensionOptions {
 
 const ArticleHeading = Heading.extend({
   addInputRules() {
-    return ([2, 3, 4, 5, 6] as const).map((level) =>
+    return ([2, 3, 4] as const).map((level) =>
       textblockTypeInputRule({
         find: new RegExp(`^#{${level - 1}}\\s$`),
         type: this.type,
@@ -403,7 +427,7 @@ export function createEditorExtensions(options: EditorExtensionOptions = {}): An
       renderMarkdown: documentMarkdown,
     }),
     ArticleParagraph,
-    ArticleHeading.configure({ levels: [2, 3, 4, 5, 6], HTMLAttributes: { class: "ink" } }),
+    ArticleHeading.configure({ levels: [2, 3, 4], HTMLAttributes: { class: "ink" } }),
     SharedCodeBlock.configure({
       onMermaidEdit: options.onMermaidEdit,
       mermaidHTML: options.mermaidHTML,
@@ -420,7 +444,32 @@ export function createEditorExtensions(options: EditorExtensionOptions = {}): An
     TableCell.extend({ content: "paragraph" }),
     TableHeader.extend({ content: "paragraph" }),
     ArticleTaskList,
-    TaskItem.configure({ nested: true }),
+    TaskItem.extend({
+      renderHTML({ node, HTMLAttributes }) {
+        return [
+          "li",
+          mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { "data-type": this.name }),
+          [
+            "label",
+            [
+              "input",
+              {
+                type: "checkbox",
+                checked: node.attrs.checked ? "checked" : null,
+                disabled: "disabled",
+                "aria-label": `タスク: ${node.textContent || "空のタスク"}`,
+              },
+            ],
+            ["span"],
+          ],
+          ["div", 0],
+        ];
+      },
+    }).configure({
+      nested: true,
+      HTMLAttributes: { "data-type": "taskItem" },
+      a11y: { checkboxLabel: (node) => `タスク: ${node.textContent || "空のタスク"}` },
+    }),
     Image.extend({
       addAttributes() {
         return { src: { default: "" }, alt: { default: null }, title: { default: null } };

@@ -4,7 +4,7 @@ import { documentMarkdown } from "./document-markdown";
 import { parseArticleMarkdown } from "./markdown";
 import { Extension, type Editor, type JSONContent } from "@tiptap/core";
 import { Plugin, TextSelection, NodeSelection } from "@tiptap/pm/state";
-import { normalizeDocument } from "../../content/document";
+import { CONTENT_SCHEMA_VERSION, normalizeDocument } from "../../content/document";
 
 export interface PaletteCommand {
   id: string;
@@ -24,7 +24,7 @@ const entry = (
 ): PaletteCommand => ({ id, label, aliases, block, group, hint });
 export const COMMANDS: PaletteCommand[] = [
   entry("paragraph", "段落", "text 本文 p"),
-  ...([2, 3, 4, 5, 6] as const).map((n) =>
+  ...([2, 3, 4] as const).map((n) =>
     entry(
       `heading-${n}`,
       `見出し H${n}`,
@@ -152,7 +152,7 @@ interface Field {
   value?: string;
   multiline?: boolean;
   type?: string;
-  choices?: string[];
+  choices?: Array<string | { value: string; label: string }>;
   mermaid?: boolean;
 }
 export function createCommandPalette(editor: Editor) {
@@ -160,6 +160,7 @@ export function createCommandPalette(editor: Editor) {
   let currentCommand: string | undefined;
   let saved = editor.state.selection;
   let slash: { from: number; to: number } | null = null;
+  const dialogHost = editor.view.dom.closest("[data-qstyle-boundary]") ?? document.body;
   const close = () => {
     const dock = dialog?.closest(".editor-dock");
     dock?.classList.remove("editor-dock--source");
@@ -173,7 +174,7 @@ export function createCommandPalette(editor: Editor) {
     dialog = document.createElement("dialog");
     dialog.className = "document-command-dialog";
     dialog.setAttribute("aria-label", "本文コマンド");
-    document.body.appendChild(dialog);
+    dialogHost.appendChild(dialog);
     dialog.addEventListener("cancel", () => close());
     dialog.showModal();
     return dialog;
@@ -241,6 +242,7 @@ export function createCommandPalette(editor: Editor) {
     close();
     dialog = document.createElement("dialog");
     dialog.className = "document-command-dialog";
+    dialog.dataset.commandForm = "";
     dialog.setAttribute("aria-label", title);
     const source = fields.find((field) => field.mermaid || field.name === "latex");
     if (source) {
@@ -269,6 +271,8 @@ export function createCommandPalette(editor: Editor) {
     const heading = document.createElement("h2");
     heading.textContent = title;
     const f = document.createElement("form");
+    const fieldGroup = document.createElement("div");
+    fieldGroup.className = "document-command-fields";
     const alert = document.createElement("p");
     alert.setAttribute("role", "alert");
     for (const field of fields) {
@@ -280,17 +284,17 @@ export function createCommandPalette(editor: Editor) {
           ? document.createElement("textarea")
           : document.createElement("input");
       if (input instanceof HTMLSelectElement)
-        for (const value of field.choices ?? []) {
+        for (const choice of field.choices ?? []) {
           const option = document.createElement("option");
-          option.value = value;
-          option.textContent = value;
+          option.value = typeof choice === "string" ? choice : choice.value;
+          option.textContent = typeof choice === "string" ? choice : choice.label;
           input.appendChild(option);
         }
       input.name = field.name;
       input.value = field.value ?? "";
       if (input instanceof HTMLInputElement) input.type = field.type ?? "text";
       label.appendChild(input);
-      f.appendChild(label);
+      fieldGroup.appendChild(label);
     }
     const applyButton = document.createElement("button");
     applyButton.textContent = "適用";
@@ -305,14 +309,18 @@ export function createCommandPalette(editor: Editor) {
     const saveDraft = document.createElement("button");
     saveDraft.type = "button";
     saveDraft.textContent = "未確定のまま下書き保存";
+    saveDraft.className = "document-command-draft";
     saveDraft.onclick = () => window.dispatchEvent(new Event("document-save-draft"));
-    [alert, applyButton, cancel, saveDraft].forEach((child) => f.appendChild(child));
+    const actions = document.createElement("div");
+    actions.className = "document-command-actions";
+    [cancel, applyButton].forEach((child) => actions.appendChild(child));
+    [fieldGroup, alert, saveDraft, actions].forEach((child) => f.appendChild(child));
     f.onsubmit = (e) => {
       e.preventDefault();
       commit(() => apply(Object.fromEntries(new FormData(f)) as Record<string, string>));
     };
     [heading, f].forEach((child) => dialog!.appendChild(child));
-    document.body.appendChild(dialog);
+    dialogHost.appendChild(dialog);
     dialog.addEventListener("cancel", () => close());
     dialog.showModal();
   };
@@ -361,7 +369,7 @@ export function createCommandPalette(editor: Editor) {
             if (
               source.body &&
               (source.formatVersion !== 2 ||
-                source.contentSchemaVersion !== 1 ||
+                source.contentSchemaVersion !== CONTENT_SCHEMA_VERSION ||
                 source.bodyFormat !== "tiptap-json")
             )
               throw new Error("未対応の文書形式です");
@@ -561,8 +569,12 @@ export function createCommandPalette(editor: Editor) {
             : [
                 {
                   name: "kind",
-                  label: "種類（note / warning）",
+                  label: "種類",
                   value: id === "warning" ? "warning" : String(selected?.node.attrs.kind ?? "note"),
+                  choices: [
+                    { value: "note", label: "INFO" },
+                    { value: "warning", label: "WARN" },
+                  ],
                 },
               ]),
         ],
@@ -821,12 +833,14 @@ export function createCommandPalette(editor: Editor) {
     if (direct) {
       run(direct);
       for (const [name, value] of Object.entries(initial)) {
-        const input = dialog?.querySelector<HTMLInputElement>(`[name="${name}"]`);
-        if (input) {
+        const input = dialog?.querySelector(`[name="${name}"]`);
+        if (input instanceof HTMLInputElement) {
           if (input.type === "checkbox") input.checked = value === "true";
           else input.value = value;
-          input.dispatchEvent(new Event("input"));
+        } else if (input instanceof HTMLTextAreaElement || input instanceof HTMLSelectElement) {
+          input.value = value;
         }
+        input?.dispatchEvent(new Event("input"));
       }
       return;
     }

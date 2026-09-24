@@ -32,13 +32,14 @@ const defaults: Record<string, Record<string, unknown>> = {
   orderedList: { start: 1, tight: true },
   taskList: { tight: true },
   taskItem: { checked: false },
-  codeBlock: { language: null },
+  codeBlock: { language: null, caption: null },
   image: { src: "", alt: null, title: null },
   inlineMath: { latex: "" },
   blockMath: { latex: "" },
   callout: { kind: "note", title: null },
   details: { title: "" },
   figure: { src: "", alt: null },
+  table: { title: null },
   tableCell: { align: null, colspan: 1, rowspan: 1, colwidth: null },
   tableHeader: { align: null, colspan: 1, rowspan: 1, colwidth: null },
 };
@@ -105,9 +106,9 @@ export function normalizeDocument(
     }
     if (
       type === "heading" &&
-      (!Number.isInteger(attrs.level) || Number(attrs.level) < 2 || Number(attrs.level) > 6)
+      (!Number.isInteger(attrs.level) || Number(attrs.level) < 2 || Number(attrs.level) > 4)
     )
-      fail(path, "見出しはH2〜H6です");
+      fail(path, "見出しはH2〜H4です");
     if (
       ["bulletList", "orderedList", "taskList"].includes(type) &&
       typeof attrs.tight !== "boolean"
@@ -126,6 +127,8 @@ export function normalizeDocument(
       (typeof attrs.language !== "string" || !attrs.language || /[\s`~]/.test(attrs.language))
     )
       fail(path, "言語は1語です");
+    if (type === "codeBlock" && attrs.caption !== null && attrs.language !== "mermaid")
+      fail(path, "captionはMermaid図にのみ指定できます");
     if (["image", "figure"].includes(type)) {
       if (
         typeof attrs.src !== "string" ||
@@ -157,6 +160,9 @@ export function normalizeDocument(
         (typeof attrs[key] !== "string" || String(attrs[key]).includes("\n"))
       )
         fail(path, `${key}は1行の文字列です`);
+    if (type === "codeBlock" && attrs.caption !== null &&
+      (typeof attrs.caption !== "string" || /\n/.test(attrs.caption)))
+      fail(path, "Mermaid図の題名は一行の文字列です");
     if (
       type === "details" &&
       (typeof attrs.title !== "string" || (!attrs.title.trim() && !options.editing))
@@ -290,10 +296,11 @@ export function normalizeDocument(
       fail(path, "子要素が必要です");
     if (type === "table") {
       const width = children[0].content!.length;
+      const hasHeader = children[0].content![0].type === "tableHeader";
       children.forEach((row, i) => {
         if (row.content!.length !== width) fail(path, "表は矩形にしてください");
         row.content!.forEach((cell, j) => {
-          if (cell.type !== (i === 0 ? "tableHeader" : "tableCell"))
+          if (cell.type !== (i === 0 && hasHeader ? "tableHeader" : "tableCell"))
             fail(path, "ヘッダーは先頭1行です");
           if (cell.attrs!.align !== children[0].content![j].attrs!.align)
             fail(path, "配置は列全体で統一してください");

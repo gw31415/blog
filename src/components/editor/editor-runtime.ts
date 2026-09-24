@@ -238,6 +238,21 @@ export async function mountArticleEditor(
     details.open = detailsOpen[index] ?? false;
   });
   palette = createCommandPalette(editor);
+  const editCalloutLabel = (event: MouseEvent) => {
+    if (!editor.isEditable || !(event.target instanceof Element)) return;
+    const label = event.target.closest('[data-article-role="callout-label"]');
+    const element = label?.closest('[data-article-node="callout"]');
+    if (!element || !options.element.contains(element)) return;
+    let position: number | undefined;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === "callout" && editor.view.nodeDOM(pos) === element) position = pos;
+    });
+    if (position === undefined) return;
+    event.preventDefault();
+    editor.commands.setNodeSelection(position);
+    palette?.open(undefined, "edit-element");
+  };
+  options.element.addEventListener("click", editCalloutLabel);
   let pending = options.workingState?.pending as
     | Parameters<NonNullable<typeof palette>["resume"]>[0]
     | undefined;
@@ -264,6 +279,18 @@ export async function mountArticleEditor(
     setEditable(editable) {
       editor.setEditable(editable, false);
       options.element.dataset.editorMode = editable ? "edit" : "view";
+      options.element
+        .querySelectorAll<HTMLInputElement>('ul[data-type="taskList"] input[type="checkbox"]')
+        .forEach((checkbox) => (checkbox.disabled = !editable));
+      options.element
+        .querySelectorAll<HTMLElement>('[data-article-role="details-title"]')
+        .forEach((title) => (title.contentEditable = editable ? "plaintext-only" : "false"));
+      options.element
+        .querySelectorAll<HTMLElement>('[data-article-role="mermaid-caption"], [data-article-role="table-title"]')
+        .forEach((field) => {
+          field.contentEditable = editable ? "plaintext-only" : "false";
+          field.hidden = !editable && !field.textContent?.trim();
+        });
       if (editable) resumePending();
       else {
         pendingObserver?.disconnect();
@@ -289,6 +316,7 @@ export async function mountArticleEditor(
       return serializeArticleMarkdown(editor.getJSON());
     },
     destroy() {
+      options.element.removeEventListener("click", editCalloutLabel);
       pendingObserver?.disconnect();
       palette?.destroy();
       editor.destroy();

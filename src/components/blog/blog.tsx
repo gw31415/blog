@@ -12,6 +12,92 @@
 import { RenderOnce, Slot, component$, useConstant, type QRL } from "@qwik.dev/core";
 import { articleSurface } from "~/components/editor/article-surface-contract";
 
+const tagSeparators = /[,，、\s]+/u;
+
+function tagsInEditor(editor: HTMLElement): string[] {
+  return Array.from(editor.children)
+    .filter((child) => child.classList.contains("meta-tag"))
+    .map((child) => child.textContent ?? "");
+}
+
+function insertTagBefore(editor: HTMLElement, before: Node, value: string, known: Set<string>): void {
+  const tag = value.trim();
+  if (!tag || known.has(tag)) return;
+  const chip = document.createElement("span");
+  chip.className = "meta-tag";
+  chip.contentEditable = "false";
+  chip.textContent = tag;
+  editor.insertBefore(chip, before);
+  known.add(tag);
+}
+
+function escapeTagHtml(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+}
+
+function commitTagTextAtCaret(editor: HTMLElement, includeRemainder = false): void {
+  const selection = window.getSelection();
+  const node = selection?.anchorNode;
+  if (!selection?.isCollapsed || node?.nodeType !== Node.TEXT_NODE || node.parentNode !== editor) return;
+
+  const text = node as Text;
+  const beforeCaret = text.data.slice(0, selection.anchorOffset);
+  const boundary = includeRemainder
+    ? beforeCaret.length
+    : [...beforeCaret.matchAll(/[,，、\s]/gu)].at(-1)?.index;
+  if (boundary === undefined) return;
+
+  const committed = beforeCaret.slice(0, includeRemainder ? boundary : boundary + 1);
+  const remainder = beforeCaret.slice(committed.length);
+  const known = new Set(tagsInEditor(editor));
+  const additions = committed.split(tagSeparators).map((value) => value.trim()).filter((value) => {
+    if (!value || known.has(value)) return false;
+    known.add(value);
+    return true;
+  });
+  const offset = selection.anchorOffset;
+
+  // Let the browser add the replacement to its native undo history.
+  const replacement = document.createRange();
+  replacement.setStart(text, 0);
+  replacement.setEnd(text, committed.length);
+  selection.removeAllRanges();
+  selection.addRange(replacement);
+  const html = additions.map((value) => `<span class="meta-tag" contenteditable="false">${escapeTagHtml(value)}</span>`).join("");
+  if (document.execCommand(additions.length ? "insertHTML" : "delete", false, html)) {
+    const insertedChip = selection.anchorNode?.parentElement?.closest(".meta-tag");
+    if (insertedChip?.parentNode === editor) {
+      const range = document.createRange();
+      range.setStartAfter(insertedChip);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    return;
+  }
+
+  const existing = new Set(tagsInEditor(editor));
+  for (const value of additions) insertTagBefore(editor, text, value, existing);
+  text.data = remainder + text.data.slice(offset);
+
+  const range = document.createRange();
+  range.setStart(text, remainder.length);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function commitAllTagText(editor: HTMLElement): void {
+  const known = new Set(tagsInEditor(editor));
+  for (const node of Array.from(editor.childNodes)) {
+    if (node.nodeType !== Node.TEXT_NODE) continue;
+    for (const value of (node.textContent ?? "").split(tagSeparators)) {
+      insertTagBefore(editor, node, value, known);
+    }
+    node.parentNode?.removeChild(node);
+  }
+}
+
 /** 紙面の土台。方眼・紙テクスチャ・本文カラムを提供する。 */
 export const BlogPaper = component$(() => {
   return (
@@ -126,7 +212,7 @@ export const GridLayer = component$(() => {
 });
 
 interface BlogHeaderProps {
-  category: string;
+  tags: string[];
   /** <time datetime> 用の機械可読日付 (例: "2026-09-17") */
   dateTime: string;
   /** 表示用の和文日付 (例: "令和八年 九月十七日 木曜日") */
@@ -141,35 +227,92 @@ interface BlogHeaderProps {
   onEditIntent$?: QRL<() => void>;
   onEditRequest$?: QRL<() => void>;
   onDoneRequest$?: QRL<() => void>;
-  onCategoryInput$?: QRL<(value: string) => void>;
+  onTagsChange$?: QRL<(tags: string[]) => void>;
   onDateInput$?: QRL<(value: string) => void>;
   onPublicationToggle$?: QRL<() => void>;
   onTitleInput$?: QRL<(value: string) => void>;
   onSubtitleInput$?: QRL<(value: string) => void>;
 }
 
-/** 記事ヘッダー (カテゴリ・日付・公開状態・題・副題)。 */
+/** 記事ヘッダー (タグ・日付・公開状態・題・副題)。 */
 export const BlogHeader = component$((props: BlogHeaderProps) => {
   // Keep the browser-owned text nodes stable while editing. ArticleShell remounts
   // this component only when switching modes so these values refresh afterward.
-  const initialCategory = useConstant(() => props.category);
+  const initialTags = useConstant(() => props.tags);
   const initialTitle = useConstant(() => props.title);
   const initialSubtitle = useConstant(() => props.subtitle);
   const dateParts = /^(.+年)\s*(.+月)(.+日)\s*(.曜日)$/.exec(props.dateLabel);
   return (
     <header data-layout-key="header">
+      <hgroup>
+      <h1
+        class="ink"
+        data-article-field="title"
+        contentEditable={props.editable ? "true" : undefined}
+        onInput$={(_, element) => props.onTitleInput$?.(element.textContent ?? "")}
+      >
+        <RenderOnce>{initialTitle}</RenderOnce>
+      </h1>
+
+      <p
+        class="subtitle ink ink-muted"
+        data-article-field="subtitle"
+        data-empty={props.subtitle?.trim() ? undefined : "true"}
+        contentEditable={props.editable ? "true" : undefined}
+        onInput$={(_, element) => {
+          const value = element.textContent ?? "";
+          element.toggleAttribute("data-empty", !value.trim());
+          props.onSubtitleInput$?.(value);
+        }}
+      >
+        <RenderOnce>{initialSubtitle}</RenderOnce>
+      </p>
+      </hgroup>
       <div class="meta">
         <span
-          class="meta-category"
-          data-article-field="category"
-          contentEditable={props.editable && props.onCategoryInput$ ? "true" : undefined}
-          onInput$={(_, element) => props.onCategoryInput$?.(element.textContent ?? "")}
+          class="meta-tags"
+          data-article-field="tags"
+          data-editable={props.editable ? "true" : undefined}
+          data-empty={props.tags.length ? undefined : "true"}
+          contentEditable={props.editable ? "true" : undefined}
+          role={props.editable ? "textbox" : undefined}
+          aria-label={props.editable ? "タグ" : undefined}
+          aria-multiline={props.editable ? "false" : undefined}
+          onInput$={props.editable ? (event, element) => {
+            if (event.isComposing) return;
+            commitTagTextAtCaret(element);
+            const tags = tagsInEditor(element);
+            element.toggleAttribute("data-empty", tags.length === 0);
+            if (tags.join("\0") !== props.tags.join("\0")) props.onTagsChange$?.(tags);
+          } : undefined}
+          onCompositionEnd$={props.editable ? (_, element) => {
+            commitTagTextAtCaret(element);
+            const tags = tagsInEditor(element);
+            element.toggleAttribute("data-empty", tags.length === 0);
+            if (tags.join("\0") !== props.tags.join("\0")) props.onTagsChange$?.(tags);
+          } : undefined}
+          onKeyDown$={props.editable ? (event, element) => {
+            if (event.isComposing || event.key !== "Enter") return;
+            event.preventDefault();
+            commitTagTextAtCaret(element, true);
+            const tags = tagsInEditor(element);
+            element.toggleAttribute("data-empty", tags.length === 0);
+            if (tags.join("\0") !== props.tags.join("\0")) props.onTagsChange$?.(tags);
+          } : undefined}
+          onBlur$={props.editable ? (_, element) => {
+            commitAllTagText(element);
+            const tags = tagsInEditor(element);
+            element.toggleAttribute("data-empty", tags.length === 0);
+            if (tags.join("\0") !== props.tags.join("\0")) props.onTagsChange$?.(tags);
+          } : undefined}
         >
-          <RenderOnce>{initialCategory}</RenderOnce>
+          <RenderOnce>
+            {initialTags.map((tag) => (
+              <span class="meta-tag" contentEditable={props.editable ? "false" : undefined} key={tag}>{tag}</span>
+            ))}
+          </RenderOnce>
         </span>
-
-        <span class="meta-separator" aria-hidden="true"></span>
-
+        <span class="meta-controls">
         <span class="article-date-control">
           <time class="ink ink-muted" dateTime={props.dateTime} data-article-field="publishedAt">
             {dateParts ? (
@@ -234,27 +377,9 @@ export const BlogHeader = component$((props: BlogHeaderProps) => {
             {props.editLoading || props.saving ? "…" : props.editable ? "完了" : "編集"}
           </button>
         )}
+        </span>
       </div>
 
-      <h1
-        class="ink"
-        data-article-field="title"
-        contentEditable={props.editable ? "true" : undefined}
-        onInput$={(_, element) => props.onTitleInput$?.(element.textContent ?? "")}
-      >
-        <RenderOnce>{initialTitle}</RenderOnce>
-      </h1>
-
-      {(props.subtitle || props.editable) && (
-        <p
-          class="subtitle ink ink-muted"
-          data-article-field="subtitle"
-          contentEditable={props.editable ? "true" : undefined}
-          onInput$={(_, element) => props.onSubtitleInput$?.(element.textContent ?? "")}
-        >
-          <RenderOnce>{initialSubtitle}</RenderOnce>
-        </p>
-      )}
     </header>
   );
 });
@@ -301,7 +426,6 @@ export const InlineMath = component$((props: InlineMathProps) => {
 interface MathBlockProps {
   /** SSR 済み HTML (display="true" の mjx-container) */
   html: string;
-  caption?: string;
 }
 
 /** 別行立て数式。 */
@@ -309,7 +433,6 @@ export const MathBlock = component$((props: MathBlockProps) => {
   return (
     <div class="math-block" data-blog-surface={articleSurface.math}>
       <div dangerouslySetInnerHTML={props.html}></div>
-      {props.caption && <div class="math-caption">{props.caption}</div>}
     </div>
   );
 });
@@ -368,7 +491,7 @@ interface AsideNoteProps {
 /** 補足 (aside)。 */
 export const AsideNote = component$((props: AsideNoteProps) => {
   return (
-    <aside class="aside ink ink-muted">
+    <aside class="aside ink ink-muted" data-kind={props.label === "WARN" ? "warning" : "note"}>
       <span class="aside-label">{props.label}</span>
       <Slot />
     </aside>
@@ -407,7 +530,7 @@ interface FigureProps {
 
 /**
  * 図版。枠内には図・写真など任意の内容を置く。
- * 写真は CSS で紙面に馴染む調子に整えられる。
+ * 画像の色は変えず、紙面の枠で本文と馴染ませる。
  */
 export const Figure = component$((props: FigureProps) => {
   return (

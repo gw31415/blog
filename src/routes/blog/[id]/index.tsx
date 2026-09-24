@@ -10,6 +10,7 @@ import {
 
 import { ArticleShell } from "~/components/editor/article-shell";
 import { BLOG_NAME } from "~/content/article";
+import { CONTENT_SCHEMA_VERSION } from "~/content/document";
 import { canManagePosts } from "~/content/permissions";
 import { canonicalPath } from "~/content/post-url";
 import { database, findPost, redirectCanonical, savePostContent } from "~/server/posts";
@@ -67,7 +68,6 @@ export default component$(() => {
     <ArticleShell
       key={post.id}
       article={{
-        category: post.tags.join("、"),
         publishedAt: post.published_at?.slice(0, 10) ?? "",
         title: post.title,
         subtitle: post.subtitle ?? "",
@@ -89,7 +89,6 @@ export default component$(() => {
           await validateMermaidDocument(draft.body);
         }
         const result = await save.submit({
-          category: draft.category,
           publishedAt: draft.publishedAt,
           title: draft.title,
           subtitle: draft.subtitle === (post.subtitle ?? "") ? post.subtitle : draft.subtitle,
@@ -101,7 +100,7 @@ export default component$(() => {
             draft.description === (post.description ?? "") ? post.description : draft.description,
           formatVersion: 2,
           bodyFormat: "tiptap-json",
-          contentSchemaVersion: 1,
+          contentSchemaVersion: CONTENT_SCHEMA_VERSION,
           status: draft.status,
           alias: draft.alias,
         });
