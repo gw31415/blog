@@ -6,15 +6,24 @@ describe("code block view", () => {
   it("uses one stable DOM contract for the language control and editable code", () => {
     expect(codeBlockDOMSpec("html caption")).toEqual([
       "pre",
-      expect.objectContaining({ class: "code-block", "data-code-language": "html" }),
+      expect.objectContaining({
+        class: "code-block",
+        "data-code-language": "html",
+        "data-blog-surface": "code",
+      }),
       [
         "span",
-        { class: "code-language-control", contenteditable: "false" },
-        ["span", { class: "code-language-label" }, "html"],
+        {
+          class: "code-language-control",
+          "data-blog-role": "language-control",
+          contenteditable: "false",
+        },
+        ["span", { class: "code-language-label", "data-blog-role": "language-label" }, "html"],
         expect.arrayContaining([
           "select",
           expect.objectContaining({
             class: "code-language-select",
+            "data-blog-role": "language-select",
             "aria-label": "コード言語",
           }),
         ]),

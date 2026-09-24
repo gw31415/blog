@@ -10,6 +10,7 @@
  * MathJax / highlight.js 実行や CDN スクリプトは不要。
  */
 import { RenderOnce, Slot, component$, useConstant, type QRL } from "@qwik.dev/core";
+import { articleSurface } from "~/components/editor/article-surface-contract";
 
 /** 紙面の土台。方眼・紙テクスチャ・本文カラムを提供する。 */
 export const BlogPaper = component$(() => {
@@ -306,7 +307,7 @@ interface MathBlockProps {
 /** 別行立て数式。 */
 export const MathBlock = component$((props: MathBlockProps) => {
   return (
-    <div class="math-block">
+    <div class="math-block" data-blog-surface={articleSurface.math}>
       <div dangerouslySetInnerHTML={props.html}></div>
       {props.caption && <div class="math-caption">{props.caption}</div>}
     </div>
@@ -327,7 +328,7 @@ interface CodeBlockProps {
 /** コードブロック (キャプション + ハイライト済み pre)。 */
 export const CodeBlock = component$((props: CodeBlockProps) => {
   return (
-    <div class="code-block">
+    <div class="code-block" data-blog-surface={articleSurface.code}>
       <div class="code-caption">
         <span>{props.caption}</span>
         <span>{props.languageLabel}</span>
@@ -411,7 +412,7 @@ interface FigureProps {
 export const Figure = component$((props: FigureProps) => {
   return (
     <figure>
-      <div class="figure-field">
+      <div class="figure-field" data-blog-surface={articleSurface.figure}>
         <Slot />
       </div>
 

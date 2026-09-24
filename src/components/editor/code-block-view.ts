@@ -1,6 +1,7 @@
 import type { DOMOutputSpec } from "@tiptap/pm/model";
 
 import { CODE_LANGUAGES, codeLanguage } from "./code-language.ts";
+import { articleSurface, setSurface, surfaceAttributes } from "./article-surface-contract.ts";
 
 type CodeLanguageControl = {
   control: HTMLSpanElement;
@@ -22,14 +23,26 @@ export function codeBlockDOMSpec(languageInfo: string): DOMOutputSpec {
   const language = codeLanguage(languageInfo);
   return [
     "pre",
-    { class: "code-block", "data-code-language": language },
+    {
+      class: "code-block",
+      "data-code-language": language,
+      ...surfaceAttributes(articleSurface.code),
+    },
     [
       "span",
-      { class: "code-language-control", contenteditable: "false" },
-      ["span", { class: "code-language-label" }, language],
+      {
+        class: "code-language-control",
+        "data-blog-role": "language-control",
+        contenteditable: "false",
+      },
+      ["span", { class: "code-language-label", "data-blog-role": "language-label" }, language],
       [
         "select",
-        { class: "code-language-select", "aria-label": "コード言語" },
+        {
+          class: "code-language-select",
+          "data-blog-role": "language-select",
+          "aria-label": "コード言語",
+        },
         ...codeLanguageOptions(languageInfo),
       ],
     ],
@@ -44,14 +57,17 @@ export function createCodeBlockControl(
 ): CodeLanguageControl {
   const control = ownerDocument.createElement("span");
   control.className = "code-language-control";
+  control.dataset.blogRole = "language-control";
   control.contentEditable = "false";
 
   const label = ownerDocument.createElement("span");
   label.className = "code-language-label";
+  label.dataset.blogRole = "language-label";
   control.appendChild(label);
 
   const select = ownerDocument.createElement("select");
   select.className = "code-language-select";
+  select.dataset.blogRole = "language-select";
   select.setAttribute("aria-label", "コード言語");
   for (const language of CODE_LANGUAGES) {
     const option = ownerDocument.createElement("option");
@@ -76,6 +92,7 @@ export function createCodeBlockControl(
 export function createCodeBlockSurface(ownerDocument: Document = document) {
   const pre = ownerDocument.createElement("pre");
   pre.className = "code-block";
+  setSurface(pre, articleSurface.code);
   const code = ownerDocument.createElement("code");
   return { pre, code };
 }

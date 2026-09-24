@@ -34,7 +34,7 @@ describe("editor rendering regressions", () => {
   it("labels code blocks with their language in the upper-right control", () => {
     expect(renderedHtml).toContain('data-code-language="html"');
     expect(renderedHtml).toMatch(
-      /<span class="code-language-control" contenteditable="false"><span class="code-language-label">html<\/span><select class="code-language-select" aria-label="コード言語">/,
+      /<span class="code-language-control" data-blog-role="language-control" contenteditable="false"><span class="code-language-label" data-blog-role="language-label">html<\/span><select class="code-language-select" data-blog-role="language-select" aria-label="コード言語">/,
     );
   });
 
@@ -84,7 +84,9 @@ describe("Mermaid server markup", () => {
       },
       ['<svg role="img"><text>diagram</text></svg>'],
     );
-    expect(rendered.html).toContain('class="figure-field mermaid-preview"><svg');
+    expect(rendered.html).toMatch(
+      /class="figure-field mermaid-preview"[^>]*data-blog-surface="figure"[^>]*><svg/,
+    );
     expect(rendered.html).not.toContain("<pre");
     expect(rendered.html).not.toContain("<code");
     expect(rendered.html).toContain("&quot;&lt;test&gt;&quot;");
@@ -92,10 +94,9 @@ describe("Mermaid server markup", () => {
   });
 });
 
-
 it("keeps separate browser-rendered formulas free of duplicate glyph IDs", () => {
   const first = renderMathContentHTML("x^2", false);
   const second = renderMathContentHTML("y^2", false);
-  const ids = [...(first + second).matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
+  const ids = [...(first + second).matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
   expect(new Set(ids).size).toBe(ids.length);
 });

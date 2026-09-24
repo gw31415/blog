@@ -19,6 +19,28 @@ test("Mermaid is complete in server HTML with JavaScript disabled", async ({
     }));
   expect(style.border).toBe("solid");
   expect(style.background).toContain("repeating-linear-gradient");
+  const scoped = await page.evaluate(() => {
+    const boundary = document.querySelector<HTMLElement>("[data-article-surface-boundary]")!;
+    const actual = document.querySelector<HTMLElement>(
+      "article .mermaid-diagram [data-blog-surface='figure']",
+    )!;
+    const collision = document.createElement("div");
+    collision.className = "figure-field code-block math-block";
+    boundary.appendChild(collision);
+    const computed = getComputedStyle(collision);
+    const result = {
+      qstyleClass: boundary.className,
+      containsActual: boundary.contains(actual),
+      border: computed.borderTopStyle,
+      background: computed.backgroundImage,
+    };
+    collision.remove();
+    return result;
+  });
+  expect(scoped.qstyleClass).not.toBe("");
+  expect(scoped.containsActual).toBe(true);
+  expect(scoped.border).toBe("none");
+  expect(scoped.background).toBe("none");
   await context.close();
 });
 

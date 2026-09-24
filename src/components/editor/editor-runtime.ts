@@ -238,9 +238,25 @@ export async function mountArticleEditor(
     details.open = detailsOpen[index] ?? false;
   });
   palette = createCommandPalette(editor);
-  const pending = options.workingState?.pending;
-  if (pending)
-    queueMicrotask(() => palette?.resume(pending as Parameters<typeof palette.resume>[0]));
+  let pending = options.workingState?.pending as
+    | Parameters<NonNullable<typeof palette>["resume"]>[0]
+    | undefined;
+  let pendingObserver: MutationObserver | undefined;
+  const resumePending = () => {
+    if (!pending || !editor.isEditable) return;
+    const viewport = options.element.closest("[data-virtual-keyboard-viewport]");
+    if (!viewport) return;
+    if (!viewport.querySelector(".editor-dock")) {
+      pendingObserver ??= new MutationObserver(resumePending);
+      pendingObserver.observe(viewport, { childList: true, subtree: true });
+      return;
+    }
+    pendingObserver?.disconnect();
+    pendingObserver = undefined;
+    const state = pending;
+    pending = undefined;
+    palette?.resume(state);
+  };
   options.element.dataset.editorReady = "";
   options.onSelectionChange(toolbarState(editor));
 
@@ -248,6 +264,11 @@ export async function mountArticleEditor(
     setEditable(editable) {
       editor.setEditable(editable, false);
       options.element.dataset.editorMode = editable ? "edit" : "view";
+      if (editable) resumePending();
+      else {
+        pendingObserver?.disconnect();
+        pendingObserver = undefined;
+      }
     },
     run(command) {
       if (command.type === "palette") {
@@ -268,6 +289,7 @@ export async function mountArticleEditor(
       return serializeArticleMarkdown(editor.getJSON());
     },
     destroy() {
+      pendingObserver?.disconnect();
       palette?.destroy();
       editor.destroy();
       delete options.element.dataset.editorReady;

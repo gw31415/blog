@@ -1,6 +1,7 @@
 import { Node, Extension, type MarkdownToken } from "@tiptap/core";
 import Code from "@tiptap/extension-code";
 import Link from "@tiptap/extension-link";
+import { figureFieldDOMSpec } from "./article-surface-contract";
 
 export const ArticleCode = Code.extend({ excludes: "" });
 export const ArticleLink = Link.extend({
@@ -92,11 +93,7 @@ function directive(name: "callout" | "details" | "figure") {
       return [
         "figure",
         { "data-article-node": name },
-        [
-          "div",
-          { class: "figure-field" },
-          ["img", { src: node.attrs.src, alt: node.attrs.alt, loading: "lazy" }],
-        ],
+        figureFieldDOMSpec(["img", { src: node.attrs.src, alt: node.attrs.alt, loading: "lazy" }]),
         ["figcaption", {}, 0],
       ];
     },

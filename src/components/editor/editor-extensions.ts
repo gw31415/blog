@@ -39,6 +39,7 @@ import {
 } from "./code-block-view.ts";
 import { codeLanguage, replaceCodeLanguage } from "./code-language.ts";
 import { renderMathContentHTML } from "./mathjax-renderer.ts";
+import { articleSurface, createMermaidFigure, setSurface } from "./article-surface-contract.ts";
 
 export { renderMathContentHTML } from "./mathjax-renderer.ts";
 
@@ -93,12 +94,8 @@ const SharedCodeBlock = CodeBlock.extend<
     return ({ node: initialNode, view, getPos }) => {
       if (initialNode.attrs.language === "mermaid") {
         let current = initialNode;
-        const dom = view.dom.ownerDocument.createElement("figure");
-        dom.className = "mermaid-diagram";
+        const { figure: dom, field: preview } = createMermaidFigure(view.dom.ownerDocument);
         dom.contentEditable = "false";
-        const preview = view.dom.ownerDocument.createElement("div");
-        preview.className = "figure-field mermaid-preview";
-        dom.appendChild(preview);
         const render = () => {
           dom.dataset.mermaidSource = current.textContent;
           const cached = options.mermaidHTML?.get(current.textContent);
@@ -186,6 +183,7 @@ function sharedMathNodeView(displayMode: boolean) {
       const dom = ownerDocument.createElement(displayMode ? "div" : "span");
       dom.className = "tiptap-mathematics-render";
       dom.dataset.type = displayMode ? "block-math" : "inline-math";
+      if (displayMode) setSurface(dom, articleSurface.math);
       dom.contentEditable = "false";
 
       const render = () => {

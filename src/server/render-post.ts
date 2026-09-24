@@ -1,6 +1,7 @@
 import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
 
 import { codeBlockDOMSpec } from "~/components/editor/code-block-view";
+import { articleSurface, mermaidFigureDOMSpec } from "~/components/editor/article-surface-contract";
 import { createEditorExtensions } from "~/components/editor/editor-extensions";
 import { highlightCode } from "~/components/editor/editor-syntax-highlighting";
 import { normalizeDocument } from "~/content/document";
@@ -52,7 +53,7 @@ export function renderPost(
           if (language === "mermaid") {
             const diagram =
               diagrams[diagramIndex++] ?? '<p role="alert">Mermaidの描画を確認してください。</p>';
-            return `<figure class="mermaid-diagram" data-mermaid-source="${escapeHtml(node.textContent)}"><div class="figure-field mermaid-preview">${diagram}</div></figure>`;
+            return renderDOMSpec(mermaidFigureDOMSpec(node.textContent), diagram);
           }
           const highlighted = highlightCode(language, node.textContent)
             .map(({ classes, text }) =>
@@ -83,10 +84,17 @@ function mathHtml(
     : validateLatex(latex, displayMode);
   if (!rendered.ok) return `<code>${escapeHtml(latex)}</code>`;
   // Cached MathJax glyph IDs must be unique for each occurrence in the page.
-  const ids = new Map([...rendered.html.matchAll(/\bid="([^"]+)"/g)].map(match => [match[1], `math-${index}-${match[1]}`]));
+  const ids = new Map(
+    [...rendered.html.matchAll(/\bid="([^"]+)"/g)].map((match) => [
+      match[1],
+      `math-${index}-${match[1]}`,
+    ]),
+  );
   const html = rendered.html.replace(/(id="|href="#)([^"#]+)(")/g, (original, prefix, id, end) =>
-    ids.has(id) ? `${prefix}${ids.get(id)}${end}` : original);
+    ids.has(id) ? `${prefix}${ids.get(id)}${end}` : original,
+  );
   const tag = displayMode ? "div" : "span";
   const inner = displayMode ? `<div class="block-math-inner">${html}</div>` : html;
-  return `<${tag} class="tiptap-mathematics-render" data-type="${displayMode ? "block-math" : "inline-math"}" data-latex="${escapeHtml(latex)}" contenteditable="false">${inner}</${tag}>`;
+  const surface = displayMode ? ` data-blog-surface="${articleSurface.math}"` : "";
+  return `<${tag} class="tiptap-mathematics-render" data-type="${displayMode ? "block-math" : "inline-math"}"${surface} data-latex="${escapeHtml(latex)}" contenteditable="false">${inner}</${tag}>`;
 }

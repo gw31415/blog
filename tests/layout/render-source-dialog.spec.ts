@@ -26,21 +26,31 @@ for (const width of [1280, 390])
     const input = dialog.getByRole("textbox", { name: "LaTeX" });
     await input.click();
     await expect(dialog).toBeVisible();
-    await expect(dialog.locator("h2, .code-language-label")).toHaveCount(0);
+    await expect(dialog.locator("h2")).toHaveCount(0);
+    await expect(dialog.locator(".code-language-label")).toHaveText("latex");
     const sourceLayout = await dialog.evaluate((element) => {
       const source = element.querySelector(".render-source-code")!;
       const article = document.querySelector("article .ProseMirror")!;
-      const articleCode = document.querySelector("article pre.code-block code")!;
+      const articleCodeFrame = document.querySelector("article pre.code-block")!;
+      const articleCode = articleCodeFrame.querySelector("code")!;
       const textarea = element.querySelector("textarea")!;
       return {
         width: source.getBoundingClientRect().width,
         articleWidth: article.getBoundingClientRect().width,
         lineHeight: getComputedStyle(textarea).lineHeight,
         articleLineHeight: getComputedStyle(articleCode).lineHeight,
+        border: getComputedStyle(source).borderLeft,
+        articleBorder: getComputedStyle(articleCodeFrame).borderLeft,
+        background: getComputedStyle(source).backgroundColor,
+        articleBackground: getComputedStyle(articleCodeFrame).backgroundColor,
+        articleMargin: getComputedStyle(articleCodeFrame).marginTop,
       };
     });
     expect(Math.abs(sourceLayout.width - sourceLayout.articleWidth)).toBeLessThan(2);
     expect(sourceLayout.lineHeight).toBe(sourceLayout.articleLineHeight);
+    expect(sourceLayout.border).toBe(sourceLayout.articleBorder);
+    expect(sourceLayout.background).toBe(sourceLayout.articleBackground);
+    expect(parseFloat(sourceLayout.articleMargin)).toBeGreaterThan(40);
     await expect(page.locator(".editor-dock .render-source-dialog")).toHaveCount(1);
     await expect(page.locator(".editor-formatting")).toBeHidden();
     await expect(dialog).not.toHaveAttribute("aria-modal", "true");
@@ -61,12 +71,30 @@ for (const width of [1280, 390])
     const figure = page.locator("article .mermaid-diagram").first();
     await figure.click();
     const mermaid = page.getByRole("dialog", { name: "Mermaid", exact: true });
+    await expect(mermaid.locator(".code-language-label")).toHaveText("mermaid");
     await mermaid
       .locator("textarea")
       .fill(
         "flowchart TB\n" + Array.from({ length: 30 }, (_, i) => `A${i} --> A${i + 1}`).join("\n"),
       );
     await expect(mermaid.locator("img.mermaid-image")).toBeVisible();
+    const frameStyles = await page.evaluate(() => {
+      const fields = [
+        ...document.querySelectorAll("article .mermaid-diagram .figure-field"),
+        document.querySelector(".render-source-preview .figure-field"),
+      ];
+      return fields.map((field) => {
+        const style = getComputedStyle(field!);
+        return {
+          background: style.backgroundImage,
+          border: style.borderTop,
+          padding: style.padding,
+        };
+      });
+    });
+    expect(frameStyles).toHaveLength(3);
+    expect(frameStyles[1]).toEqual(frameStyles[0]);
+    expect(frameStyles[2]).toEqual(frameStyles[0]);
     const geometry = await mermaid.evaluate((el) => {
       const preview = el.querySelector(".render-source-preview")!;
       const panel = el.querySelector(".render-source-panel")!;

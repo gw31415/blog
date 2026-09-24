@@ -52,24 +52,6 @@
   color: #8c4037;
 }
 
-.mermaid-preview {
-  white-space: normal;
-}
-.document-command-dialog .mermaid-preview {
-  padding: 1rem;
-  overflow: auto;
-}
-.mermaid-diagram svg {
-  display: block;
-}
-[contenteditable="true"] .mermaid-diagram {
-  cursor: pointer;
-}
-.mermaid-preview svg {
-  max-width: 100%;
-  height: auto;
-}
-
 .article-content h4,
 .article-content h5,
 .article-content h6 {
@@ -90,12 +72,4 @@
 }
 .article-content [data-soft-break] {
   white-space: normal;
-}
-
-.article-content .figure-field .mermaid-image {
-  display: block;
-  width: auto;
-  max-width: 100%;
-  height: auto;
-  filter: none;
 }
