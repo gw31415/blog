@@ -29,7 +29,12 @@ export const sampleDocument = normalizeDocument({
     heading(2, "文字と意味を記録する"),
     p(
       text("通常の文字に続いて、"),
-      text("太字", [{ type: "bold" }]),
+      text("重要", [{ type: "bold" }]),
+      text("、太字", [{ type: "b" }]),
+      text("、italic", [{ type: "i" }]),
+      text("、下線", [{ type: "underline" }]),
+      text("、ハイライト", [{ type: "highlight" }]),
+      text("、H"), text("2", [{ type: "subscript" }]), text("O、x"), text("2", [{ type: "superscript" }]),
       text("、"),
       text("強調", [{ type: "italic" }]),
       text("、"),

@@ -462,15 +462,42 @@ Tiptapのスキーマは登録した拡張によって構成される。本書�
 - softBreakの前後には、文字・画像・インライン数式等の内容を持たせる。空行や段落境界をsoftBreakに置き換えない。
 - ターゲット、rel、HTML class、style等は本文の著者指定属性にしない。必要なサイト側のリンク表示方針は表示層で決める。
 
+### 5.4.1 意味と表示を分ける文字書式
+
+既存のbold=strong（重要）、italic=em（傍点）、strike=sの保存上の意味は維持する。contentSchemaVersion=1の後方互換なマーク追加として、b（太字）、i（イタリック）、underline（下線）、highlight（mark）、subscript（sub）、superscript（sup）を許可する。既存記事を再解釈・破棄しない。subscriptとsuperscriptは排他的とする。dfn、cite、var、ins、del、smallは対応しない。
+
+対話入力とMarkdown取り込みは異なる。対話入力は `**文字**`→bold、`*文字*`→b、`_文字_`→i、`__文字__`→underline、`==文字==`→highlight。囲み記法（重要・太字・イタリック・下線・ハイライト・打ち消し）は行頭、空白の直後、または非ASCII文字（漢字・かな・全角英数・全角句読点等）の直後で発火する。ASCIIの非空白文字直後は従来どおり発火しない。直前の文字は保持する。単一の囲みは二重の囲みの途中で発火しない。code内とIME変換中は発火しない。emには囲み入力を設けない。
+
+Markdownの既存構文 `**` / `__` はbold、`*` / `_` はitalicのまま。新マークの正規Markdownは属性なしの対になる `<b>`、`<i>`、`<u>`、`<mark>`、`<sub>`、`<sup>` で表し、限定されたインライン構文として読み込む。任意属性・未知タグ・不正な閉じ方は拒否し原文を保持する。通常の貼り付けは従来どおり文字である。
+
+対話入力の境界条件とは独立に、正規Markdownおよび外部向けMarkdownで強調・重要・打ち消し線（`*`、`**`、`~~`）の連続マーク範囲に隣接する内容があり、その境界が空白でない場合は囲みの外側へ半角スペースを1個補う。例：`日本語 **重要** です`。行頭・行末への空白追加や既存空白の重複はしない。HTMLタグとして出す書式やコードには独自の空白を補わない。JSONと入力時の発火条件は変更しない。この補助空白は出力上の意図的な例外で、再取り込みでは通常の本文空白として扱われるため、当該箇所は文字列の厳密な往復一致の対象外とする。
+
+strongは濃赤 #701c28 とfont-weight:700、bは通常色のfont-weight:700、iはfont-style:italic（フォント本来の斜体・対応可変軸をブラウザ標準の照合で使用し、不足する場合はfont-synthesis:styleで斜体合成を許可する。要素のtransformは使わない）、underlineは下線、emは現在の傍点、markは現在の背景マーカー。リンクは #8c4037 と下線を維持し、重要と区別する。sub/supは文字を小さくして上下へ配置するが行高は増やさない。
+
+| コマンド | 表示 | 保存マーク | キー |
+| --- | --- | --- | --- |
+| /strong | 重要 | bold | Mod+Alt+S |
+| /bold | 太字 | b | Mod+B |
+| /italic | イタリック | i | Mod+I |
+| /underline | 下線 | underline | Mod+U |
+| /em | 強調（傍点） | italic | なし |
+| /mark | ハイライト | highlight | Mod+Shift+H |
+| /sub | 下付き | subscript | なし（スラッシュ／選択保持パレットのみ） |
+| /sup | 上付き | superscript | なし（スラッシュ／選択保持パレットのみ） |
+
+外部向けはGitHub/Qiitaで追加マークを限定HTMLとして出力する（u/markの表示はサービスのHTML制限に依存するため診断）。Zennではbをstrong、iをemへ変換し、他の追加マークは文字内容を保持して書式を落とし、意味・書式の損失を診断する。本文JSONは変更しない。
+
+書式解除は追加マークも解除し、リンクは保持する。スラッシュ補完のキャレット位置・選択保持・Undo・Enter/Tab確定の挙動は維持する。
+
 ### 5.5 マークと要素の組み合わせ
 
 | 対象 | 許可するマーク | 許可しない組み合わせ |
 | --- | --- | --- |
-| 通常文字 | bold、italic、strike、link、code。これらの併用を許可 | 複数の異なるlink、未知マーク |
+| 通常文字 | bold、italic、b、i、underline、highlight、subscript、superscript、strike、link、code。sub/sup以外の併用を許可 | 複数の異なるlink、未知マーク |
 | 画像 | linkだけ | 装飾マーク、code |
 | インライン数式 | なし | link、装飾マーク、code |
-| hardBreak | bold、italic、strike、link | code |
-| softBreak | 前後に続く同一のbold、italic、strike、linkの範囲内に限る | code、softBreakだけへの単独マーク |
+| hardBreak | bold、italic、b、i、underline、highlight、subscript、superscript、strike、link | code |
+| softBreak | 前後に続く同一の許可された非codeマークの範囲内に限る | code、softBreakだけへの単独マーク |
 | ブロック要素 | なし | ブロック全体へのインラインマーク |
 
 マークは段落・見出し等のブロック境界を越えない。インラインコードは改行を含めず、複数行への適用は元の改行を残して各行へ適用する。画像や数式を含む選択への書式操作は、対象外の要素を削除したり型を変えたりせず、許可された文字範囲だけを対象にすることを明示する。
@@ -553,8 +580,11 @@ Tiptap標準のHeading入力は`#`→H1であり、レベル範囲の設定だ�
 | コードブロック | バッククォート3個＋任意の言語名＋Enter | コードのソース編集を開始 |
 | 文字図 | バッククォート3個＋`text`＋Enter | 言語textのコード編集 |
 | Mermaid | バッククォート3個＋`mermaid`＋Enter | Mermaidのソース編集とプレビュー |
-| 太字 | `**text**` | 完結した範囲を太字へ |
-| 強調 | `*text*` | 完結した範囲を強調へ |
+| 重要 | `**text**` | bold（strong）へ |
+| 太字 | `*text*` | bへ |
+| イタリック | `_text_` | iへ |
+| 下線 | `__text__` | underlineへ |
+| ハイライト | `==text==` | highlightへ |
 | 打ち消し線 | `~~text~~` | 完結した範囲を打ち消しへ |
 | インラインコード | バッククォートで囲んだ文字 | コード文字列へ |
 | リンク | `[label](url)` | 完結した範囲をリンクへ |
@@ -590,7 +620,10 @@ Tiptap標準のHeading入力は`#`→H1であり、レベル範囲の設定だ�
 | Alt+Enter | 通常段落内のソフト改行。見出し・表セル・ソース内では利用不可 |
 | Tab / Shift+Tab | リスト項目の入れ子を深く／浅くする。表内では次／前のセルへ |
 | Mod+B | 選択文字または次の入力の太字を切り替える |
-| Mod+I | 強調を切り替える |
+| Mod+I | イタリック（i）を切り替える |
+| Mod+Alt+S | 重要（strong）を切り替える |
+| Mod+U | 下線を切り替える |
+| Mod+Shift+H | ハイライトを切り替える |
 | Mod+E | インラインコードを切り替える |
 | Mod+Shift+X | 打ち消し線を切り替える |
 | Mod+K | 選択文字・画像へのリンク作成、またはリンク編集 |
@@ -700,8 +733,7 @@ TiptapのTableが持つ操作の範囲と、ブログがUIへ公開する操作�
 | リスト | `/bullet-list` | 箇条書き | ul、bullet、リスト | 箇条書きにする |
 | リスト | `/ordered-list` | 番号付きリスト | ol、number、番号 | 開始番号を指定できるリスト |
 | リスト | `/task-list` | タスクリスト | todo、checkbox、チェック | タスクリストにする |
-| 書式 | `/bold` | 太字 | strong、bold | 選択または次の入力へ適用・解除 |
-| 書式 | `/italic` | 強調 | emphasis、斜体、italic | 同上 |
+| 書式 | `/strong`、`/bold`、`/italic`、`/underline`、`/em`、`/mark`、`/sub`、`/sup` | 5.4.1の表示名 | 同節の意味名 | 選択または次の入力へ適用・解除 |
 | 書式 | `/strike` | 打ち消し線 | strikethrough、削除線 | 同上 |
 | 書式 | `/inline-code` | インラインコード | code-inline、コード文字 | 同上。文字列をコードとして扱う |
 | 書式 | `/link` | リンク | url、reference-link、autolink | 文字・画像へリンク設定。既存リンクなら編集 |
@@ -773,8 +805,7 @@ TiptapのTableが持つ操作の範囲と、ブログがUIへ公開する操作�
 | --- | --- |
 | ATXのH2〜H4 | 対応する`/heading-2`〜`/heading-4` |
 | 外部形式として取り込んだSetext | 移植元文法で解釈後、適合する見出しへ変換。本文直接入力ではSetext不採用 |
-| `*`と`_`による強調 | `/italic` |
-| `**`と`__`による太字 | `/bold` |
+| 対話入力 `**` / `*` / `_` / `__` / `==` | 順に `/strong` / `/bold` / `/italic` / `/underline` / `/mark` |
 | インデント・バッククォート・チルダのコード | `/code-block` |
 | `text`の文字図 | `/code-block`のtextプリセット |
 | 通常リンク・参照リンク・自動リンク | `/link` |
@@ -960,7 +991,7 @@ Markdownでの`---`はdivider、Setextなし、front matterなしというブロ
 - 文字として取り込む場合は、JSONのtextまたはcodeに実際の文字を保持する。後のEが必要なエスケープを行う。
 - すべての未知記法を自動検出できるとは保証しない。
 
-許可する改行用`<br>`以外の生HTMLは、HTML要素として本文へ保存しない。HTMLブロックと判定した範囲は原文を保持し、その一部だけをMarkdownとして再解釈しない。文字・コードとして残す変換は明示的に行う。
+許可する改行用`<br>`および5.4.1の限定インライン記法以外の生HTMLは、HTML要素として本文へ保存しない。HTMLブロックと判定した範囲は原文を保持し、その一部だけをMarkdownとして再解釈しない。文字・コードとして残す変換は明示的に行う。
 
 CommonMark自体では任意の文字列が文書になるため、取り込み時の診断は「本ブログのプロファイル範囲外」「この変換では情報を保持できない」と説明する。[CommonMark：文書の定義](https://spec.commonmark.org/0.31.2/#characters-and-lines)
 
@@ -1083,7 +1114,7 @@ CommonMark自体では任意の文字列が文書になるため、取り込み�
 
 本書を変更してから実装・データ定義・変換・操作を変更する。保存契約の変更時は `.agents/skills/blog-document-contract/SKILL.md` を利用する。仕様の緩和で不具合を隠さず、ライブラリの描画対応の更新は公式資料と実行結果を根拠に本書へ反映する。
 
-contentSchemaVersion=1 の実名を以下の内容で上書きする。旧記事はテストデータのみなので破棄し、サンプルを再生成する。H6を含む文書は変換せず診断して拒否する。
+contentSchemaVersion=1 の実名は以下のとおり。5.4.1の追加マークは既存の意味を変えない後方互換拡張であり、今回の更新で記事を破棄・再生成しない。H6を含む文書は変換せず診断して拒否する。
 
 | 意味 | ノード・属性と既定値 |
 | --- | --- |
@@ -1097,7 +1128,7 @@ contentSchemaVersion=1 の実名を以下の内容で上書きする。旧記事
 | トグル | details(title)、contentは本文ブロック。openは保存しない |
 | 数式 | inlineMath / blockMath(latex) |
 | 表 | table(title=null)、tableRow、tableHeader / tableCell(align=null,colspan=1,rowspan=1,colwidth=null)、contentはparagraph1個 |
-| マーク | bold、italic、strike、code、link(href,title=null)。正規順は表記順。リンクのtarget/rel/classは表示層のみ |
+| マーク | bold、italic、b、i、underline、highlight、subscript、superscript、strike、code、link(href,title=null)。正規順は表記順。リンクのtarget/rel/classは表示層のみ |
 
 記事形式には第2章のメタデータとサイト内URL用canonical_aliasを保存する。新規保存ではediting_stateを保持しない。既存のediting_stateは互換読込のみとする。旧Markdown列と旧データの移行は行わず、初期DDLと新規サンプルから開始する。
 

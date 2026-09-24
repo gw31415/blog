@@ -43,7 +43,7 @@ const defaults: Record<string, Record<string, unknown>> = {
   tableCell: { align: null, colspan: 1, rowspan: 1, colwidth: null },
   tableHeader: { align: null, colspan: 1, rowspan: 1, colwidth: null },
 };
-const markOrder = ["bold", "italic", "strike", "code", "link"];
+const markOrder = ["bold", "italic", "b", "i", "underline", "highlight", "subscript", "superscript", "strike", "code", "link"];
 export function safeUrl(value: string, image = false): boolean {
   return (
     !/[\u0000-\u0020\u007f]/.test(value) &&
@@ -208,6 +208,8 @@ export function normalizeDocument(
         fail(path, "同種の異なるマークが重複しています");
       if (!previous) marks.push(normalized);
     }
+    if (marks.some((m) => m.type === "subscript") && marks.some((m) => m.type === "superscript"))
+      fail(path, "下付きと上付きは同時に指定できません");
     marks.sort((a, b) => markOrder.indexOf(a.type) - markOrder.indexOf(b.type));
     if (marks.some((m) => m.type === "code") && (type !== "text" || /[\n]/.test(n.text ?? "")))
       fail(path, "インラインコードの書式・改行が不正です");

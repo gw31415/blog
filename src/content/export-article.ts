@@ -1,3 +1,4 @@
+import { inlineTags } from "../components/editor/inline-format-contract";
 import type { JSONContent } from "@tiptap/core";
 import { documentMarkdown, documentMarkdownWithMath } from "../components/editor/document-markdown";
 export type ExportTarget = "canonical" | "github" | "zenn" | "qiita";
@@ -155,6 +156,32 @@ export function exportArticle(article: ExportArticle, target: ExportTarget, orig
   }
   const body = structuredClone(article.body);
   const urls = (node: JSONContent) => {
+    if (node.marks && target === "zenn") {
+      node.marks = node.marks.flatMap((mark) => {
+        if (!inlineTags[mark.type]) return [mark];
+        if (mark.type === "b" || mark.type === "i") {
+          diagnostics.push(
+            `Zenn向けに${mark.type}を${mark.type === "b" ? "strong" : "em"}へ変換しました。意味の区別は保持されません。`,
+          );
+          return [{ type: mark.type === "b" ? "bold" : "italic" }];
+        }
+        diagnostics.push(
+          `Zenn向けでは${inlineTags[mark.type]}の書式を通常文字へ変換しました。元の書式は本文JSONに保持しています。`,
+        );
+        return [];
+      });
+      node.marks = node.marks.filter(
+        (mark, index, all) => all.findIndex((m) => m.type === mark.type) === index,
+      );
+    }
+    if (
+      node.marks &&
+      target !== "zenn" &&
+      node.marks.some((m) => ["underline", "highlight"].includes(m.type))
+    )
+      diagnostics.push(
+        "下線・ハイライトはHTMLで出力します。出力先のHTML制限により見た目が保持されない場合があります。",
+      );
     if (
       ["image", "figure"].includes(node.type ?? "") &&
       node.attrs?.src &&

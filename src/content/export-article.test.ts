@@ -110,3 +110,39 @@ describe("article Markdown exports", () => {
     },
   );
 });
+
+describe("semantic mark exports", () => {
+  it("retains supported inline HTML and diagnoses Zenn fallbacks without changing JSON", () => {
+    const input = article(
+      paragraph(
+        { ...text("太字"), marks: [{ type: "b" }] },
+        { ...text("italic"), marks: [{ type: "i" }] },
+        { ...text("注目"), marks: [{ type: "highlight" }] },
+        { ...text("2"), marks: [{ type: "superscript" }] },
+      ),
+    );
+    const original = structuredClone(input);
+    for (const target of ["github", "qiita"] as const) {
+      const result = exportArticle(input, target, "https://example.com");
+      expect(result.markdown).toContain("<b>太字</b><i>italic</i><mark>注目</mark><sup>2</sup>");
+      expect(result.diagnostics).not.toHaveLength(0);
+    }
+    const zenn = exportArticle(input, "zenn", "https://example.com");
+    expect(zenn.markdown).toContain("**太字** *italic* 注目2");
+    expect(zenn.diagnostics).toHaveLength(4);
+    expect(input).toEqual(original);
+  });
+});
+
+it.each(["canonical", ...targets] as const)(
+  "separates inline delimiters in %s output",
+  (target) => {
+    const body = paragraph(
+      text("日本語"),
+      { type: "text", text: "重要", marks: [{ type: "bold" }] },
+      text("です"),
+    );
+    expect(exportTo(target, body).markdown).toContain("日本語 **重要** です");
+    expect(body.content?.[0].text).toBe("日本語");
+  },
+);

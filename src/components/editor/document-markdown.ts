@@ -1,3 +1,4 @@
+import { inlineTags } from "./inline-format-contract";
 import type { JSONContent } from "@tiptap/core";
 const escape = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/[\\`*{}\[\]()#+.!_:<>~$|=-]/g, "\\$&");
@@ -36,6 +37,8 @@ function inline(
     let content = inline(stripped, table, heading, math);
     if (mark.type === "link")
       content = `[${content}](${destination(mark.attrs?.href)}${linkTitle(mark.attrs?.title)})`;
+    else if (inlineTags[mark.type])
+      content = `<${inlineTags[mark.type]}>${content}</${inlineTags[mark.type]}>`;
     else {
       const delimiter = mark.type === "bold" ? "**" : mark.type === "italic" ? "*" : "~~";
       content =
@@ -43,11 +46,13 @@ function inline(
         content.replace(/^ +| +$/g, (s) => Array.from(s, () => "&#32;").join("")) +
         delimiter;
     }
-    return (
-      inline(nodes.slice(0, run), table, heading, math) +
-      content +
-      inline(nodes.slice(end), table, heading, math)
-    );
+    const before = inline(nodes.slice(0, run), table, heading, math);
+    const after = inline(nodes.slice(end), table, heading, math);
+    const delimited = ["bold", "italic", "strike"].includes(mark.type);
+    // Export-only separators: leave the source JSON and typing rules untouched.
+    const left = delimited && before && !/\s$/.test(before) ? " " : "";
+    const right = delimited && after && !/^\s/.test(after) ? " " : "";
+    return before + left + content + right + after;
   }
   return nodes
     .map((n, i) => {
@@ -80,6 +85,7 @@ function inline(
         if (m.type === "code") continue;
         if (m.type === "link")
           out = `[${out}](${destination(m.attrs?.href)}${linkTitle(m.attrs?.title)})`;
+        else if (inlineTags[m.type]) out = `<${inlineTags[m.type]}>${out}</${inlineTags[m.type]}>`;
         else {
           const delimiter = m.type === "bold" ? "**" : m.type === "italic" ? "*" : "~~";
           out = out.replace(/^ +| +$/g, (s) => Array.from(s, () => "&#32;").join(""));

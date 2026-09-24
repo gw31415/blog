@@ -1,3 +1,4 @@
+import { semanticMarks, InlineFormatting } from "./inline-marks";
 import { DocumentTable } from "./document-table";
 import { documentMarkdown } from "./document-markdown";
 import CodeBlock, { type CodeBlockOptions } from "@tiptap/extension-code-block";
@@ -399,6 +400,11 @@ export function createEditorExtensions(options: EditorExtensionOptions = {}): An
         return (this.parent?.() ?? []).map((extension) =>
           ["bold", "italic", "strike"].includes(extension.name)
             ? extension.extend({
+                addInputRules: () => [],
+                ...(extension.name === "strike" ? {} : {
+                  addKeyboardShortcuts: () => ({}),
+                  parseHTML: () => [{ tag: extension.name === "bold" ? "strong" : "em" }],
+                }),
                 parseMarkdown: (token: MarkdownToken, helpers: any) =>
                   helpers.parseInline(token.tokens ?? []).map((node: any) => ({
                     ...node,
@@ -426,6 +432,8 @@ export function createEditorExtensions(options: EditorExtensionOptions = {}): An
       content: "block+",
       renderMarkdown: documentMarkdown,
     }),
+    ...semanticMarks,
+    InlineFormatting,
     ArticleParagraph,
     ArticleHeading.configure({ levels: [2, 3, 4], HTMLAttributes: { class: "ink" } }),
     SharedCodeBlock.configure({

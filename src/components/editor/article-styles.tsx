@@ -603,6 +603,8 @@ const articleShellStyles = css`
 
   & .article-content > .ProseMirror {
     outline: none;
+    /* Keep contenteditable UA line-breaking rules from changing justification. */
+    line-break: strict;
   }
 
   & .article-content > .ProseMirror[contenteditable="true"] {
@@ -662,16 +664,34 @@ const articleShellStyles = css`
     }
   }
 
-  & strong {
+  & strong,
+  & b {
     font-family: var(--sans);
 
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: normal;
   }
 
+  & strong {
+    color: #701c28;
+    -webkit-text-fill-color: #701c28;
+  }
+
+  & i {
+    font-style: italic;
+    /* Override the root synthesis ban only for italic fallback (e.g. Japanese). */
+    font-synthesis: style;
+  }
+  & u { text-decoration: underline; text-underline-offset: 0.15em; }
+  & sub, & sup { font-size: 0.75em; line-height: 0; position: relative; vertical-align: baseline; }
+  & sub { bottom: -0.25em; }
+  & sup { top: -0.5em; }
+
   & em {
     font-style: normal;
-    text-emphasis: filled dot;
+    /* .ink paints glyphs through background-clip and has transparent currentColor.
+       Paint emphasis independently; the existing 1.5 line-height has room for dots. */
+    text-emphasis: filled dot var(--ink-color, var(--ink));
     text-emphasis-position: over right;
   }
 

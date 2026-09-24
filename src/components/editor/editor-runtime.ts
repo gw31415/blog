@@ -78,8 +78,8 @@ function toolbarState(editor: Editor): ToolbarState {
       : null;
   return {
     paragraph: editor.isActive("paragraph"),
-    bold: editor.isActive("bold"),
-    italic: editor.isActive("italic"),
+    bold: editor.isActive("b"),
+    italic: editor.isActive("i"),
     strike: editor.isActive("strike"),
     heading,
     bulletList: editor.isActive("bulletList"),
@@ -127,9 +127,9 @@ function runCommand(editor: Editor, command: EditorCommand): boolean {
     case "paragraph":
       return chain.setParagraph().run();
     case "bold":
-      return chain.toggleBold().run();
+      return chain.toggleMark("b").run();
     case "italic":
-      return chain.toggleItalic().run();
+      return chain.toggleMark("i").run();
     case "strike":
       return chain.toggleStrike().run();
     case "heading":

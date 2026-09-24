@@ -1,3 +1,4 @@
+import { formatCommands } from "./inline-format-contract";
 import { createRenderSourceDialog } from "./render-source-dialog";
 import { closeHistory } from "@tiptap/pm/history";
 import { documentMarkdown } from "./document-markdown";
@@ -40,8 +41,14 @@ export const COMMANDS: PaletteCommand[] = [
   entry("ordered-list", "番号付きリスト", "ol number 番号", true, "リスト"),
   entry("task-list", "タスクリスト", "todo checkbox チェック", true, "リスト"),
   ...[
-    ["bold", "太字", "strong"],
-    ["italic", "強調", "emphasis 斜体"],
+    ["strong", "重要", "strong 重要性"],
+    ["bold", "太字", "bold b"],
+    ["italic", "イタリック", "italic i 斜体"],
+    ["underline", "下線", "underline u"],
+    ["em", "強調（傍点）", "emphasis 傍点"],
+    ["mark", "ハイライト", "highlight マーカー"],
+    ["sub", "下付き", "subscript"],
+    ["sup", "上付き", "superscript"],
     ["strike", "打ち消し線", "strikethrough 削除線"],
     ["inline-code", "インラインコード", "code-inline コード文字"],
     ["link", "リンク", "url reference-link autolink"],
@@ -208,7 +215,7 @@ export function createCommandPalette(editor: Editor) {
         });
         if (tr.docChanged) editor.view.dispatch(tr);
       }
-      if (["bold", "italic", "strike", "inline-code", "link"].includes(currentCommand ?? "")) {
+      if ([...Object.keys(formatCommands), "inline-code", "link"].includes(currentCommand ?? "")) {
         const tr = editor.state.tr;
         tr.doc.descendants((node, pos) => {
           if (!node.isInline || node.isText) return;
@@ -845,11 +852,9 @@ export function createCommandPalette(editor: Editor) {
       const chain = editor.chain();
       if (id.startsWith("heading-"))
         return chain.setHeading({ level: Number(id.at(-1)) as 2 }).run();
+      if (formatCommands[id]) return chain.toggleMark(formatCommands[id]).run();
       const actions: Record<string, () => boolean> = {
         paragraph: () => chain.setParagraph().run(),
-        bold: () => chain.toggleBold().run(),
-        italic: () => chain.toggleItalic().run(),
-        strike: () => chain.toggleStrike().run(),
         "inline-code": () => chain.toggleCode().run(),
         blockquote: () => chain.toggleBlockquote().run(),
         divider: () => insert({ type: "horizontalRule" }),
@@ -860,7 +865,7 @@ export function createCommandPalette(editor: Editor) {
         "soft-break": () => insert({ type: "softBreak" }),
         unlink: () => chain.unsetLink().run(),
         "clear-inline-formatting": () =>
-          chain.unsetBold().unsetItalic().unsetStrike().unsetCode().run(),
+          Object.values(formatCommands).reduce((c, mark) => c.unsetMark(mark), chain).unsetCode().run(),
         indent: () =>
           chain.sinkListItem(editor.isActive("taskItem") ? "taskItem" : "listItem").run(),
         outdent: () =>
