@@ -158,6 +158,7 @@ interface Field {
 export function createCommandPalette(editor: Editor) {
   let dialog: HTMLDialogElement | null = null;
   let currentCommand: string | undefined;
+  let choosingSlash = false;
   let saved = editor.state.selection;
   let slash: { from: number; to: number } | null = null;
   const dialogHost = editor.view.dom.closest("[data-qstyle-boundary]") ?? document.body;
@@ -184,7 +185,7 @@ export function createCommandPalette(editor: Editor) {
     restore();
     const original = editor.state;
     try {
-      editor.view.dispatch(closeHistory(editor.state.tr));
+      if (!choosingSlash) editor.view.dispatch(closeHistory(editor.state.tr));
       if (slash) editor.commands.deleteRange(slash);
       if (!operation()) throw new Error("この位置では実行できません");
       if (currentCommand === "table-row-before" || currentCommand === "table-row-after") {
@@ -988,7 +989,7 @@ export function createCommandPalette(editor: Editor) {
     }
     panel.appendChild(list);
     dialogHost.appendChild(panel);
-    let index = 0;
+    let index = -1;
     let commands: PaletteCommand[] = [];
     let query = "";
     const position = () => {
@@ -1011,11 +1012,25 @@ export function createCommandPalette(editor: Editor) {
       releaseSuggestions = undefined;
       panel.remove();
       suggestions = null;
-      run(command.id, query);
+      choosingSlash = !!slash;
+      if (slash) {
+        editor.view.dispatch(closeHistory(editor.state.tr).delete(slash.from, slash.to));
+        saved = editor.state.selection;
+        slash = null;
+      }
+      try {
+        run(command.id, query);
+      } finally {
+        choosingSlash = false;
+      }
     };
-    const render = () => {
+    const render = (resetSelection = false) => {
       commands = searchCommands(query).filter((command) => !reason(editor, command));
-      index = Math.min(index, Math.max(0, commands.length - 1));
+      index = resetSelection
+        ? commands.length === 1
+          ? 0
+          : -1
+        : Math.min(index, commands.length - 1);
       list.replaceChildren();
       if (!commands.length) {
         const empty = document.createElement("p");
@@ -1028,14 +1043,21 @@ export function createCommandPalette(editor: Editor) {
         button.id = `document-command-option-${i}`;
         button.setAttribute("role", "option");
         button.setAttribute("aria-selected", String(i === index));
-        button.textContent = command.label;
+        const label = document.createElement("span");
+        label.className = "document-command-label";
+        label.textContent = command.label;
+        const name = document.createElement("span");
+        name.className = "document-command-name";
+        name.textContent = `/${command.id}`;
+        button.appendChild(label);
+        button.appendChild(name);
         button.onpointerdown = (event) => event.preventDefault();
         button.onclick = () => choose(command);
         list.appendChild(button);
       });
       const owner = input ?? editor.view.dom;
       owner.setAttribute("aria-controls", list.id);
-      if (commands.length)
+      if (index >= 0)
         owner.setAttribute("aria-activedescendant", `document-command-option-${index}`);
       else owner.removeAttribute("aria-activedescendant");
       position();
@@ -1054,29 +1076,52 @@ export function createCommandPalette(editor: Editor) {
       }
       saved = selection;
       slash = { from: range.from, to: selection.from };
-      query = text.slice(1);
-      index = 0;
-      render();
+      const nextQuery = text.slice(1);
+      const changed = query !== nextQuery;
+      query = nextQuery;
+      render(changed);
     };
     const keydown = (event: KeyboardEvent) => {
       if (event.isComposing || editor.view.composing) return;
-      if (!["Escape", "ArrowDown", "ArrowUp", "Enter", "Tab"].includes(event.key)) return;
-      if (event.key === "Escape" || event.key === "Tab") {
+      const plain = !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
+      const control = event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
+      const next =
+        (plain && event.key === "ArrowDown") || (control && event.key.toLowerCase() === "n");
+      const previous =
+        (plain && event.key === "ArrowUp") || (control && event.key.toLowerCase() === "p");
+      if (event.key === "Escape") {
         event.preventDefault();
         event.stopImmediatePropagation();
         close();
         editor.view.focus();
         return;
       }
-      if (!commands.length) return;
+      if (
+        (plain && (event.key === "Enter" || event.key === "Tab")) ||
+        (event.key === "Tab" && event.shiftKey)
+      ) {
+        if (index < 0 || event.shiftKey) {
+          close();
+          if (input) editor.view.focus();
+          return;
+        }
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        choose(commands[index]);
+        return;
+      }
+      if (!next && !previous) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (event.key === "Enter") choose(commands[index]);
-      else {
-        index = (index + (event.key === "ArrowDown" ? 1 : -1) + commands.length) % commands.length;
-        render();
-        list.children[index]?.scrollIntoView({ block: "nearest" });
-      }
+      if (!commands.length) return;
+      index =
+        index < 0
+          ? next
+            ? 0
+            : commands.length - 1
+          : (index + (next ? 1 : -1) + commands.length) % commands.length;
+      render();
+      list.children[index]?.scrollIntoView({ block: "nearest" });
     };
     const dismiss = (event: Event) => {
       if (!panel.contains(event.target as Node)) close();
@@ -1102,10 +1147,9 @@ export function createCommandPalette(editor: Editor) {
     if (input) {
       input.oninput = () => {
         query = input.value;
-        index = 0;
-        render();
+        render(true);
       };
-      render();
+      render(true);
       input.focus();
     } else update();
   };
@@ -1283,7 +1327,13 @@ export function paletteExtension(
                 0,
                 view.state.selection.$from.parentOffset,
               );
-              if (before && !/\s$/.test(before)) return false;
+              if (
+                before &&
+                !/[\s\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff01-\uff60\uffe0-\uffe6]$/u.test(
+                  before,
+                )
+              )
+                return false;
               view.dispatch(view.state.tr.insertText(text, from, to));
               queueMicrotask(() => getPalette()?.open({ from, to: from + 1 }));
               return true;

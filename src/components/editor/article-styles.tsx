@@ -2024,7 +2024,10 @@ const articleShellStyles = css`
   }
 
   & .document-command-suggestions [role="option"] {
-    display: block;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
     width: 100%;
     padding: 4px 7px;
     border: 0;
@@ -2033,6 +2036,21 @@ const articleShellStyles = css`
     font: inherit;
     text-align: start;
     cursor: pointer;
+  }
+
+  & .document-command-label,
+  & .document-command-name {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  & .document-command-name {
+    max-width: 50%;
+    flex-shrink: 1;
+    opacity: 0.55;
+    font: 0.85em/1.5 var(--mono);
   }
 
   & .document-command-suggestions [role="option"]:is(:hover, [aria-selected="true"]) {
