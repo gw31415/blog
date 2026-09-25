@@ -40,13 +40,18 @@ test("slash allows fullwidth neighbours and keeps ASCII words and URLs literal",
   const list = page.getByRole("listbox", { name: "本文コマンド" });
   for (const prefix of ["日本語", "かな", "カナ", "Ａ１", "。", "　"]) {
     await body.fill(prefix + "続");
+    await expect(body).toHaveText(prefix + "続");
     await page.keyboard.press("ArrowLeft");
-    await page.evaluate(
-      () =>
-        new Promise<void>((resolve) =>
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-        ),
-    );
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const selection = window.getSelection();
+          return selection?.anchorNode?.parentElement?.closest(".ProseMirror")
+            ? selection.anchorOffset
+            : -1;
+        }),
+      )
+      .toBe(prefix.length);
     await page.keyboard.type("/");
     await expect(list).toBeVisible();
     await page.keyboard.press("Escape");

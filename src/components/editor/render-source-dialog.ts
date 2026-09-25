@@ -1,3 +1,4 @@
+import { validateLatex } from "./mathjax-renderer";
 import { createCodeBlockControl, createCodeBlockSurface } from "./code-block-view";
 import { highlightCode } from "./editor-syntax-highlighting";
 import { articleSurface, createMermaidFigure, setSurface } from "./article-surface-contract";
@@ -57,7 +58,7 @@ export function createRenderSourceDialog(options: {
   const cancel = document.createElement("button");
   cancel.type = "button";
   cancel.textContent = "キャンセル";
-  cancel.onclick = options.cancel;
+  cancel.addEventListener("click", () => options.cancel());
   const apply = document.createElement("button");
   apply.type = "submit";
   apply.textContent = "適用";
@@ -82,7 +83,6 @@ export function createRenderSourceDialog(options: {
       if (request !== revision || !dialog.isConnected) return;
       await renderMermaidPreview(target, input.value, true);
     } else {
-      const { validateLatex } = await import("./mathjax-renderer");
       if (request !== revision || !dialog.isConnected) return;
       const result = validateLatex(input.value, kind === "blockMath");
       target.innerHTML = result.ok ? result.html : "";
@@ -95,10 +95,10 @@ export function createRenderSourceDialog(options: {
     code.scrollTop = input.scrollTop;
     code.scrollLeft = input.scrollLeft;
   });
-  form.onsubmit = (event) => {
+  form.addEventListener("submit", (event) => {
     event.preventDefault();
     if (!apply.disabled) options.apply(input.value);
-  };
+  });
   const dock = options.host
     .closest("[data-virtual-keyboard-viewport]")
     ?.querySelector<HTMLElement>(".editor-dock");

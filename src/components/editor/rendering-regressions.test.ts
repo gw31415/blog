@@ -100,3 +100,23 @@ it("keeps separate browser-rendered formulas free of duplicate glyph IDs", () =>
   const ids = [...(first + second).matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
   expect(new Set(ids).size).toBe(ids.length);
 });
+
+it("renders combined marks in ProseMirror's outer-to-inner schema order", () => {
+  const html = renderPost({
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          {
+            type: "text",
+            text: "公式コード",
+            marks: [{ type: "code" }, { type: "link", attrs: { href: "https://tiptap.dev/" } }],
+          },
+        ],
+      },
+    ],
+  }).html;
+  expect(html).toMatch(/<code><a\b[^>]*>公式コード<\/a><\/code>/);
+  expect(html).not.toMatch(/<a\b[^>]*><code>/);
+});

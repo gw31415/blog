@@ -2,6 +2,20 @@
 // Keep this function self-contained: Puppeteer serializes it into the render page.
 export function finalizeMermaidSVG(source) {
   const paper = "#f2ead5";
+  // Puppeteer serializes the enclosing function; this helper must stay inside it.
+  // eslint-disable-next-line unicorn/consistent-function-scoping
+  const move = (e, dx, dy) => {
+    const old = e.transform.baseVal.consolidate()?.matrix;
+    const m = new DOMMatrix(old ? [old.a, old.b, old.c, old.d, old.e, old.f] : undefined);
+    m.e += dx;
+    m.f += dy;
+    e.setAttribute("transform", `matrix(${m.a} ${m.b} ${m.c} ${m.d} ${m.e} ${m.f})`);
+  };
+  // Puppeteer serializes the enclosing function; this helper must stay inside it.
+  // eslint-disable-next-line unicorn/consistent-function-scoping
+  const overlap = (a, b) =>
+    Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) *
+    Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
   function refineDiagramSpacing(svg) {
     const ns = "http://www.w3.org/2000/svg";
     const make = (name, attrs) => {
@@ -9,13 +23,7 @@ export function finalizeMermaidSVG(source) {
       for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
       return e;
     };
-    const move = (e, dx, dy) => {
-      const old = e.transform.baseVal.consolidate()?.matrix;
-      const m = new DOMMatrix(old ? [old.a, old.b, old.c, old.d, old.e, old.f] : undefined);
-      m.e += dx;
-      m.f += dy;
-      e.setAttribute("transform", `matrix(${m.a} ${m.b} ${m.c} ${m.d} ${m.e} ${m.f})`);
-    };
+
     // Use-case ellipses are centered at the node origin, but SVG labels can lack an anchor.
     for (const node of svg.querySelectorAll(".usecase-element,.node.statediagram-state")) {
       const ellipse = node.querySelector(
@@ -96,7 +104,7 @@ export function finalizeMermaidSVG(source) {
     }
     // Paper masks keep vertical lifelines from passing through message text.
     if (svg.getAttribute("aria-roledescription") === "sequence")
-      for (const text of [...svg.querySelectorAll("text.messageText,text.loopText")]) {
+      for (const text of svg.querySelectorAll("text.messageText,text.loopText")) {
         const b = text.getBBox();
         if (!b.width) continue;
         const g = make("g", { class: "paper-message" }),
@@ -176,10 +184,8 @@ export function finalizeMermaidSVG(source) {
         );
       }
     }
-    const overlap = (a, b) =>
-      Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) *
-      Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
-    for (const group of [...svg.querySelectorAll("g")]) {
+
+    for (const group of svg.querySelectorAll("g")) {
       const children = [...group.children];
       if (
         !children.some(
@@ -217,7 +223,7 @@ export function finalizeMermaidSVG(source) {
               candidates.push({ ...r, cx, cy, cost });
             }
         }
-        candidates.sort((a, b) => a.cost - b.cost);
+        candidates.sort((left, right) => left.cost - right.cost);
         const best = candidates[0];
         const dx = best.cx - (b.x + b.width / 2),
           dy = best.cy - (b.y + b.height / 2);

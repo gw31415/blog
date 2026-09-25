@@ -4,9 +4,9 @@ import { qwikRouter } from "@qwik.dev/router/vite";
 import { qstyle } from "@qstyle/vite";
 import { defineConfig, type ViteUserConfig } from "vite-plus";
 
-export default defineConfig(async ({ command }) => {
+export default defineConfig(async ({ command, mode }) => {
   const proxy =
-    command === "serve"
+    command === "serve" && mode !== "test"
       ? await (await import("wrangler")).getPlatformProxy<Env>({ remoteBindings: false })
       : undefined;
 

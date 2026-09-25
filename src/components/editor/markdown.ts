@@ -11,6 +11,9 @@ function createManager(source: MarkdownSource = "canonical"): MarkdownManager {
   const instance = new Marked();
   if (source === "canonical") instance.use({ tokenizer: { lheading: () => undefined } });
   return new MarkdownManager({
+    // Tiptap declares the callable marked singleton, but uses only the Marked instance API.
+    // Keep a separate instance so tokenizer registration cannot mutate global parsing defaults.
+    // eslint-disable-next-line typescript/no-unsafe-type-assertion
     marked: instance as unknown as typeof marked,
     extensions: [ProfileInline, ...createEditorExtensions()],
     indentation: { style: "space", size: 2 },
@@ -22,6 +25,30 @@ function normalize(markdown: string): string {
   return `${markdown.replace(/\r\n?/g, "\n").trimEnd()}\n`;
 }
 
+const visit = (token: unknown) => {
+  if (!token || typeof token !== "object") return;
+  const fields: Record<string, unknown> = Object.fromEntries(Object.entries(token));
+  if (fields.type === "code") {
+    if (typeof fields.lang === "string" && /[\s`~]/.test(fields.lang))
+      throw new Error("追加info文字列を含むコードは取り込めません");
+    return;
+  }
+  if (["inlineMath", "blockMath", "codespan"].includes(String(fields.type))) return;
+  if (fields.type === "html" && !/^<br\s*\/?\s*>$/i.test(String(fields.raw).trim()))
+    throw new Error("任意HTMLは未対応です。原文を保持しています");
+  if (fields.type === "paragraph" && /^:{3,}\{/m.test(String(fields.raw)))
+    throw new Error("未対応または未完のディレクティブです");
+  for (const value of Object.values(token))
+    if (Array.isArray(value))
+      for (const item of value) {
+        if (Array.isArray(item))
+          item.forEach((cell) => {
+            if (cell && typeof cell === "object") visit(cell);
+          });
+        else if (item && typeof item === "object") visit(item);
+      }
+};
+
 export class MarkdownImportError extends Error {
   source: string;
   constructor(source: string, message: string) {
@@ -29,11 +56,14 @@ export class MarkdownImportError extends Error {
     this.source = source;
   }
 }
-export function parseArticleMarkdown(
-  markdown: string,
-  source: MarkdownSource = "canonical",
-): JSONContent {
-  if (!["canonical", "commonmark", "gfm", "zenn", "qiita"].includes(source))
+export function parseArticleMarkdown(markdown: string, source: string = "canonical"): JSONContent {
+  if (
+    source !== "canonical" &&
+    source !== "commonmark" &&
+    source !== "gfm" &&
+    source !== "zenn" &&
+    source !== "qiita"
+  )
     throw new MarkdownImportError(markdown, "取り込み形式を選択してください");
   const manager = createManager(source);
   const original = markdown;
@@ -77,28 +107,7 @@ export function parseArticleMarkdown(
     }
     if (references.some((key) => !used.has(key)))
       throw new Error("未使用の参照定義があります。原文を保持しています");
-    const visit = (token: Record<string, unknown>) => {
-      if (token.type === "code") {
-        if (typeof token.lang === "string" && /[\s`~]/.test(token.lang))
-          throw new Error("追加info文字列を含むコードは取り込めません");
-        return;
-      }
-      if (["inlineMath", "blockMath", "codespan"].includes(String(token.type))) return;
-      if (token.type === "html" && !/^<br\s*\/?\s*>$/i.test(String(token.raw).trim()))
-        throw new Error("任意HTMLは未対応です。原文を保持しています");
-      if (token.type === "paragraph" && /^:{3,}\{/m.test(String(token.raw)))
-        throw new Error("未対応または未完のディレクティブです");
-      for (const value of Object.values(token))
-        if (Array.isArray(value))
-          for (const item of value) {
-            if (Array.isArray(item))
-              item.forEach((cell) => {
-                if (cell && typeof cell === "object") visit(cell);
-              });
-            else if (item && typeof item === "object") visit(item);
-          }
-    };
-    tokens.forEach((token) => visit(token as unknown as Record<string, unknown>));
+    tokens.forEach(visit);
     const parsed = manager.parse(normalize(markdown));
     if (source !== "canonical") {
       const convert = (node: JSONContent) => {

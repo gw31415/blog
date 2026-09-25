@@ -43,10 +43,24 @@ const defaults: Record<string, Record<string, unknown>> = {
   tableCell: { align: null, colspan: 1, rowspan: 1, colwidth: null },
   tableHeader: { align: null, colspan: 1, rowspan: 1, colwidth: null },
 };
-const markOrder = ["bold", "italic", "b", "i", "underline", "highlight", "subscript", "superscript", "strike", "code", "link"];
+const markOrder = [
+  "bold",
+  "italic",
+  "b",
+  "i",
+  "underline",
+  "highlight",
+  "subscript",
+  "superscript",
+  "strike",
+  "code",
+  "link",
+];
 export function safeUrl(value: string, image = false): boolean {
   return (
-    !/[\u0000-\u0020\u007f]/.test(value) &&
+    !Array.from(value).some(
+      (character) => character.charCodeAt(0) <= 32 || character.charCodeAt(0) === 127,
+    ) &&
     !value.startsWith("//") &&
     !value.includes("\\") &&
     (!/^[a-z][a-z\d+.-]*:/i.test(value) ||
@@ -63,7 +77,8 @@ export function normalizeDocument(
   function scalar(value: unknown, path: string): void {
     if (
       typeof value === "string" &&
-      /\u0000|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]|\r/.test(value)
+      (value.includes(String.fromCharCode(0)) ||
+        /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]|\r/.test(value))
     )
       fail(path, "NUL・不正なUnicode・CRは保存できません");
   }
@@ -145,10 +160,10 @@ export function normalizeDocument(
         fail(path, "TeXを入力してください");
       if (
         type === "inlineMath" &&
-        /\n|^\s|\s$|(?<!\\)(?:\\\\)*\$|(?<!\\)(?:\\\\)*\\$/.test(String(attrs.latex))
+        /\n|^\s|\s$|(?<!\\)(?:\\\\)*\$|(?<!\\)(?:\\\\)*\\$/.test(attrs.latex)
       )
         fail(path, "インライン数式の区切り条件に適合しません");
-      if (type === "blockMath" && /(^|\n)\$\$(\n|$)|\n[ \t]*\n/.test(String(attrs.latex)))
+      if (type === "blockMath" && /(^|\n)\$\$(\n|$)|\n[ \t]*\n/.test(attrs.latex))
         fail(path, "数式中に区切り行・空行を含められません");
     }
     if (type === "callout" && !["note", "warning"].includes(String(attrs.kind)))
@@ -157,11 +172,14 @@ export function normalizeDocument(
       if (
         key in attrs &&
         attrs[key] !== null &&
-        (typeof attrs[key] !== "string" || String(attrs[key]).includes("\n"))
+        (typeof attrs[key] !== "string" || attrs[key].includes("\n"))
       )
         fail(path, `${key}は1行の文字列です`);
-    if (type === "codeBlock" && attrs.caption !== null &&
-      (typeof attrs.caption !== "string" || /\n/.test(attrs.caption)))
+    if (
+      type === "codeBlock" &&
+      attrs.caption !== null &&
+      (typeof attrs.caption !== "string" || /\n/.test(attrs.caption))
+    )
       fail(path, "Mermaid図の題名は一行の文字列です");
     if (
       type === "details" &&
@@ -173,7 +191,12 @@ export function normalizeDocument(
       (attrs.colspan !== 1 ||
         attrs.rowspan !== 1 ||
         attrs.colwidth !== null ||
-        ![null, "left", "center", "right"].includes(attrs.align as null | string))
+        !(
+          attrs.align === null ||
+          attrs.align === "left" ||
+          attrs.align === "center" ||
+          attrs.align === "right"
+        ))
     )
       fail(path, "セル結合・幅・不正な配置は保存できません");
     const result: JSONContent = { type };
@@ -190,12 +213,13 @@ export function normalizeDocument(
       if (type === "image" && mark.type !== "link") fail(path, "画像にはlinkのみ適用できます");
       for (const key of Object.keys(mark))
         if (!["type", "attrs"].includes(key)) fail(path, `未知のマークフィールド ${key}`);
-      const ma = mark.type === "link" ? { href: "", title: null, ...mark.attrs } : {};
+      const ma: Record<string, unknown> =
+        mark.type === "link" ? { href: "", title: null, ...mark.attrs } : {};
       for (const key of Object.keys(mark.attrs ?? {}))
         if (mark.type !== "link" || !["href", "title"].includes(key))
           fail(path, `未知のマーク属性 ${key}`);
       if (mark.type === "link") {
-        const a = ma as { href: string; title: string | null };
+        const a = ma;
         if (typeof a.href !== "string" || !a.href || !safeUrl(a.href))
           fail(path, "リンクURLが不正です");
         if (a.title !== null && typeof a.title !== "string") fail(path, "リンクtitleが不正です");
@@ -259,12 +283,12 @@ export function normalizeDocument(
         if (child.type !== "softBreak") return;
         const before = children[i - 1],
           after = children[i + 1];
-        if (!before || !after || /Break$/.test(before.type!) || /Break$/.test(after.type!))
+        if (!before || !after || before.type!.endsWith("Break") || after.type!.endsWith("Break"))
           fail(path, "softBreakは内容の間だけに置けます");
         for (const mark of child.marks ?? [])
           if (
-            ![before, after].every((n) =>
-              n.marks?.some((m) => JSON.stringify(m) === JSON.stringify(mark)),
+            ![before, after].every((neighbor) =>
+              neighbor.marks?.some((m) => JSON.stringify(m) === JSON.stringify(mark)),
             )
           )
             fail(path, "softBreakのマークは前後で継続する必要があります");
@@ -338,21 +362,17 @@ export function normalizeDocument(
 }
 
 /** Only editor snapshots may discard known temporary empty paragraphs; W retains the original. */
-export function finalizeWorkingDocument(input: JSONContent): JSONContent {
-  const visit = (node: JSONContent): JSONContent => {
-    if (!node.content) return node;
-    let content = node.content.map(visit);
-    if (
-      ["doc", "blockquote", "callout", "details", "listItem", "taskItem"].includes(node.type ?? "")
-    ) {
-      const listItem = node.type === "listItem" || node.type === "taskItem";
-      content = content.filter(
-        (child, i) =>
-          child.type !== "paragraph" || !!child.content?.length || (listItem && i === 0),
-      );
-      if (!content.length) content = [{ type: "paragraph" }];
-    }
-    return { ...node, content };
-  };
-  return visit(input);
+export function finalizeWorkingDocument(node: JSONContent): JSONContent {
+  if (!node.content) return node;
+  let content = node.content.map(finalizeWorkingDocument);
+  if (
+    ["doc", "blockquote", "callout", "details", "listItem", "taskItem"].includes(node.type ?? "")
+  ) {
+    const listItem = node.type === "listItem" || node.type === "taskItem";
+    content = content.filter(
+      (child, i) => child.type !== "paragraph" || !!child.content?.length || (listItem && i === 0),
+    );
+    if (!content.length) content = [{ type: "paragraph" }];
+  }
+  return { ...node, content };
 }

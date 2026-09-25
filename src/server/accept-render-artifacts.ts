@@ -23,7 +23,7 @@ export async function acceptRenderArtifacts(
   let size = 0;
   for (const value of values) {
     if (!value || typeof value !== "object") throw new Error("不正な図のキャッシュです");
-    const { source, renderer, svg } = value as Record<string, unknown>;
+    const { source, renderer, svg } = value;
     if (
       typeof source !== "string" ||
       !allowed.has(source) ||

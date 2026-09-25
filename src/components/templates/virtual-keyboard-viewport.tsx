@@ -24,6 +24,17 @@ const virtualKeyboardViewportStyles = css`
     top: 0;
   }
 
+  & > [data-virtual-keyboard-region="top"]:has([data-scroll-header]) {
+    display: contents;
+  }
+
+  &:not([data-scrolled]) [data-scroll-header] {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-8px);
+  }
+
   &[data-internal-scroll] > [data-virtual-keyboard-region="content"] {
     min-height: calc(
       100 * var(--virtual-keyboard-svh, 1svh) - var(--virtual-keyboard-top-height, 0px) -
@@ -84,7 +95,9 @@ export const VirtualKeyboardViewport = component$((props: { internalScroll: bool
 
       const top = root.querySelector<HTMLElement>('[data-virtual-keyboard-region="top"]');
       const bottom = root.querySelector<HTMLElement>('[data-virtual-keyboard-region="bottom"]');
+      const scrollHeader = top?.querySelector<HTMLElement>("[data-scroll-header]");
       const syncBarSizes = () => {
+        root.style.setProperty("--scroll-header-height", `${scrollHeader?.offsetHeight ?? 0}px`);
         root.style.setProperty("--virtual-keyboard-top-height", `${top?.offsetHeight ?? 0}px`);
         root.style.setProperty(
           "--virtual-keyboard-bottom-height",
@@ -93,6 +106,7 @@ export const VirtualKeyboardViewport = component$((props: { internalScroll: bool
       };
       const resizeObserver = new ResizeObserver(syncBarSizes);
       if (top) resizeObserver.observe(top);
+      if (scrollHeader) resizeObserver.observe(scrollHeader);
       if (bottom) resizeObserver.observe(bottom);
       syncBarSizes();
 

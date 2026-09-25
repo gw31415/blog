@@ -16,24 +16,25 @@ describe("document contract", () => {
     expect(() =>
       normalizeDocument({ type: "doc", content: [{ type: "paragraph", attrs: { color: "red" } }] }),
     ).toThrow("未知"));
-  it("round trips the complete sample through Markdown", () => {
+  it("keeps the sample Markdown stable after its documented boundary spacing is added", () => {
     const markdown = serializeArticleMarkdown(sampleDocument);
-    const raw = parseArticleMarkdown(markdown);
-    const parsed = normalizeDocument(raw);
-    expect(parsed).toEqual(sampleDocument);
+    const parsed = normalizeDocument(parseArticleMarkdown(markdown));
+    expect(markdown).toMatch(/続いて、 \*\*重要\*\*/);
+    expect(parsed).not.toEqual(sampleDocument);
     expect(serializeArticleMarkdown(parsed)).toBe(markdown);
   });
 });
 
+const p = (...content: any[]) => ({ type: "paragraph", content });
+const t = (text: string, marks?: any[]) => ({ type: "text", text, ...(marks ? { marks } : {}) });
+const round = (content: any[]) => {
+  const doc = normalizeDocument({ type: "doc", content });
+  const encoded = serializeArticleMarkdown(doc);
+  expect(normalizeDocument(parseArticleMarkdown(encoded))).toEqual(doc);
+  expect(serializeArticleMarkdown(parseArticleMarkdown(encoded))).toBe(encoded);
+};
+
 describe("Markdown boundary contracts", () => {
-  const p = (...content: any[]) => ({ type: "paragraph", content });
-  const t = (text: string, marks?: any[]) => ({ type: "text", text, ...(marks ? { marks } : {}) });
-  const round = (content: any[]) => {
-    const doc = normalizeDocument({ type: "doc", content });
-    const encoded = serializeArticleMarkdown(doc);
-    expect(normalizeDocument(parseArticleMarkdown(encoded))).toEqual(doc);
-    expect(serializeArticleMarkdown(parseArticleMarkdown(encoded))).toBe(encoded);
-  };
   it("uses divider priority and no Setext/front matter", () => {
     expect(parseArticleMarkdown("前\n---\n後").content?.map((n) => n.type)).toEqual([
       "paragraph",

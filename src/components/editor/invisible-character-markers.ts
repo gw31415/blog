@@ -29,18 +29,19 @@ export function createInvisibleCharacterMarkers(editor: Editor) {
             : node.type.name === "softBreak"
               ? "↩"
               : null;
-      if (!glyph) return;
+      if (!glyph) return true;
       const dom = editor.view.nodeDOM(pos);
       const element = dom instanceof Element ? dom : dom?.parentElement;
-      if (element && !element.getClientRects().length) return;
+      if (element && !element.getClientRects().length) return true;
       const coords = editor.view.coordsAtPos(
         node.type.name === "paragraph" ? pos + node.nodeSize - 1 : pos,
       );
-      if (coords.top < Math.max(0, headerBottom) || coords.bottom > dockTop) return;
+      if (coords.top < Math.max(0, headerBottom) || coords.bottom > dockTop) return true;
       const y = Math.round((coords.top + coords.bottom) / 2);
       const glyphs = lines.get(y) ?? new Set<string>();
       glyphs.add(glyph);
       lines.set(y, glyphs);
+      return true;
     });
     for (const [y, glyphs] of lines) {
       const marker = document.createElement("span");

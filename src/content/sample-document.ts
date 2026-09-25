@@ -1,8 +1,8 @@
 import type { JSONContent } from "@tiptap/core";
 import { normalizeDocument } from "./document.ts";
-const text = (text: string, marks?: JSONContent["marks"]): JSONContent => ({
+const text = (value: string, marks?: JSONContent["marks"]): JSONContent => ({
   type: "text",
-  text,
+  text: value,
   ...(marks ? { marks } : {}),
 });
 const p = (...content: JSONContent[]): JSONContent => ({ type: "paragraph", content });
@@ -11,7 +11,11 @@ const heading = (level: number, label: string): JSONContent => ({
   attrs: { level },
   content: [text(label)],
 });
-const code = (language: string | null, source: string, caption: string | null = null): JSONContent => ({
+const code = (
+  language: string | null,
+  source: string,
+  caption: string | null = null,
+): JSONContent => ({
   type: "codeBlock",
   attrs: { language, caption },
   content: source ? [text(source)] : [],
@@ -34,7 +38,10 @@ export const sampleDocument = normalizeDocument({
       text("、italic", [{ type: "i" }]),
       text("、下線", [{ type: "underline" }]),
       text("、ハイライト", [{ type: "highlight" }]),
-      text("、H"), text("2", [{ type: "subscript" }]), text("O、x"), text("2", [{ type: "superscript" }]),
+      text("、H"),
+      text("2", [{ type: "subscript" }]),
+      text("O、x"),
+      text("2", [{ type: "superscript" }]),
       text("、"),
       text("強調", [{ type: "italic" }]),
       text("、"),

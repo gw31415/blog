@@ -3,7 +3,8 @@ import Code from "@tiptap/extension-code";
 import Link from "@tiptap/extension-link";
 import { createFigureField, figureFieldDOMSpec } from "./article-surface-contract";
 
-export const ArticleCode = Code.extend({ excludes: "" });
+// Code wraps Link (priority 1000) in both ProseMirror and the static renderer.
+export const ArticleCode = Code.extend({ priority: 1100, excludes: "" });
 export const ArticleLink = Link.extend({
   addAttributes() {
     return { href: { default: null }, title: { default: null } };
@@ -48,7 +49,7 @@ export const SoftBreak = Node.create({
   renderMarkdown: () => "\n",
 });
 function escapeTitle(s: string) {
-  return s.replace(/[\\`*{}\[\]()#+.!_:<>~-]/g, "\\$&");
+  return s.replace(/[\\`*{}[\]()#+.!_:<>~-]/g, "\\$&");
 }
 function decodeTitle(s: string) {
   return decodeHTML(s.replace(/\\([!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~])/g, "$1"));
@@ -298,11 +299,15 @@ function directive(name: "callout" | "details" | "figure") {
       },
     },
     parseMarkdown(token, helpers) {
-      const t = token as MarkdownToken & { kind: string; title: string | null; alt: string | null };
+      const t = token;
       const content = (helpers.parseBlockChildren ?? helpers.parseChildren)(t.tokens ?? []);
       if (name === "figure" && content[0]?.type === "codeBlock") {
-        if (t.title !== null || content.length !== 2 ||
-          content[0].attrs?.language !== "mermaid" || content[1].type !== "paragraph")
+        if (
+          t.title !== null ||
+          content.length !== 2 ||
+          content[0].attrs?.language !== "mermaid" ||
+          content[1].type !== "paragraph"
+        )
           throw new Error("Mermaid図のキャプション形式が不正です");
         const caption = (content[1].content ?? []).map((part) => part.text ?? "").join("");
         if (!caption) throw new Error("Mermaid図のキャプションが必要です");

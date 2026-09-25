@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vite-plus/test";
 
-const component = readFileSync(new URL("./blog.tsx", import.meta.url), "utf8");
+const component = readFileSync(new URL("./grid-layer.tsx", import.meta.url), "utf8");
 
 describe("paper visual texture", () => {
   it("uses thinner, darker dashed grid strokes while leaving solid scuffs unchanged", () => {

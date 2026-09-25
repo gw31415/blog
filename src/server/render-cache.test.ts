@@ -44,6 +44,8 @@ function database() {
     const info = query.columns().length ? undefined : query.run(...statement.args);
     return { results, success: true, meta: { changes: Number(info?.changes ?? results.length) } };
   }
+  // This test emulates only the D1 operations exercised by this module.
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   const db = {
     prepare: (sql: string) => new Statement(sql),
     async batch(statements: Statement[]) {
@@ -96,7 +98,7 @@ describe("shared persistent rendering cache", () => {
   it("reuses persistent results without a TTL or process-local memory", async () => {
     const { db } = database();
     const entries = await renderEntries(body());
-    const producer = vi.fn(async (entries: RenderEntry[]) => entries.map(() => output));
+    const producer = vi.fn(async (requested: RenderEntry[]) => requested.map(() => output));
     await resolveRenderCache(db, entries, producer);
     await resolveRenderCache(db, [...entries, entries[0]], async () => {
       throw new Error("must not render");
@@ -113,12 +115,14 @@ describe("shared persistent rendering cache", () => {
         insertRenderCache(db, entry, entry.kind === "mermaid" ? svg : generateMath(entry).output!),
       ),
     );
+    // Render cache hits only require the DB binding, not a live router request.
+    // eslint-disable-next-line typescript/no-unsafe-type-assertion
     const result = await renderDocument(document, { platform: { env: { DB: db } } } as Parameters<
       typeof renderDocument
     >[1]);
     expect(result.diagrams[0]).toContain("data:image/svg+xml,");
     expect(result.math).toHaveLength(2);
-    expect(result.math.every((result) => result.output?.includes("mjx-container"))).toBe(true);
+    expect(result.math.every((item) => item.output?.includes("mjx-container"))).toBe(true);
   });
   it("only one concurrent reader renders the missing source", async () => {
     const { db } = database();
@@ -191,6 +195,8 @@ describe("shared persistent rendering cache", () => {
       ],
     });
     const saved = await findPost(db, id);
+    // Cached rendering only needs the DB binding from the router request.
+    // eslint-disable-next-line typescript/no-unsafe-type-assertion
     const result = await renderDocument(saved!.body, {
       platform: { env: { DB: db } },
     } as Parameters<typeof renderDocument>[1]);
@@ -302,31 +308,64 @@ it("saves single-line metadata and explicit publication date corrections", async
   const { db } = database();
   const id = await createDraft(db);
   const values = {
-    title: "題\r\n名", subtitle: "副\u2028題", tags: ["長\n名"],
-    status: "draft", alias: null, body: {type: "doc", content: [{type: "paragraph"}]},
-    formatVersion: 2, bodyFormat: "tiptap-json", contentSchemaVersion: 1,
+    title: "題\r\n名",
+    subtitle: "副\u2028題",
+    tags: ["長\n名"],
+    status: "draft",
+    alias: null,
+    body: { type: "doc", content: [{ type: "paragraph" }] },
+    formatVersion: 2,
+    bodyFormat: "tiptap-json",
+    contentSchemaVersion: 1,
     publishedAt: "2024-02-29",
   };
   await savePostContent(db, id, values);
   const post = await findPost(db, id);
-  expect(post).toMatchObject({title: "題 名", subtitle: "副 題", tags: ["長 名"], published_at: "2024-02-29T00:00:00.000Z"});
-  await expect(savePostContent(db, id, {...values, publishedAt: "2025-02-29"})).rejects.toThrow();
+  expect(post).toMatchObject({
+    title: "題 名",
+    subtitle: "副 題",
+    tags: ["長 名"],
+    published_at: "2024-02-29T00:00:00.000Z",
+  });
+  await expect(savePostContent(db, id, { ...values, publishedAt: "2025-02-29" })).rejects.toThrow();
   expect((await findPost(db, id))!.published_at).toBe(post!.published_at);
 });
-
 
 it("rejects unfinished saves regardless of publication status and does not persist working copies", async () => {
   const { db } = database();
   const id = await createDraft(db);
-  const body = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "confirmed" }] }] };
-  const values = { title: "confirmed", status: "draft", alias: null, tags: [], body,
-    formatVersion: 2, bodyFormat: "tiptap-json", contentSchemaVersion: 1 };
+  const document = {
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text: "confirmed" }] }],
+  };
+  const values = {
+    title: "confirmed",
+    status: "draft",
+    alias: null,
+    tags: [],
+    body: document,
+    formatVersion: 2,
+    bodyFormat: "tiptap-json",
+    contentSchemaVersion: 1,
+  };
   await savePostContent(db, id, values);
   for (const status of ["draft", "published"]) {
-    await expect(savePostContent(db, id, { ...values, status, editingState: { pending: { command: "link", values: { href: "unfinished" } } } })).rejects.toThrow("適用するかキャンセル");
-    await expect(savePostContent(db, id, { ...values, status, body: { type: "doc", content: [{ type: "blockMath", attrs: { latex: "" } }] } })).rejects.toThrow();
+    await expect(
+      savePostContent(db, id, {
+        ...values,
+        status,
+        editingState: { pending: { command: "link", values: { href: "unfinished" } } },
+      }),
+    ).rejects.toThrow("適用するかキャンセル");
+    await expect(
+      savePostContent(db, id, {
+        ...values,
+        status,
+        body: { type: "doc", content: [{ type: "blockMath", attrs: { latex: "" } }] },
+      }),
+    ).rejects.toThrow();
   }
-  await savePostContent(db, id, { ...values, editingState: { document: body } });
+  await savePostContent(db, id, { ...values, editingState: { document } });
   expect((await findPost(db, id))!.editing_state).toBeNull();
-  expect((await findPost(db, id))!.body).toEqual(body);
+  expect((await findPost(db, id))!.body).toEqual(document);
 });

@@ -1,4 +1,5 @@
 import { test, expect, type Locator } from "@playwright/test";
+import { deleteCreatedPost } from "./delete-created-post";
 
 async function imageText(image: Locator) {
   return image.evaluate((element) => {
@@ -25,10 +26,10 @@ test("Mermaid is complete in server HTML with JavaScript disabled", async ({
     .first()
     .evaluate((el) => ({
       border: getComputedStyle(el).borderTopStyle,
-      background: getComputedStyle(el).backgroundImage,
+      background: getComputedStyle(el).backgroundColor,
     }));
   expect(style.border).toBe("solid");
-  expect(style.background).toContain("repeating-linear-gradient");
+  expect(style.background).toBe("rgba(255, 253, 247, 0.12)");
   const scoped = await page.evaluate(() => {
     const boundary = document.querySelector<HTMLElement>("[data-article-surface-boundary]")!;
     const actual = document.querySelector<HTMLElement>(
@@ -63,7 +64,8 @@ for (const width of [1280, 390])
     const source = await diagram.getAttribute("data-mermaid-source");
     const img = diagram.locator("img.mermaid-image");
     await img.evaluate(async (element) => {
-      const image = element as HTMLImageElement;
+      if (!(element instanceof HTMLImageElement)) throw new Error("Expected diagram image");
+      const image = element;
       await image.decode();
       const field = image.parentElement!;
       if (field.scrollWidth > field.clientWidth + 1)
@@ -73,7 +75,9 @@ for (const width of [1280, 390])
     await page.locator(".article-header-edit").click();
     await expect(page.locator("[data-editor-mode=edit]")).toBeVisible({ timeout: 45000 });
     const after = await diagram.boundingBox();
-    expect(await diagram.locator(".figure-field").evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+    expect(
+      await diagram.locator(".figure-field").evaluate((el) => el.scrollWidth - el.clientWidth),
+    ).toBeLessThanOrEqual(1);
     expect(after!.width).toBeCloseTo(before!.width, 0);
     expect(after!.height).toBeCloseTo(before!.height, 0);
     await diagram.locator("img.mermaid-image").click();
@@ -136,13 +140,6 @@ test("a saved Mermaid is server rendered after reload", async ({ page, browser }
       await context.close();
     }
   } finally {
-    await page.goto("/");
-    const row = page.locator("li").filter({ has: page.locator(`a[href="${pathname}"]`) });
-    await row.getByText("削除", { exact: true }).first().click();
-    await row.getByRole("checkbox").check();
-    await Promise.all([
-      page.waitForResponse((response) => response.request().method() === "POST"),
-      row.getByRole("button", { name: "削除する" }).click(),
-    ]);
+    await deleteCreatedPost(page, pathname);
   }
 });

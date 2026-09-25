@@ -1,18 +1,13 @@
 import { inlineTags } from "./inline-format-contract";
 import type { JSONContent } from "@tiptap/core";
 const escape = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/[\\`*{}\[\]()#+.!_:<>~$|=-]/g, "\\$&");
-const title = (s: unknown) => escape(String(s ?? ""));
-function destination(s: unknown) {
-  return `<${String(s ?? "")
-    .replace(/\\/g, "\\\\")
-    .replace(/</g, "\\<")
-    .replace(/>/g, "\\>")}>`;
+  s.replace(/&/g, "&amp;").replace(/[\\`*{}[\]()#+.!_:<>~$|=-]/g, "\\$&");
+const title = (s: string | null | undefined) => escape(s ?? "");
+function destination(s: string | null | undefined) {
+  return `<${(s ?? "").replace(/\\/g, "\\\\").replace(/</g, "\\<").replace(/>/g, "\\>")}>`;
 }
-function linkTitle(s: unknown) {
-  return s === null || s === undefined
-    ? ""
-    : ` "${String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+function linkTitle(s: string | null | undefined) {
+  return s === null || s === undefined ? "" : ` "${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 type MathWriter = (latex: string) => string;
 const dollarMath: MathWriter = (latex) => `$${latex}$`;
@@ -81,7 +76,8 @@ function inline(
             ? "<br>"
             : "\\\n";
       else if (n.type === "softBreak") out = "\n";
-      for (const m of [...marks].reverse()) {
+      for (let markIndex = marks.length - 1; markIndex >= 0; markIndex--) {
+        const m = marks[markIndex];
         if (m.type === "code") continue;
         if (m.type === "link")
           out = `[${out}](${destination(m.attrs?.href)}${linkTitle(m.attrs?.title)})`;

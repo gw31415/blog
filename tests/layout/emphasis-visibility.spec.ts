@@ -15,7 +15,7 @@ for (const width of [1280, 390]) {
       .getByRole("option")
       .filter({ has: page.locator(".document-command-name", { hasText: /^\/em$/ }) })
       .click();
-    await page.keyboard.type("傍点を付けても本文の行間を保ちます。".repeat(8));
+    await page.keyboard.insertText("傍点を付けても本文の行間を保ちます。".repeat(8));
     await page.keyboard.press("Enter");
     await page.keyboard.type("後続の段落");
     await page.locator("[data-article-field=title]").fill("傍点の表示確認");
@@ -35,7 +35,7 @@ for (const width of [1280, 390]) {
         content: "article em {text-emphasis-style:none!important}",
       });
       const withoutDots = await measure();
-      await style.evaluate((el) => el.remove());
+      await style.evaluate((el) => el.parentNode?.removeChild(el));
       for (let i = 0; i < withDots.length; i++)
         for (const key of ["y", "h", "w"] as const)
           expect(Math.abs(withDots[i][key] - withoutDots[i][key])).toBeLessThanOrEqual(1);

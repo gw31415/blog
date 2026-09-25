@@ -17,16 +17,16 @@ test("paper theme measures bold labels and masks relationships in both rendering
   ];
   for (const [index, source] of sources.entries()) {
     const raw = await page.evaluate(
-      async ({ config, source, index }) => {
-        const m = (window as any).mermaid;
+      async ({ config, source: diagramSource, index: diagramIndex }) => {
+        const m = globalThis.mermaid;
         m.initialize(config);
-        return (await m.render(`theme-${index}`, source)).svg;
+        return (await m.render(`theme-${diagramIndex}`, diagramSource)).svg;
       },
       { config: MERMAID_CONFIG, source, index },
     );
     const svg = await page.evaluate(finalizeMermaidSVG, raw);
-    await page.evaluate((svg) => {
-      document.body.innerHTML = svg;
+    await page.evaluate((markup) => {
+      document.body.innerHTML = markup;
     }, svg);
     const geometry = await page.locator("svg").evaluate((el: SVGSVGElement) => ({
       width: el.getBoundingClientRect().width,
@@ -58,8 +58,12 @@ test("paper theme measures bold labels and masks relationships in both rendering
     expect(
       await page.locator("img").evaluate((el) => el.getBoundingClientRect().width),
     ).toBeCloseTo(geometry.natural * 1.25, 0);
-    await page.locator("body").evaluate((el) => { el.style.width = "180px"; });
-    expect(await page.locator("img").evaluate(el => el.getBoundingClientRect().width)).toBeLessThanOrEqual(180);
+    await page.locator("body").evaluate((el) => {
+      el.style.width = "180px";
+    });
+    expect(
+      await page.locator("img").evaluate((el) => el.getBoundingClientRect().width),
+    ).toBeLessThanOrEqual(180);
     await page.locator("body").evaluate((el) => {
       el.style.fontSize = "16px";
       el.style.width = "";

@@ -3,6 +3,7 @@ import { extendConfig } from "@qwik.dev/router/vite";
 import baseConfig from "../../vite.config";
 
 export default extendConfig(baseConfig, () => ({
+  environments: { ssr: { resolve: { external: ["node:buffer", "fs", "fs/promises", "path"] } } },
   build: {
     ssr: true,
     rolldownOptions: {

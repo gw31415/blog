@@ -31,6 +31,11 @@ type PostRow = Omit<Post, "tags" | "body" | "editing_state"> & {
   body_json: string;
   editing_state: string | null;
 };
+function normalizeTags(value: unknown): string[] {
+  if (!Array.isArray(value) || !value.every((tag): tag is string => typeof tag === "string"))
+    throw new Error("タグは文字列配列です");
+  return [...new Set(value.map((tag) => normalizeSingleLine(tag).trim()).filter(Boolean))];
+}
 function decodePost(row: PostRow): Post {
   if (
     row.format_version !== 2 ||
@@ -42,7 +47,7 @@ function decodePost(row: PostRow): Post {
     ...row,
     title: normalizeSingleLine(row.title),
     subtitle: row.subtitle === null ? null : normalizeSingleLine(row.subtitle),
-    tags: [...new Set((JSON.parse(row.tags) as string[]).map(tag => normalizeSingleLine(tag).trim()).filter(Boolean))],
+    tags: normalizeTags(JSON.parse(row.tags)),
     body: normalizeDocument(JSON.parse(row.body_json)),
     editing_state: row.editing_state ? JSON.parse(row.editing_state) : null,
   };
@@ -129,16 +134,14 @@ export function parsePostInput(values: Record<string, unknown>) {
     throw new Error("公開時はタイトルが必要です（200文字以内）");
   const raw = typeof values.body === "string" ? JSON.parse(values.body) : values.body;
   if (JSON.stringify(raw).length > 500_000) throw new Error("本文が長すぎます");
-  let tags: unknown =
-    typeof values.tags === "string" ? JSON.parse(values.tags) : (values.tags ?? []);
-  if (!Array.isArray(tags) || tags.some((t) => typeof t !== "string"))
-    throw new Error("タグは文字列配列です");
-  tags = [...new Set((tags as string[]).map((t) => normalizeSingleLine(t).trim()).filter(Boolean))];
+  const tags = normalizeTags(
+    typeof values.tags === "string" ? JSON.parse(values.tags) : (values.tags ?? []),
+  );
   return {
     title,
     subtitle: values.subtitle == null ? null : normalizeSingleLine(formText(values.subtitle)),
     description: values.description == null ? null : formText(values.description),
-    tags: tags as string[],
+    tags,
     body: normalizeDocument(raw),
     status,
   };
@@ -160,7 +163,12 @@ export async function savePostContent(
   const old = await findPost(db, id);
   if (!old) throw new Error("記事が見つかりません");
   const input = parsePostInput(values);
-  if ((values.editingState as Record<string, unknown> | undefined)?.pending)
+  if (
+    values.editingState &&
+    typeof values.editingState === "object" &&
+    "pending" in values.editingState &&
+    values.editingState.pending
+  )
     throw new Error("入力中のフォームを適用するかキャンセルしてください");
   if (input.status === "published") await validatePublication(input.body);
   const alias = normalizeAlias(values.alias);
@@ -181,7 +189,9 @@ export async function savePostContent(
       publishedAt = values.publishedAt + "T00:00:00.000Z";
   }
   const changed =
-    JSON.stringify(previous) !== JSON.stringify(input) || alias !== old.canonical_alias || publishedAt !== old.published_at;
+    JSON.stringify(previous) !== JSON.stringify(input) ||
+    alias !== old.canonical_alias ||
+    publishedAt !== old.published_at;
   const statements: D1PreparedStatement[] = [];
   if (alias)
     statements.push(
@@ -210,12 +220,7 @@ export async function savePostContent(
       ),
   );
   const postStatementIndex = statements.length - 1;
-  const artifacts = await acceptRenderArtifacts(
-    db,
-    input.body,
-    values.renderArtifacts,
-    id,
-  );
+  const artifacts = await acceptRenderArtifacts(db, input.body, values.renderArtifacts, id);
   statements.push(
     ...artifacts,
     ...syncRenderReferences(

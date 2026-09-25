@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCreatedPost } from "./delete-created-post";
 test("sample renders all nodes and keeps metadata/body through edit and save", async ({ page }) => {
   test.setTimeout(120000);
   await page.goto("/blog/document-showcase");
@@ -106,7 +107,7 @@ test("mobile selected text formatting and table context remain reachable", async
   await page.keyboard.press("ControlOrMeta+/");
   await page.getByRole("textbox", { name: "コマンド検索" }).fill("bold");
   await page.keyboard.press("Enter");
-  await expect(editor.locator("strong")).toHaveText("selected text");
+  await expect(editor.locator("b")).toHaveText("selected text");
   await page.getByRole("button", { name: "表を挿入", exact: true }).click();
   await page.getByRole("button", { name: "適用", exact: true }).click();
   await expect(editor.locator("table")).toHaveCount(1);
@@ -188,7 +189,7 @@ test("editing preserves article position and uses inline tags without extra UI",
     );
   });
   const before = await article.boundingBox();
-  const tags = page.locator("[data-article-field=category]");
+  const tags = page.locator("[data-article-field=tags]");
   const tagPosition = await tags.boundingBox();
   const sources = await article.locator("pre code").allTextContents();
   await page.locator(".article-header-edit").click();
@@ -216,15 +217,11 @@ test("inline tag edits survive save", async ({ page }) => {
   await page.getByRole("button", { name: "新規記事" }).click();
   await expect(page.locator("[data-editor-mode=edit]")).toBeVisible({ timeout: 45000 });
   const id = new URL(page.url()).pathname.split("/").at(-1)!;
-  const tags = page.locator("[data-article-field=category]");
+  const tags = page.locator("[data-article-field=tags]");
   await tags.fill("日本語、TypeScript");
   await page.locator(".article-header-edit").click();
   await expect(tags).not.toHaveAttribute("contenteditable", "true", { timeout: 30000 });
   await page.reload();
-  await expect(tags).toHaveText("日本語、TypeScript");
-  await page.goto("/");
-  const row = page.locator("li").filter({ has: page.locator(`a[href="/blog/${id}"]`) });
-  await row.getByText("削除", { exact: true }).first().click();
-  await row.getByRole("checkbox").check();
-  await row.getByRole("button", { name: "削除する" }).click();
+  await expect(tags.locator(".meta-tag")).toHaveText(["日本語", "TypeScript"]);
+  await deleteCreatedPost(page, `/blog/${id}`);
 });

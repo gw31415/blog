@@ -1,0 +1,195 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index 2fbaf63af636ffd8c75d72658fe6162cbbbe099e..169228e7e272233ba496fee0e772d79d97a38caa 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -93,7 +93,7 @@ function TiptapStaticRenderer(renderComponent, { nodeMapping, markMapping, unhan
+ 				}
+ 			}
+ 		});
+-		return content.marks ? content.marks.reduce((acc, mark) => {
++		return content.marks ? content.marks.reduceRight((acc, mark) => {
+ 			var _markMapping$markType;
+ 			const markType = typeof mark.type === "string" ? mark.type : mark.type.name;
+ 			const MarkHandler = (_markMapping$markType = markMapping[markType]) !== null && _markMapping$markType !== void 0 ? _markMapping$markType : unhandledMark;
+diff --git a/dist/index.js b/dist/index.js
+index d8cf83b299def5abd075cd6ac20a2f3cf1c9c932..83df911b3a2d9df6fb9ae9758b0dbaeba36e0373 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -69,7 +69,7 @@ function TiptapStaticRenderer(renderComponent, { nodeMapping, markMapping, unhan
+ 				}
+ 			}
+ 		});
+-		return content.marks ? content.marks.reduce((acc, mark) => {
++		return content.marks ? content.marks.reduceRight((acc, mark) => {
+ 			var _markMapping$markType;
+ 			const markType = typeof mark.type === "string" ? mark.type : mark.type.name;
+ 			const MarkHandler = (_markMapping$markType = markMapping[markType]) !== null && _markMapping$markType !== void 0 ? _markMapping$markType : unhandledMark;
+diff --git a/dist/json/html-string/index.cjs b/dist/json/html-string/index.cjs
+index c98223fd61b99b2075bddcd41ed0abb216370f55..5addbd43b86774a780689926e8fc1e873b03130b 100644
+--- a/dist/json/html-string/index.cjs
++++ b/dist/json/html-string/index.cjs
+@@ -38,7 +38,7 @@ function TiptapStaticRenderer(renderComponent, { nodeMapping, markMapping, unhan
+ 				}
+ 			}
+ 		});
+-		return content.marks ? content.marks.reduce((acc, mark) => {
++		return content.marks ? content.marks.reduceRight((acc, mark) => {
+ 			var _markMapping$markType;
+ 			const markType = typeof mark.type === "string" ? mark.type : mark.type.name;
+ 			const MarkHandler = (_markMapping$markType = markMapping[markType]) !== null && _markMapping$markType !== void 0 ? _markMapping$markType : unhandledMark;
+diff --git a/dist/json/html-string/index.js b/dist/json/html-string/index.js
+index 861f5cd1e250094c8fc4f965921e03966294a337..850fc9bafe9f5f61c82a6ff4487e6b5e55336927 100644
+--- a/dist/json/html-string/index.js
++++ b/dist/json/html-string/index.js
+@@ -37,7 +37,7 @@ function TiptapStaticRenderer(renderComponent, { nodeMapping, markMapping, unhan
+ 				}
+ 			}
+ 		});
+-		return content.marks ? content.marks.reduce((acc, mark) => {
++		return content.marks ? content.marks.reduceRight((acc, mark) => {
+ 			var _markMapping$markType;
+ 			const markType = typeof mark.type === "string" ? mark.type : mark.type.name;
+ 			const MarkHandler = (_markMapping$markType = markMapping[markType]) !== null && _markMapping$markType !== void 0 ? _markMapping$markType : unhandledMark;
+diff --git a/dist/json/react/index.cjs b/dist/json/react/index.cjs
+index 4c29648d982db572d9fff611a89ca40bdca199fb..80254124d898ff72ed3c72b5325a94cd72b15372 100644
+--- a/dist/json/react/index.cjs
++++ b/dist/json/react/index.cjs
+@@ -62,7 +62,7 @@ function TiptapStaticRenderer(renderComponent, { nodeMapping, markMapping, unhan
+ 				}
+ 			}
+ 		});
+-		return content.marks ? content.marks.reduce((acc, mark) => {
++		return content.marks ? content.marks.reduceRight((acc, mark) => {
+ 			var _markMapping$markType;
+ 			const markType = typeof mark.type === "string" ? mark.type : mark.type.name;
+ 			const MarkHandler = (_markMapping$markType = markMapping[markType]) !== null && _markMapping$markType !== void 0 ? _markMapping$markType : unhandledMark;
+diff --git a/dist/json/react/index.js b/dist/json/react/index.js
+index 0b3b5e53fc3d4fb31d668166455d8f4a6783c309..2b4288511fe34b2f48694dcfa2f1a21b0563889c 100644
+--- a/dist/json/react/index.js
++++ b/dist/json/react/index.js
+@@ -38,7 +38,7 @@ function TiptapStaticRenderer(renderComponent, { nodeMapping, markMapping, unhan
+ 				}
+ 			}
+ 		});
+-		return content.marks ? content.marks.reduce((acc, mark) => {
++		return content.marks ? content.marks.reduceRight((acc, mark) => {
+ 			var _markMapping$markType;
+ 			const markType = typeof mark.type === "string" ? mark.type : mark.type.name;
+ 			const MarkHandler = (_markMapping$markType = markMapping[markType]) !== null && _markMapping$markType !== void 0 ? _markMapping$markType : unhandledMark;
+diff --git a/dist/json/renderer.cjs b/dist/json/renderer.cjs
+index 1b5ac6cef85472f25ab4021d97ffb9c535569146..06baa2a8142a2f2288f05f1c58cb7f6117085eb8 100644
+--- a/dist/json/renderer.cjs
++++ b/dist/json/renderer.cjs
+@@ -38,7 +38,7 @@ function TiptapStaticRenderer(renderComponent, { nodeMapping, markMapping, unhan
+ 				}
+ 			}
+ 		});
+-		return content.marks ? content.marks.reduce((acc, mark) => {
++		return content.marks ? content.marks.reduceRight((acc, mark) => {
+ 			var _markMapping$markType;
+ 			const markType = typeof mark.type === "string" ? mark.type : mark.type.name;
+ 			const MarkHandler = (_markMapping$markType = markMapping[markType]) !== null && _markMapping$markType !== void 0 ? _markMapping$markType : unhandledMark;
+diff --git a/dist/json/renderer.js b/dist/json/renderer.js
+index 785f2df678621aa56c5c4feef202abe3f5ae3aaa..4b0d9ec23b1470bfb948311655b1cd192bbbe855 100644
+--- a/dist/json/renderer.js
++++ b/dist/json/renderer.js
+@@ -37,7 +37,7 @@ function TiptapStaticRenderer(renderComponent, { nodeMapping, markMapping, unhan
+ 				}
+ 			}
+ 		});
+-		return content.marks ? content.marks.reduce((acc, mark) => {
++		return content.marks ? content.marks.reduceRight((acc, mark) => {
+ 			var _markMapping$markType;
+ 			const markType = typeof mark.type === "string" ? mark.type : mark.type.name;
+ 			const MarkHandler = (_markMapping$markType = markMapping[markType]) !== null && _markMapping$markType !== void 0 ? _markMapping$markType : unhandledMark;
+diff --git a/dist/pm/html-string/index.cjs b/dist/pm/html-string/index.cjs
+index df5e425209b9a4c6b0074b02bc785704566908b0..949395ffadc0b52eb8439704e1368ee295ac0f55 100644
+--- a/dist/pm/html-string/index.cjs
++++ b/dist/pm/html-string/index.cjs
+@@ -339,7 +339,7 @@ function TiptapStaticRenderer(renderComponent, { nodeMapping, markMapping, unhan
+ 				}
+ 			}
+ 		});
+-		return content.marks ? content.marks.reduce((acc, mark) => {
++		return content.marks ? content.marks.reduceRight((acc, mark) => {
+ 			var _markMapping$markType;
+ 			const markType = typeof mark.type === "string" ? mark.type : mark.type.name;
+ 			const MarkHandler = (_markMapping$markType = markMapping[markType]) !== null && _markMapping$markType !== void 0 ? _markMapping$markType : unhandledMark;
+diff --git a/dist/pm/html-string/index.js b/dist/pm/html-string/index.js
+index f133120a9a49a7f7130fe2093d2f5098b6912868..aa87ce25eff3ee5633f584d6985f32f793fa0d31 100644
+--- a/dist/pm/html-string/index.js
++++ b/dist/pm/html-string/index.js
+@@ -338,7 +338,7 @@ function TiptapStaticRenderer(renderComponent, { nodeMapping, markMapping, unhan
+ 				}
+ 			}
+ 		});
+-		return content.marks ? content.marks.reduce((acc, mark) => {
++		return content.marks ? content.marks.reduceRight((acc, mark) => {
+ 			var _markMapping$markType;
+ 			const markType = typeof mark.type === "string" ? mark.type : mark.type.name;
+ 			const MarkHandler = (_markMapping$markType = markMapping[markType]) !== null && _markMapping$markType !== void 0 ? _markMapping$markType : unhandledMark;
+diff --git a/dist/pm/markdown/index.cjs b/dist/pm/markdown/index.cjs
+index c8d4113db9edb4f279726833bcebfcb22f8f434e..466527329a3ede3c8bd2d22e61c8118cfaf69d3b 100644
+--- a/dist/pm/markdown/index.cjs
++++ b/dist/pm/markdown/index.cjs
+@@ -340,7 +340,7 @@ function TiptapStaticRenderer(renderComponent, { nodeMapping, markMapping, unhan
+ 				}
+ 			}
+ 		});
+-		return content.marks ? content.marks.reduce((acc, mark) => {
++		return content.marks ? content.marks.reduceRight((acc, mark) => {
+ 			var _markMapping$markType;
+ 			const markType = typeof mark.type === "string" ? mark.type : mark.type.name;
+ 			const MarkHandler = (_markMapping$markType = markMapping[markType]) !== null && _markMapping$markType !== void 0 ? _markMapping$markType : unhandledMark;
+diff --git a/dist/pm/markdown/index.js b/dist/pm/markdown/index.js
+index 5ed4badfe7271b89d2ee6571657e0b2039a1b760..7aa5e5bf9af4ba9c7bb9a70fcf8271e1cd8c44e2 100644
+--- a/dist/pm/markdown/index.js
++++ b/dist/pm/markdown/index.js
+@@ -339,7 +339,7 @@ function TiptapStaticRenderer(renderComponent, { nodeMapping, markMapping, unhan
+ 				}
+ 			}
+ 		});
+-		return content.marks ? content.marks.reduce((acc, mark) => {
++		return content.marks ? content.marks.reduceRight((acc, mark) => {
+ 			var _markMapping$markType;
+ 			const markType = typeof mark.type === "string" ? mark.type : mark.type.name;
+ 			const MarkHandler = (_markMapping$markType = markMapping[markType]) !== null && _markMapping$markType !== void 0 ? _markMapping$markType : unhandledMark;
+diff --git a/dist/pm/react/index.cjs b/dist/pm/react/index.cjs
+index 54f32cb06080881d0c81212776a1ea4d327f7567..c97735837f4dcd183cf18a2b3110166e73b879d3 100644
+--- a/dist/pm/react/index.cjs
++++ b/dist/pm/react/index.cjs
+@@ -363,7 +363,7 @@ function TiptapStaticRenderer(renderComponent, { nodeMapping, markMapping, unhan
+ 				}
+ 			}
+ 		});
+-		return content.marks ? content.marks.reduce((acc, mark) => {
++		return content.marks ? content.marks.reduceRight((acc, mark) => {
+ 			var _markMapping$markType;
+ 			const markType = typeof mark.type === "string" ? mark.type : mark.type.name;
+ 			const MarkHandler = (_markMapping$markType = markMapping[markType]) !== null && _markMapping$markType !== void 0 ? _markMapping$markType : unhandledMark;
+diff --git a/dist/pm/react/index.js b/dist/pm/react/index.js
+index bf52f115d3ad609bf17749dcf7934cddb805b011..2f8ed884a506e96de375b698df94892f06b4c6d6 100644
+--- a/dist/pm/react/index.js
++++ b/dist/pm/react/index.js
+@@ -339,7 +339,7 @@ function TiptapStaticRenderer(renderComponent, { nodeMapping, markMapping, unhan
+ 				}
+ 			}
+ 		});
+-		return content.marks ? content.marks.reduce((acc, mark) => {
++		return content.marks ? content.marks.reduceRight((acc, mark) => {
+ 			var _markMapping$markType;
+ 			const markType = typeof mark.type === "string" ? mark.type : mark.type.name;
+ 			const MarkHandler = (_markMapping$markType = markMapping[markType]) !== null && _markMapping$markType !== void 0 ? _markMapping$markType : unhandledMark;
+diff --git a/src/json/renderer.ts b/src/json/renderer.ts
+index 2bdc673dfbf83e26fd4d0e2d99bc876e8b5bf1ba..fc359740bfc95f90f36a4640859f6b27a5948b76 100644
+--- a/src/json/renderer.ts
++++ b/src/json/renderer.ts
+@@ -258,7 +258,7 @@ export function TiptapStaticRenderer<
+ 
+     // apply marks to the content
+     const markedContent = content.marks
+-      ? content.marks.reduce((acc, mark) => {
++      ? content.marks.reduceRight((acc, mark) => {
+           const markType = typeof mark.type === 'string' ? mark.type : mark.type.name
+           const MarkHandler = markMapping[markType] ?? unhandledMark
+ 

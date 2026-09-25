@@ -18,3 +18,7 @@ minimumReleaseAgeExclude:
   - "@qstyle/inspector@0.1.1"
   - "@qstyle/qwik@0.2.0"
   - "@qstyle/vite@0.2.0"
+patchedDependencies:
+  "@qstyle/vite@0.2.0": patches/@qstyle__vite@0.2.0.patch
+  "@qwik.dev/core@2.0.0-beta.43": patches/@qwik.dev__core@2.0.0-beta.43.patch
+  "@tiptap/static-renderer@3.31.3": patches/@tiptap__static-renderer@3.31.3.patch

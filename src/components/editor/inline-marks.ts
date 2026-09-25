@@ -57,17 +57,18 @@ export const semanticMarks = Object.entries(inlineTags).map(([name, tag]) =>
 export const InlineFormatting = Extension.create({
   name: "inlineFormatting",
   addInputRules() {
-    return [
-      ["bold", /(?:^|\s|(?<=[^\x00-\x7F]))(\*\*([^*\n]+)\*\*)$/u],
-      ["b", /(?:^|\s|(?<=[^\x00-\x7F]))(\*(?!\*)([^*\n]+)\*)$/u],
-      ["underline", /(?:^|\s|(?<=[^\x00-\x7F]))(__([^_\n]+)__)$/u],
-      ["i", /(?:^|\s|(?<=[^\x00-\x7F]))(_(?!_)([^_\n]+)_)$/u],
-      ["strike", /(?:^|\s|(?<=[^\x00-\x7F]))(~~([^~\n]+)~~)$/u],
-      ["highlight", /(?:^|\s|(?<=[^\x00-\x7F]))(==([^=\n]+)==)$/u],
-    ].map(([name, find]) =>
+    const rules: [string, RegExp][] = [
+      ["bold", /(?:^|\s|(?<=\P{ASCII}))(\*\*([^*\n]+)\*\*)$/u],
+      ["b", /(?:^|\s|(?<=\P{ASCII}))(\*(?!\*)([^*\n]+)\*)$/u],
+      ["underline", /(?:^|\s|(?<=\P{ASCII}))(__([^_\n]+)__)$/u],
+      ["i", /(?:^|\s|(?<=\P{ASCII}))(_(?!_)([^_\n]+)_)$/u],
+      ["strike", /(?:^|\s|(?<=\P{ASCII}))(~~([^~\n]+)~~)$/u],
+      ["highlight", /(?:^|\s|(?<=\P{ASCII}))(==([^=\n]+)==)$/u],
+    ];
+    return rules.map(([name, find]) =>
       markInputRule({
-        find: find as RegExp,
-        type: this.editor.schema.marks[name as string],
+        find,
+        type: this.editor.schema.marks[name],
       }),
     );
   },

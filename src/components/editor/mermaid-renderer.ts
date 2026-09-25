@@ -17,14 +17,23 @@ async function svgFor(source: string): Promise<string> {
     mermaid.initialize(MERMAID_CONFIG);
     if (/^sankey(?:-beta)?\b/.test(source.trim())) {
       const parsed = await mermaid.mermaidAPI.getDiagramFromText(source);
-      const graph = (parsed.db as { getGraph(): { nodes: { id: string }[] } }).getGraph();
+      if (!("getGraph" in parsed.db) || typeof parsed.db.getGraph !== "function")
+        throw new Error("Sankey database is invalid");
+      const graph: unknown = parsed.db.getGraph();
+      if (!graph || typeof graph !== "object" || !("nodes" in graph) || !Array.isArray(graph.nodes))
+        throw new Error("Sankey graph is invalid");
+      const nodes = graph.nodes.map((node: unknown) => {
+        if (!node || typeof node !== "object" || !("id" in node) || typeof node.id !== "string")
+          throw new Error("Sankey node is invalid");
+        return { id: node.id };
+      });
       mermaid.initialize({
         ...MERMAID_CONFIG,
         sankey: {
           nodeColors: Object.fromEntries(
-            graph.nodes.map((node, index) => [
+            nodes.map((node, colorIndex) => [
               node.id,
-              MERMAID_CONFIG.themeVariables["cScale" + (index % 12)],
+              MERMAID_CONFIG.themeVariables["cScale" + (colorIndex % 12)],
             ]),
           ),
         },
@@ -93,6 +102,7 @@ export async function validateMermaidDocument(
     } catch (error) {
       throw new Error(
         `公開前にMermaidを確認してください: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
       );
     }
   }

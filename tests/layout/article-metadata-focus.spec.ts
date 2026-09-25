@@ -12,10 +12,14 @@ test("title and subtitle keep focus, caret, and text across edit mode changes", 
 
   try {
     const title = page.locator('[data-article-field="title"]');
+    const tags = page.locator('[data-article-field="tags"]');
     const subtitle = page.locator('[data-article-field="subtitle"]');
     await expect(title).toHaveAttribute("contenteditable", "true");
     await expect(subtitle).toHaveAttribute("contenteditable", "true");
 
+    await expect(tags).toHaveAttribute("contenteditable", "true");
+    await tags.fill("検証タグ");
+    await tags.press("Space");
     await title.click();
     await expect(title).toBeFocused();
     await page.keyboard.press("End");
@@ -31,35 +35,39 @@ test("title and subtitle keep focus, caret, and text across edit mode changes", 
     await page.keyboard.type("続");
     await expect(subtitle).toHaveText("副題確認続");
 
-    const doneButton = (await page.locator(".article-sticky-edit").isVisible())
-      ? page.locator(".article-sticky-edit")
-      : page.locator(".article-header-edit");
-    await doneButton.click();
+    await page.evaluate(() => {
+      window.scrollTo(0, 0);
+      document.querySelector<HTMLElement>("[data-virtual-keyboard-viewport]")?.scrollTo(0, 0);
+    });
+    await page.locator(".article-header-edit").click();
     await expect(page).toHaveURL(new RegExp(`/blog/${id}$`));
     await expect(title).toHaveText("無題確認続");
     await expect(subtitle).toHaveText("副題確認続");
     await expect(title).not.toHaveAttribute("contenteditable", "true");
+    await expect(tags).not.toHaveAttribute("contenteditable", "true");
+    await expect(tags).toContainText("検証タグ");
 
-    const editButton = (await page.locator(".article-sticky-edit").isVisible())
-      ? page.locator(".article-sticky-edit")
-      : page.locator(".article-header-edit");
-    await editButton.click();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.locator(".article-header-edit").click();
     await expect(title).toHaveAttribute("contenteditable", "true");
+    await expect(tags).toHaveAttribute("contenteditable", "true");
+    await expect(tags).toContainText("検証タグ");
     await title.click();
     await expect(title).toBeFocused();
   } finally {
-    await page.goto("/");
-    const item = page.locator("li").filter({ has: page.locator(`a[href="/blog/${id}"]`) });
-    await item.locator("summary").click();
-    await item.locator('input[name="confirm"]').check();
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" && response.url().includes("?qaction="),
-      ),
-      item.getByRole("button", { name: "削除する" }).click(),
-    ]);
-    await page.reload();
-    await expect(item).toHaveCount(0);
+    if (!page.isClosed()) {
+      await page.goto("/");
+      const item = page.locator("li").filter({ has: page.locator(`a[href="/blog/${id}"]`) });
+      await item.getByRole("button", { name: /を削除/ }).click();
+      await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.request().method() === "POST" && response.url().includes("?qaction="),
+        ),
+        page.getByRole("dialog").getByRole("button", { name: "削除する" }).click(),
+      ]);
+      await page.reload();
+      await expect(item).toHaveCount(0);
+    }
   }
 });

@@ -24,8 +24,7 @@ export async function generateMermaid(
     await page.addScriptTag({ content: script });
     const result = await page.evaluate(
       async ({ inputs, config }) => {
-        const mermaid = (globalThis as unknown as { mermaid: typeof import("mermaid").default })
-          .mermaid;
+        const mermaid = globalThis.mermaid;
         mermaid.initialize(config);
         const output: { output: string | null; diagnostic: string | null }[] = [];
         for (const [index, source] of inputs.entries()) {
@@ -33,14 +32,33 @@ export async function generateMermaid(
             mermaid.initialize(config);
             if (/^sankey(?:-beta)?\b/.test(source.trim())) {
               const parsed = await mermaid.mermaidAPI.getDiagramFromText(source);
-              const graph = (parsed.db as { getGraph(): { nodes: { id: string }[] } }).getGraph();
+              if (!("getGraph" in parsed.db) || typeof parsed.db.getGraph !== "function")
+                throw new Error("Sankey database is invalid");
+              const graph: unknown = parsed.db.getGraph();
+              if (
+                !graph ||
+                typeof graph !== "object" ||
+                !("nodes" in graph) ||
+                !Array.isArray(graph.nodes)
+              )
+                throw new Error("Sankey graph is invalid");
+              const nodes = graph.nodes.map((node: unknown) => {
+                if (
+                  !node ||
+                  typeof node !== "object" ||
+                  !("id" in node) ||
+                  typeof node.id !== "string"
+                )
+                  throw new Error("Sankey node is invalid");
+                return { id: node.id };
+              });
               mermaid.initialize({
                 ...config,
                 sankey: {
                   nodeColors: Object.fromEntries(
-                    graph.nodes.map((node, index) => [
+                    nodes.map((node, colorIndex) => [
                       node.id,
-                      config.themeVariables["cScale" + (index % 12)],
+                      config.themeVariables["cScale" + (colorIndex % 12)],
                     ]),
                   ),
                 },

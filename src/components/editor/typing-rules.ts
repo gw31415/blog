@@ -6,7 +6,7 @@ export const DocumentTypingRules = Extension.create({
   addInputRules() {
     return [
       new InputRule({
-        find: /(?<![\\\[])(\[!\[.*\]\(.*\)\]\(.*\)|!\[.*\]\(.*\)|\[[^\]]+\]\(.*\))$/,
+        find: /(?<![\\[])(\[!\[.*\]\(.*\)\]\(.*\)|!\[.*\]\(.*\)|\[[^\]]+\]\(.*\))$/,
         handler: ({ state, range, match }) => {
           if (this.editor.view.composing || state.selection.$from.parent.type.name === "codeBlock")
             return null;
@@ -26,6 +26,7 @@ export const DocumentTypingRules = Extension.create({
               range.to,
               paragraph.content.map((n) => state.schema.nodeFromJSON(n)),
             );
+            return undefined;
           } catch {
             return null;
           }

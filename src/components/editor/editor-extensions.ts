@@ -20,7 +20,6 @@ import Paragraph from "@tiptap/extension-paragraph";
 import Placeholder from "@tiptap/extension-placeholder";
 import { TableKit, TableCell, TableHeader } from "@tiptap/extension-table";
 import TaskItem from "@tiptap/extension-task-item";
-import TaskList from "@tiptap/extension-task-list";
 import {
   type AnyExtension,
   InputRule,
@@ -124,13 +123,15 @@ const SharedCodeBlock = CodeBlock.extend<
           if (!view.editable) return;
           const position = getPos();
           if (typeof position !== "number") return;
-          view.dispatch(view.state.tr.setNodeMarkup(position, undefined, {
-            ...current.attrs,
-            caption: caption.textContent?.trim() || null,
-          }));
+          view.dispatch(
+            view.state.tr.setNodeMarkup(position, undefined, {
+              ...current.attrs,
+              caption: caption.textContent?.trim() || null,
+            }),
+          );
         });
         dom.addEventListener("click", (event) => {
-          if (caption.contains(event.target as globalThis.Node)) return;
+          if (event.target instanceof globalThis.Node && caption.contains(event.target)) return;
           const position = getPos();
           if (view.editable && typeof position === "number") options.onMermaidEdit?.(position);
         });
@@ -139,7 +140,9 @@ const SharedCodeBlock = CodeBlock.extend<
           dom,
           update(node) {
             if (node.type !== current.type || node.attrs.language !== "mermaid") return false;
-            const changed = node.textContent !== current.textContent || node.attrs.caption !== current.attrs.caption;
+            const changed =
+              node.textContent !== current.textContent ||
+              node.attrs.caption !== current.attrs.caption;
             current = node;
             if (changed) render();
             return true;
@@ -302,6 +305,7 @@ const SharedInlineMath = Node.create<MathNodeOptions>({
             this.type.create({ latex: match[1] }),
             state.schema.text(" "),
           ]);
+          return undefined;
         },
       }),
     ];
@@ -401,10 +405,12 @@ export function createEditorExtensions(options: EditorExtensionOptions = {}): An
           ["bold", "italic", "strike"].includes(extension.name)
             ? extension.extend({
                 addInputRules: () => [],
-                ...(extension.name === "strike" ? {} : {
-                  addKeyboardShortcuts: () => ({}),
-                  parseHTML: () => [{ tag: extension.name === "bold" ? "strong" : "em" }],
-                }),
+                ...(extension.name === "strike"
+                  ? {}
+                  : {
+                      addKeyboardShortcuts: () => ({}),
+                      parseHTML: () => [{ tag: extension.name === "bold" ? "strong" : "em" }],
+                    }),
                 parseMarkdown: (token: MarkdownToken, helpers: any) =>
                   helpers.parseInline(token.tokens ?? []).map((node: any) => ({
                     ...node,

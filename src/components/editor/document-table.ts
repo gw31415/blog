@@ -18,7 +18,7 @@ function cells(line: string): string[] {
 }
 export const DocumentTable = Table.extend({
   addAttributes() {
-    return { ...(this.parent?.() ?? {}), title: { default: null, rendered: false } };
+    return { ...this.parent?.(), title: { default: null, rendered: false } };
   },
   renderHTML({ node, HTMLAttributes }) {
     return [
@@ -49,10 +49,12 @@ export const DocumentTable = Table.extend({
         if (!view.editable) return;
         const position = getPos();
         if (typeof position !== "number") return;
-        view.dispatch(view.state.tr.setNodeMarkup(position, undefined, {
-          ...currentNode.attrs,
-          title: caption.textContent?.trim() || null,
-        }));
+        view.dispatch(
+          view.state.tr.setNodeMarkup(position, undefined, {
+            ...currentNode.attrs,
+            title: caption.textContent?.trim() || null,
+          }),
+        );
       });
       render();
       return {
@@ -65,26 +67,38 @@ export const DocumentTable = Table.extend({
           return true;
         },
         ignoreMutation: (mutation) => caption.contains(mutation.target),
-        stopEvent: (event) => caption.contains(event.target as globalThis.Node),
+        stopEvent: (event) =>
+          event.target instanceof globalThis.Node && caption.contains(event.target),
       };
     };
   },
   parseMarkdown(token, helpers) {
-    const t = token as unknown as {
+    const t: {
+      type?: string;
       title?: string | null;
       hasHeader?: boolean;
       header?: Array<{ tokens?: MarkdownToken[] }>;
       rows?: Array<Array<{ tokens?: MarkdownToken[] }>>;
       align?: Array<string | null>;
-    };
+    } = token;
     const alignments = Array.isArray(t.align) ? t.align : [];
     const rows = [];
     for (const [rowIndex, row] of [t.header ?? [], ...(t.rows ?? [])].entries()) {
-      rows.push(helpers.createNode("tableRow", {}, row.map((cell, index) =>
-        helpers.createNode(rowIndex === 0 && t.hasHeader !== false ? "tableHeader" : "tableCell", {
-          align: alignments[index] ?? null,
-        }, [{ type: "paragraph", content: helpers.parseInline(cell.tokens ?? []) }]),
-      )));
+      rows.push(
+        helpers.createNode(
+          "tableRow",
+          {},
+          row.map((cell, index) =>
+            helpers.createNode(
+              rowIndex === 0 && t.hasHeader !== false ? "tableHeader" : "tableCell",
+              {
+                align: alignments[index] ?? null,
+              },
+              [{ type: "paragraph", content: helpers.parseInline(cell.tokens ?? []) }],
+            ),
+          ),
+        ),
+      );
     }
     return helpers.createNode("table", { title: t.title ?? null }, rows);
   },
@@ -93,9 +107,13 @@ export const DocumentTable = Table.extend({
     level: "block",
     start: (source) => /^:{3,}\{table\}/m.exec(source)?.index ?? -1,
     tokenize(source, _tokens, lexer) {
-      const wrapper = /^(:{3,})\{table\}(?:[ \t]+([^\n]+))?\n(?:(:header:[ \t]*false)\n\n?)?([\s\S]*?)\n\1(?=\n|$)/.exec(source);
+      const wrapper =
+        /^(:{3,})\{table\}(?:[ \t]+([^\n]+))?\n(?:(:header:[ \t]*false)\n\n?)?([\s\S]*?)\n\1(?=\n|$)/.exec(
+          source,
+        );
       const original = source;
-      const title = wrapper?.[2]?.replace(/\\([!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~])/g, "$1") ?? null;
+      const title =
+        wrapper?.[2]?.replace(/\\([!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~])/g, "$1") ?? null;
       if (wrapper) source = wrapper[4];
       const lines = source.split("\n");
       if (lines.length < 2 || !lines[0].includes("|") || !lines[1].includes("|")) return undefined;
@@ -129,7 +147,9 @@ export const DocumentTable = Table.extend({
       }
       return {
         type: "table",
-        raw: wrapper ? original.slice(0, wrapper[0].length) : lines.slice(0, used).join("\n") + (used < lines.length ? "\n" : ""),
+        raw: wrapper
+          ? original.slice(0, wrapper[0].length)
+          : lines.slice(0, used).join("\n") + (used < lines.length ? "\n" : ""),
         header: parse(header),
         rows,
         align,

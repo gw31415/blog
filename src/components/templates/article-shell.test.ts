@@ -49,7 +49,10 @@ describe("article shell", () => {
 
   it("edits article metadata in place instead of an editor panel", () => {
     const source = readFileSync(new URL("./article-shell.tsx", import.meta.url), "utf8");
-    const headerSource = readFileSync(new URL("../blog/blog.tsx", import.meta.url), "utf8");
+    const headerSource = readFileSync(
+      new URL("../organisms/article-header.tsx", import.meta.url),
+      "utf8",
+    );
 
     expect(source).not.toContain("<summary>記事情報</summary>");
     expect(headerSource).toContain('type="date"');
@@ -58,11 +61,10 @@ describe("article shell", () => {
 
   it("preloads the editor when the edit control receives pointer or keyboard intent", () => {
     const source = readFileSync(new URL("./article-shell.tsx", import.meta.url), "utf8");
-    const headerSource = readFileSync(new URL("../blog/blog.tsx", import.meta.url), "utf8");
+    const headerSource = readFileSync(new URL("../atoms/edit-button.tsx", import.meta.url), "utf8");
 
     expect(source).toContain("preloadEditor$");
-    expect(source).toContain('onPointerEnter$={ui.mode === "edit" ? undefined : preloadEditor$}');
-    expect(source).toContain('onFocus$={ui.mode === "edit" ? undefined : preloadEditor$}');
+    expect(source).toContain("onEditIntent$={preloadEditor$}");
     expect(headerSource).toContain(
       "onPointerEnter$={props.editable ? undefined : props.onEditIntent$}",
     );

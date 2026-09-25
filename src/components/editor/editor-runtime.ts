@@ -1,5 +1,6 @@
+import { highlightCode as highlightSource } from "./editor-syntax-highlighting";
 import { createInvisibleCharacterMarkers } from "./invisible-character-markers";
-import { finalizeWorkingDocument } from "../../content/document";
+import { finalizeWorkingDocument, normalizeDocument } from "../../content/document";
 import { DocumentTypingRules } from "./typing-rules";
 import { createCommandPalette, paletteExtension } from "./command-palette";
 import { Editor, Extension, findChildren } from "@tiptap/core";
@@ -184,15 +185,13 @@ function runCommand(editor: Editor, command: EditorCommand): boolean {
 export async function mountArticleEditor(
   options: MountArticleEditorOptions,
 ): Promise<EditorHandle> {
-  const { highlightCode } = await import("./editor-syntax-highlighting");
-
   let editor: Editor;
   let palette: ReturnType<typeof createCommandPalette> | undefined;
   editor = new Editor({
     element: null,
     extensions: createEditorExtensions({
       additionalExtensions: [
-        createSyntaxHighlighting(highlightCode),
+        createSyntaxHighlighting(highlightSource),
         paletteExtension(() => palette),
         DocumentTypingRules,
         Extension.create({
@@ -217,7 +216,10 @@ export async function mountArticleEditor(
         palette?.open(undefined, "edit-element");
       },
     }),
-    content: (options.workingState?.document as typeof options.content) ?? options.content,
+    content:
+      options.workingState?.document == null
+        ? options.content
+        : normalizeDocument(options.workingState.document, { editing: true }),
     editable: false,
     injectCSS: false,
     onUpdate: ({ editor: current }) => {
@@ -254,9 +256,7 @@ export async function mountArticleEditor(
     palette?.open(undefined, "edit-element");
   };
   options.element.addEventListener("click", editCalloutLabel);
-  let pending = options.workingState?.pending as
-    | Parameters<NonNullable<typeof palette>["resume"]>[0]
-    | undefined;
+  let pending = options.workingState?.pending;
   let pendingObserver: MutationObserver | undefined;
   const resumePending = () => {
     if (!pending || !editor.isEditable) return;
@@ -289,7 +289,9 @@ export async function mountArticleEditor(
         .querySelectorAll<HTMLElement>('[data-article-role="details-title"]')
         .forEach((title) => (title.contentEditable = editable ? "plaintext-only" : "false"));
       options.element
-        .querySelectorAll<HTMLElement>('[data-article-role="mermaid-caption"], [data-article-role="table-title"]')
+        .querySelectorAll<HTMLElement>(
+          '[data-article-role="mermaid-caption"], [data-article-role="table-title"]',
+        )
         .forEach((field) => {
           field.contentEditable = editable ? "plaintext-only" : "false";
           field.hidden = !editable && !field.textContent?.trim();

@@ -75,8 +75,8 @@ export async function resolveRenderCache(
   let waiting = missing.filter((entry) => !result.has(entry.key));
   const deadline = Date.now() + 45000;
   while (waiting.length) {
-    const rows = await read(waiting.map((entry) => entry.key));
-    for (const row of rows)
+    const waitingRows = await read(waiting.map((entry) => entry.key));
+    for (const row of waitingRows)
       if (ready(row)) result.set(row.key, { output: row.output, diagnostic: row.diagnostic });
     waiting = waiting.filter((entry) => !result.has(entry.key));
     if (!waiting.length) break;

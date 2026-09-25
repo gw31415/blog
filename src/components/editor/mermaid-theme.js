@@ -9,7 +9,6 @@ const emphasisFont =
   ', "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "YuGothic", "Noto Sans JP", "Noto Sans CJK JP", sans-serif';
 const paper = "#f2ead5",
   ink = "#352f25",
-  muted = "#655c4e",
   line = "#8c7763",
   red = "#87594f";
 const palette = [

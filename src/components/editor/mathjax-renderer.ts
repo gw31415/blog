@@ -20,19 +20,24 @@ const createMathDocument = () =>
         (name) => ConfigurationHandler.get(name)?.parser === "tex",
       ),
     }),
-    OutputJax: new SVG({ fontCache: "local", localID: `render-${++renderIndex}`, fontData: new MathJaxTexFont() }),
+    OutputJax: new SVG({
+      fontCache: "local",
+      localID: `render-${++renderIndex}`,
+      fontData: new MathJaxTexFont(),
+    }),
   });
+
+const escape = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 
 export function renderMathContentHTML(latex: string, displayMode: boolean): string {
   try {
     return adaptor.outerHTML(createMathDocument().convert(latex, { display: displayMode }));
   } catch (error) {
-    const escape = (value: string) =>
-      value
-        .replaceAll("&", "&amp;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;");
     return `<span role="alert" data-mjx-error="${escape(error instanceof Error ? error.message : String(error))}">${escape(latex)}</span>`;
   }
 }

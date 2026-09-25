@@ -1,3 +1,5 @@
+import { ArticleEditButton } from "~/components/atoms/edit-button";
+import { StickyHeader } from "~/components/molecules/sticky-header";
 import {
   $,
   component$,
@@ -15,8 +17,10 @@ import {
 } from "@qwik.dev/core";
 import type { JSONContent } from "@tiptap/core";
 
-import { BlogFooter, BlogHeader, BlogPaper } from "~/components/blog/blog";
-import { VirtualKeyboardViewport } from "~/components/layout/virtual-keyboard-viewport";
+import { BlogFooter } from "~/components/molecules/footer";
+import { BlogHeader } from "~/components/organisms/article-header";
+import { BlogPaper } from "~/components/templates/blog-paper";
+import { VirtualKeyboardViewport } from "~/components/templates/virtual-keyboard-viewport";
 import {
   BLOG_NAME,
   formatJapaneseDate,
@@ -30,13 +34,13 @@ import {
   type EditorCommand,
   type EditorController,
   type ToolbarState,
-} from "./editor-controller";
-import { ArticleStyleBoundary } from "./article-styles";
+} from "../editor/editor-controller";
+import { ArticleStyleBoundary } from "../editor/article-styles";
 
-let editorRuntimePromise: Promise<typeof import("./editor-runtime")> | undefined;
+let editorRuntimePromise: Promise<typeof import("../editor/editor-runtime")> | undefined;
 
 export function loadEditorRuntime() {
-  editorRuntimePromise ??= import("./editor-runtime");
+  editorRuntimePromise ??= import("../editor/editor-runtime");
   return editorRuntimePromise;
 }
 
@@ -120,6 +124,11 @@ const ArticleBody = component$(
 export const ArticleShell = component$((props: ArticleShellProps) => {
   const article = props.article;
   const initialHtml = useConstant(() => props.initialHtml);
+  const initialHeader = useConstant(() => ({
+    title: article.title,
+    subtitle: article.subtitle,
+    tags: article.tags,
+  }));
   const editorMount = useSignal<HTMLElement>();
   const formattingToolbar = useSignal<HTMLElement>();
   const controller = useSignal<NoSerialize<EditorController>>();
@@ -162,52 +171,59 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
   // Native listeners must run in the same trusted gesture as an iOS toolbar tap;
   // a resumable handler can refocus too late after Safari starts hiding the keyboard.
   // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(({ cleanup, track }) => {
-    const mode = track(() => ui.mode);
-    const toolbar = formattingToolbar.value;
-    if (mode !== "edit" || !toolbar) return;
+  useVisibleTask$(
+    ({ cleanup, track }) => {
+      const mode = track(() => ui.mode);
+      const toolbar = formattingToolbar.value;
+      if (mode !== "edit" || !toolbar) return;
 
-    let touchStart: { identifier: number; x: number; y: number } | undefined;
-    const onTouchStart = (event: TouchEvent) => {
-      const touch = event.touches[0];
-      touchStart = touch
-        ? { identifier: touch.identifier, x: touch.clientX, y: touch.clientY }
-        : undefined;
-    };
-    const onTouchEnd = (event: TouchEvent) => {
-      const start = touchStart;
-      touchStart = undefined;
-      const touch = start
-        ? [...event.changedTouches].find((candidate) => candidate.identifier === start.identifier)
-        : undefined;
-      const target =
-        event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button") : null;
-      if (
-        !start ||
-        !touch ||
-        !target ||
-        Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > 8
-      ) {
-        return;
-      }
+      let touchStart: { identifier: number; x: number; y: number } | undefined;
+      const onTouchStart = (event: TouchEvent) => {
+        const touch = event.touches[0];
+        touchStart = touch
+          ? { identifier: touch.identifier, x: touch.clientX, y: touch.clientY }
+          : undefined;
+      };
+      const onTouchEnd = (event: TouchEvent) => {
+        const start = touchStart;
+        touchStart = undefined;
+        const touch = start
+          ? [...event.changedTouches].find((candidate) => candidate.identifier === start.identifier)
+          : undefined;
+        const target =
+          event.target instanceof Element
+            ? event.target.closest<HTMLButtonElement>("button")
+            : null;
+        if (
+          !start ||
+          !touch ||
+          !target ||
+          Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > 8
+        ) {
+          return;
+        }
 
-      event.preventDefault();
-      editorMount.value?.querySelector<HTMLElement>(".ProseMirror")?.focus({ preventScroll: true });
-      target.click();
-    };
-    const onTouchCancel = () => {
-      touchStart = undefined;
-    };
+        event.preventDefault();
+        editorMount.value
+          ?.querySelector<HTMLElement>(".ProseMirror")
+          ?.focus({ preventScroll: true });
+        target.click();
+      };
+      const onTouchCancel = () => {
+        touchStart = undefined;
+      };
 
-    toolbar.addEventListener("touchstart", onTouchStart, { passive: true });
-    toolbar.addEventListener("touchend", onTouchEnd, { passive: false });
-    toolbar.addEventListener("touchcancel", onTouchCancel);
-    cleanup(() => {
-      toolbar.removeEventListener("touchstart", onTouchStart);
-      toolbar.removeEventListener("touchend", onTouchEnd);
-      toolbar.removeEventListener("touchcancel", onTouchCancel);
-    });
-  });
+      toolbar.addEventListener("touchstart", onTouchStart, { passive: true });
+      toolbar.addEventListener("touchend", onTouchEnd, { passive: false });
+      toolbar.addEventListener("touchcancel", onTouchCancel);
+      cleanup(() => {
+        toolbar.removeEventListener("touchstart", onTouchStart);
+        toolbar.removeEventListener("touchend", onTouchEnd);
+        toolbar.removeEventListener("touchcancel", onTouchCancel);
+      });
+    },
+    { strategy: "document-ready" },
+  );
 
   const command$ = $((command: EditorCommand) => controller.value?.run(command));
   const preloadEditor$ = $(() => {
@@ -324,40 +340,34 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
   return (
     <ArticleStyleBoundary>
       <VirtualKeyboardViewport internalScroll={ui.mode === "edit"}>
-        <nav q:slot="top" class="article-sticky-header" aria-label="記事の現在位置">
-          <a class="article-sticky-site" href="/">
-            {BLOG_NAME}
-          </a>
-          <span class="article-sticky-separator" aria-hidden="true">
-            &gt;
-          </span>
-          <span class="article-sticky-title">{ui.title || "無題"}</span>
-          <time class="article-sticky-date" dateTime={ui.publishedAt}>
-            （{presentation.shortDate}）
-          </time>
+        <StickyHeader
+          q:slot="top"
+          class="article-sticky-header"
+          title={ui.title || "無題"}
+          date={ui.publishedAt}
+          dateLabel={presentation.shortDate}
+        >
           {props.canEdit !== false && (
-            <button
-              type="button"
-              class="article-sticky-edit"
-              aria-busy={ui.mode === "loading" || ui.saving}
-              disabled={ui.mode === "loading" || ui.saving}
-              onPointerEnter$={ui.mode === "edit" ? undefined : preloadEditor$}
-              onFocus$={ui.mode === "edit" ? undefined : preloadEditor$}
-              onClick$={ui.mode === "edit" ? enterView$ : enterEdit$}
-            >
-              {ui.mode === "loading" || ui.saving ? "…" : ui.mode === "edit" ? "完了" : "編集"}
-            </button>
+            <ArticleEditButton
+              placement="sticky"
+              editable={ui.mode === "edit"}
+              busy={ui.mode === "loading" || ui.saving}
+              onEditIntent$={preloadEditor$}
+              onEditRequest$={enterEdit$}
+              onDoneRequest$={enterView$}
+            />
           )}
-        </nav>
+        </StickyHeader>
         <BlogPaper>
           <Slot />
           <BlogHeader
-            key={ui.mode === "edit" ? "edit" : "view"}
             tags={ui.tags}
             dateTime={ui.publishedAt}
             dateLabel={presentation.dateLabel}
             publicationStatus={props.publicationStatus ? ui.status : undefined}
-            title={ui.title}
+            initialTitle={initialHeader.title}
+            initialSubtitle={initialHeader.subtitle}
+            initialTags={initialHeader.tags}
             subtitle={ui.subtitle}
             editable={ui.mode === "edit"}
             canEdit={props.canEdit !== false}
@@ -369,10 +379,18 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
             onPublicationToggle$={$(() => {
               ui.status = ui.status === "published" ? "draft" : "published";
             })}
-            onDateInput$={$((value) => { if (value) ui.publishedAt = value; })}
-            onTagsChange$={$((tags) => (ui.tags = tags))}
-            onTitleInput$={$((value) => (ui.title = value))}
-            onSubtitleInput$={$((value) => (ui.subtitle = value))}
+            onDateInput$={$((value) => {
+              if (value) ui.publishedAt = value;
+            })}
+            onTagsChange$={$((tags) => {
+              ui.tags = tags;
+            })}
+            onTitleInput$={$((value) => {
+              ui.title = value;
+            })}
+            onSubtitleInput$={$((value) => {
+              ui.subtitle = value;
+            })}
           />
           {/* After mounting, Tiptap owns this DOM; mode updates must not restore the SSR HTML. */}
           <ArticleBody key="article-body" html={initialHtml} elementRef={editorMount} />
@@ -389,20 +407,61 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
               preventdefault:mousedown
               onMouseDown$={() => {}}
             >
-              <button type="button" title="元に戻す" aria-label="元に戻す" onClick$={() => command$({ type: "undo" })}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5-5 5 5 5M4 10h10a6 6 0 0 1 0 12" /></svg>
+              <button
+                type="button"
+                title="元に戻す"
+                aria-label="元に戻す"
+                onClick$={() => command$({ type: "undo" })}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m9 5-5 5 5 5M4 10h10a6 6 0 0 1 0 12" />
+                </svg>
               </button>
-              <button type="button" title="やり直す" aria-label="やり直す" onClick$={() => command$({ type: "redo" })}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 5 5-5 5M20 10H10a6 6 0 0 0 0 12" /></svg>
+              <button
+                type="button"
+                title="やり直す"
+                aria-label="やり直す"
+                onClick$={() => command$({ type: "redo" })}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m15 5 5 5-5 5M20 10H10a6 6 0 0 0 0 12" />
+                </svg>
               </button>
-              <button type="button" title="表を挿入" aria-label="表を挿入" data-insert-table onClick$={() => command$({ type: "palette", command: "table" })}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
+              <button
+                type="button"
+                title="表を挿入"
+                aria-label="表を挿入"
+                data-insert-table
+                onClick$={() => command$({ type: "palette", command: "table" })}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18" />
+                </svg>
               </button>
-              <button type="button" title="画像をアップロード" aria-label="画像をアップロード" onClick$={() => command$({ type: "palette", command: "upload-image" })}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v18H3zM3 17l6-6 5 5 3-3 4 4" /><circle cx="16" cy="8" r="1.5" /></svg>
+              <button
+                type="button"
+                title="画像をアップロード"
+                aria-label="画像をアップロード"
+                onClick$={() => command$({ type: "palette", command: "upload-image" })}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 3h18v18H3zM3 17l6-6 5 5 3-3 4 4" />
+                  <circle cx="16" cy="8" r="1.5" />
+                </svg>
               </button>
-              <button type="button" title="リンクを挿入" aria-label="リンクを挿入" data-insert-link onClick$={() => command$({ type: "palette", command: "link" })}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 13 4-4M8 16l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 1 1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0" transform="translate(1 0)" /></svg>
+              <button
+                type="button"
+                title="リンクを挿入"
+                aria-label="リンクを挿入"
+                data-insert-link
+                onClick$={() => command$({ type: "palette", command: "link" })}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="m10 13 4-4M8 16l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 1 1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0"
+                    transform="translate(1 0)"
+                  />
+                </svg>
               </button>
             </div>
           </aside>
@@ -499,8 +558,6 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
           </form>
         </div>
       )}
-
-
     </ArticleStyleBoundary>
   );
 });

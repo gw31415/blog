@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { deleteCreatedPost } from "./delete-created-post";
 
 for (const width of [1280, 390])
   test(`toggle stays open while editing at ${width}px`, async ({ page }) => {
@@ -69,7 +70,7 @@ test("inline toggle title is saved as plain text", async ({ page }) => {
   const editor = page.locator("article .ProseMirror");
   await editor.click();
   await page.keyboard.type("/");
-  await page.getByRole("textbox", { name: "コマンド検索" }).fill("dropdown");
+  await page.keyboard.type("dropdown");
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog", { name: "トグル" });
   await dialog.locator('input[name="title"]').fill("最初の題名");
@@ -90,9 +91,5 @@ test("inline toggle title is saved as plain text", async ({ page }) => {
     "& <変更した題名>",
   );
 
-  await page.goto("/");
-  const row = page.locator("li").filter({ has: page.locator(`a[href="/blog/${id}"]`) });
-  await row.getByText("削除", { exact: true }).first().click();
-  await row.getByRole("checkbox").check();
-  await row.getByRole("button", { name: "削除する" }).click();
+  await deleteCreatedPost(page, `/blog/${id}`);
 });

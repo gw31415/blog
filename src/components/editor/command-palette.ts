@@ -162,6 +162,26 @@ interface Field {
   choices?: Array<string | { value: string; label: string }>;
   mermaid?: boolean;
 }
+const dragover = (event: DragEvent) => {
+  if (
+    Array.from(event.dataTransfer?.items ?? []).some(
+      (item) => item.kind === "file" && item.type.startsWith("image/"),
+    )
+  )
+    event.preventDefault();
+};
+const restoredRange = (value: unknown) => {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    !("from" in value) ||
+    !("to" in value) ||
+    typeof value.from !== "number" ||
+    typeof value.to !== "number"
+  )
+    return undefined;
+  return { from: value.from, to: value.to };
+};
 export function createCommandPalette(editor: Editor) {
   let dialog: HTMLDialogElement | null = null;
   let currentCommand: string | undefined;
@@ -223,7 +243,7 @@ export function createCommandPalette(editor: Editor) {
             if (
               node.type.name === "inlineMath" ||
               (node.type.name === "image" && mark.type.name !== "link") ||
-              (/Break$/.test(node.type.name) && mark.type.name === "code")
+              (node.type.name.endsWith("Break") && mark.type.name === "code")
             )
               tr.removeMark(pos, pos + node.nodeSize, mark);
         });
@@ -323,18 +343,27 @@ export function createCommandPalette(editor: Editor) {
     const cancel = document.createElement("button");
     cancel.textContent = "キャンセル";
     cancel.type = "button";
-    cancel.onclick = () => {
+    cancel.addEventListener("click", () => {
       close();
       editor.view.focus();
-    };
+    });
     const actions = document.createElement("div");
     actions.className = "document-command-actions";
     [cancel, applyButton].forEach((child) => actions.appendChild(child));
     [fieldGroup, alert, actions].forEach((child) => f.appendChild(child));
-    f.onsubmit = (e) => {
+    f.addEventListener("submit", (e) => {
       e.preventDefault();
-      commit(() => apply(Object.fromEntries(new FormData(f)) as Record<string, string>));
-    };
+      commit(() =>
+        apply(
+          Object.fromEntries(
+            Array.from(new FormData(f), ([key, value]) => {
+              if (typeof value !== "string") throw new Error("テキストを入力してください");
+              return [key, value];
+            }),
+          ),
+        ),
+      );
+    });
     [heading, f].forEach((child) => dialog!.appendChild(child));
     dialogHost.appendChild(dialog);
     dialog.addEventListener("cancel", () => close());
@@ -365,7 +394,11 @@ export function createCommandPalette(editor: Editor) {
         popup.style.top = `${Math.max(8, rect.top - popup.offsetHeight - 8)}px`;
       };
       const dismiss = (event: Event) => {
-        if (!popup.contains(event.target as Node) && !anchor?.contains(event.target as Node))
+        if (
+          event.target instanceof Node &&
+          !popup.contains(event.target) &&
+          !anchor?.contains(event.target)
+        )
           close();
       };
       const escape = (event: KeyboardEvent) => {
@@ -423,8 +456,23 @@ export function createCommandPalette(editor: Editor) {
         const payload = new FormData();
         payload.set("image", file);
         const response = await fetch("/api/images", { method: "POST", body: payload });
-        const result = (await response.json()) as { url?: string; error?: string };
-        if (!response.ok || !result.url) throw new Error(result.error ?? "アップロード失敗");
+        const result: unknown = await response.json();
+        if (
+          !result ||
+          typeof result !== "object" ||
+          !("url" in result) ||
+          typeof result.url !== "string" ||
+          !result.url ||
+          !response.ok
+        )
+          throw new Error(
+            result &&
+              typeof result === "object" &&
+              "error" in result &&
+              typeof result.error === "string"
+              ? result.error
+              : "アップロード失敗",
+          );
         if (editor.isDestroyed) return;
         editor.view.dispatch(
           closeHistory(editor.state.tr.setSelection(bookmark.resolve(editor.state.doc))),
@@ -464,14 +512,7 @@ export function createCommandPalette(editor: Editor) {
     slash = null;
     void uploadImages(files, position ?? editor.state.selection.from);
   };
-  const dragover = (event: DragEvent) => {
-    if (
-      Array.from(event.dataTransfer?.items ?? []).some(
-        (item) => item.kind === "file" && item.type.startsWith("image/"),
-      )
-    )
-      event.preventDefault();
-  };
+
   editor.view.dom.addEventListener("drop", drop, true);
   editor.view.dom.addEventListener("dragover", dragover);
   const fields = (
@@ -500,10 +541,7 @@ export function createCommandPalette(editor: Editor) {
         (values) => {
           let document: JSONContent;
           if (id === "import-markdown")
-            document = parseArticleMarkdown(
-              values.source,
-              values.format as import("./markdown").MarkdownSource,
-            );
+            document = parseArticleMarkdown(values.source, values.format);
           else {
             const source = JSON.parse(values.source);
             if (
@@ -841,17 +879,21 @@ export function createCommandPalette(editor: Editor) {
       const input = document.createElement("input");
       input.type = "file";
       input.accept = "image/png,image/jpeg,image/gif,image/webp";
-      input.onchange = () => {
+      input.addEventListener("change", () => {
         const file = input.files?.[0];
         if (file) void uploadImages([file]);
-      };
+      });
       input.click();
       return;
     }
     commit(() => {
       const chain = editor.chain();
-      if (id.startsWith("heading-"))
-        return chain.setHeading({ level: Number(id.at(-1)) as 2 }).run();
+      if (id.startsWith("heading-")) {
+        const level = Number(id.at(-1));
+        if (level === 2 || level === 3 || level === 4 || level === 5 || level === 6)
+          return chain.setHeading({ level }).run();
+        return false;
+      }
       if (formatCommands[id]) return chain.toggleMark(formatCommands[id]).run();
       const actions: Record<string, () => boolean> = {
         paragraph: () => chain.setParagraph().run(),
@@ -865,7 +907,10 @@ export function createCommandPalette(editor: Editor) {
         "soft-break": () => insert({ type: "softBreak" }),
         unlink: () => chain.unsetLink().run(),
         "clear-inline-formatting": () =>
-          Object.values(formatCommands).reduce((c, mark) => c.unsetMark(mark), chain).unsetCode().run(),
+          Object.values(formatCommands)
+            .reduce((c, mark) => c.unsetMark(mark), chain)
+            .unsetCode()
+            .run(),
         indent: () =>
           chain.sinkListItem(editor.isActive("taskItem") ? "taskItem" : "listItem").run(),
         outdent: () =>
@@ -1056,8 +1101,8 @@ export function createCommandPalette(editor: Editor) {
         name.textContent = `/${command.id}`;
         button.appendChild(label);
         button.appendChild(name);
-        button.onpointerdown = (event) => event.preventDefault();
-        button.onclick = () => choose(command);
+        button.addEventListener("pointerdown", (event) => event.preventDefault());
+        button.addEventListener("click", () => choose(command));
         list.appendChild(button);
       });
       const owner = input ?? editor.view.dom;
@@ -1129,7 +1174,7 @@ export function createCommandPalette(editor: Editor) {
       list.children[index]?.scrollIntoView({ block: "nearest" });
     };
     const dismiss = (event: Event) => {
-      if (!panel.contains(event.target as Node)) close();
+      if (event.target instanceof Node && !panel.contains(event.target)) close();
     };
     const keyTarget = input ?? editor.view.dom;
     keyTarget.addEventListener("keydown", keydown, true);
@@ -1150,10 +1195,10 @@ export function createCommandPalette(editor: Editor) {
       owner.removeAttribute("aria-activedescendant");
     };
     if (input) {
-      input.oninput = () => {
+      input.addEventListener("input", () => {
         query = input.value;
         render(true);
-      };
+      });
       render(true);
       input.focus();
     } else update();
@@ -1176,10 +1221,15 @@ export function createCommandPalette(editor: Editor) {
       if (!dialog) return null;
       const values: Record<string, string> = {};
       dialog.querySelectorAll("input[name],textarea[name],select[name]").forEach((element) => {
-        const input = element as unknown as
-          | HTMLInputElement
-          | HTMLTextAreaElement
-          | HTMLSelectElement;
+        if (
+          !(
+            element instanceof HTMLInputElement ||
+            element instanceof HTMLTextAreaElement ||
+            element instanceof HTMLSelectElement
+          )
+        )
+          return;
+        const input = element;
         if (input.type !== "file")
           values[input.name] =
             input instanceof HTMLInputElement && input.type === "checkbox"
@@ -1193,14 +1243,20 @@ export function createCommandPalette(editor: Editor) {
         selection: { from: saved.from, to: saved.to },
       };
     },
-    resume(state: {
-      command?: string;
-      values?: Record<string, string>;
-      slash?: { from: number; to: number } | null;
-      selection?: { from: number; to: number };
-    }) {
-      if (state.selection) editor.commands.setTextSelection(state.selection);
-      if (state.command) open(state.slash ?? undefined, state.command, state.values ?? {});
+    resume(state: unknown) {
+      if (!state || typeof state !== "object") return;
+      const selection = "selection" in state ? state.selection : undefined;
+      const savedSlash = "slash" in state ? state.slash : undefined;
+
+      const restored = restoredRange(selection);
+      if (restored) editor.commands.setTextSelection(restored);
+      const values: Record<string, string> = {};
+      if ("values" in state && state.values && typeof state.values === "object") {
+        for (const [key, value] of Object.entries(state.values))
+          if (typeof value === "string") values[key] = value;
+      }
+      if ("command" in state && typeof state.command === "string")
+        open(restoredRange(savedSlash), state.command, values);
     },
   };
 }

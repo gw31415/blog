@@ -51,10 +51,14 @@ for (const width of [1280, 467]) {
     const markers = page.locator(".editor-invisible-characters span");
     await expect(markers.first()).toBeVisible();
     const right = (await body.boundingBox())!.x + (await body.boundingBox())!.width;
-    for (const box of await markers.evaluateAll((elements) =>
-      elements.map((e) => e.getBoundingClientRect().toJSON()),
-    ))
-      expect(box.x).toBeGreaterThan(right);
+    await expect
+      .poll(async () => {
+        const xs = await markers.evaluateAll((elements) =>
+          elements.map((element) => element.getBoundingClientRect().x),
+        );
+        return xs.length > 0 && xs.every((x) => x > right);
+      })
+      .toBe(true);
     const language = body.locator(".code-language-control").first();
     await expect(language).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
     await expect(page.getByText("未確定のまま下書き保存", { exact: true })).toHaveCount(0);

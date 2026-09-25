@@ -1,6 +1,8 @@
+import { BlogTopbar } from "~/components/molecules/topbar";
 import { sendMarkdown } from "~/server/markdown-response";
 import { $, component$ } from "@qwik.dev/core";
 import {
+  useNavigate,
   routeAction$,
   routeLoader$,
   type DocumentHead,
@@ -8,8 +10,7 @@ import {
   type RequestEventCommon,
 } from "@qwik.dev/router";
 
-import { ArticleShell } from "~/components/editor/article-shell";
-import { BLOG_NAME } from "~/content/article";
+import { ArticleShell } from "~/components/templates/article-shell";
 import { CONTENT_SCHEMA_VERSION } from "~/content/document";
 import { canManagePosts } from "~/content/permissions";
 import { canonicalPath } from "~/content/post-url";
@@ -18,7 +19,10 @@ import { renderDocument } from "~/server/render-document";
 import { renderPost } from "~/server/render-post";
 
 async function findRequestPost(event: RequestEventCommon) {
-  let pending = event.sharedMap.get("blog.post") as ReturnType<typeof findPost> | undefined;
+  const cached: unknown = event.sharedMap.get("blog.post");
+  // Only this function writes blog.post; Qwik sharedMap erases its value type.
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
+  let pending = cached as ReturnType<typeof findPost> | undefined;
   if (!pending) {
     pending = findPost(database(event), event.params.id);
     event.sharedMap.set("blog.post", pending);
@@ -63,6 +67,7 @@ export const useSavePost = routeAction$(async (values, event) => {
 export default component$(() => {
   const data = usePost();
   const save = useSavePost();
+  const navigate = useNavigate();
   const post = data.value.post;
   return (
     <ArticleShell
@@ -109,15 +114,12 @@ export default component$(() => {
             "message" in result.value ? String(result.value.message) : "保存できませんでした。",
           );
         const savedPath = `/blog/${draft.alias || post.id}`;
-        // Same-URL reloads let Safari restore an old scroll position on the next edit.
-        if (window.location.pathname !== savedPath) window.location.replace(savedPath);
+        // Saving a new draft must also remove ?edit=1 from the router's URL state.
+        if (window.location.pathname !== savedPath || window.location.search)
+          await navigate(savedPath, { replaceState: true, scroll: false });
       })}
     >
-      <div class="article-topbar">
-        <a class="article-site-title" href="/">
-          {BLOG_NAME}
-        </a>
-      </div>
+      <BlogTopbar class="article-topbar" />
     </ArticleShell>
   );
 });

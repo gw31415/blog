@@ -29,7 +29,7 @@ vite-plus が dev / build / lint / fmt を兼ねるため、専用の ESLint・P
 
 記事の初期表示は、MathJaxでTeXからSVGと支援技術向けMathMLを生成したSSR済みHTMLです。TipTap、ProseMirror、編集用MathJaxランタイムは最初に「編集」を押したときだけ動的に読み込み、その後は同じエディターインスタンスのeditable状態だけを切り替えます。
 
-アプリ固有のスタイルは `src/components/editor/article-styles.tsx` の module-local な qstyle tagged template で管理し、同一モジュールの `css` prop から適用します。body直下のコマンドダイアログ等の共通規則は `src/reset.css` にあります。MathJaxは自己完結したSVGを出力するため、数式用の外部CSSやWebフォントは読み込みません。
+アプリ固有のスタイルは各コンポーネントと同一モジュールの qstyle tagged template / `css` prop で管理します。色・文字組みは `src/components/foundations/theme.tsx`、記事と編集DOMの共通規則は `ArticleStyleBoundary` / `ArticleSurfaceBoundary` が所有します。ページ間ではスタイル付きコンポーネントを共有し、独自の別CSSは使用しません。詳細は `.agents/skills/blog-qstyle-components/SKILL.md` を参照してください。MathJaxは自己完結したSVGを出力するため、数式用の外部CSSやWebフォントは読み込みません。
 
 ## プロジェクト構成
 
@@ -93,3 +93,19 @@ pnpm fmt            # フォーマット
 - [Qwik Docs](https://qwik.dev/)
 - [Qwik GitHub](https://github.com/QwikDev/qwik)
 - [Vite](https://vitejs.dev/)
+
+## コンポーネントの構成
+
+Atomic Designを参考に、UIの責務で配置しています。ルートはデータ取得とページへの接続を担当します。
+
+| 配置                     | 責務・代表例                                                                             |
+| ------------------------ | ---------------------------------------------------------------------------------------- |
+| `components/foundations` | テーマ、文字組み、メタ情報、入力イベントの基盤                                           |
+| `components/atoms`       | 編集ボタン、サイト名リンク、方眼レイヤー、紙面コンテナーなどの小さな部品                 |
+| `components/molecules`   | タグ群、トップバー、フッター、記事カード、確認ダイアログなどの複合部品                   |
+| `components/organisms`   | 記事ヘッダー、年月ごとの記事一覧などのまとまったUI                                       |
+| `components/templates`   | 紙面、一覧レイアウト、記事画面、ソフトウェアキーボード対応の画面構造                     |
+| `components/editor`      | Tiptapの実装、SSRと編集DOMの共有契約・スタイル境界。UI階層に押し込まない編集サブシステム |
+| `routes`                 | ページ。loader/actionとテンプレートを接続                                                |
+
+小さなUIから上位のページ構造へ依存しないようにし、qstyleの定義と適用は同じモジュールに置きます。共有時はそのコンポーネントを直接importします。スタイルだけの再exportや全体のbarrel exportで編集ランタイムの遅延ロード境界を曖昧にしません。日時のグループ化のような描画に依存しない処理は `content` に置きます。

@@ -108,6 +108,11 @@ settings:
 overrides:
   vite: npm:@voidzero-dev/vite-plus-core@0.3.0
 
+patchedDependencies:
+  '@qstyle/vite@0.2.0': 045afb0b20d4652593a7dec3735a9acce728a7d3741b75a3dae5fbccfe1edd39
+  '@qwik.dev/core@2.0.0-beta.43': 21bee86b48a81d8716f7decdb8c61c2bf4529bff3429668b201097246e3ca80b
+  '@tiptap/static-renderer@3.31.3': 0a61e6f4df28825a5a2de677eaa9306209414b55c77a25a2eb515ad582a21996
+
 importers:
 
   .:
@@ -168,7 +173,7 @@ importers:
         version: 3.31.3
       '@tiptap/static-renderer':
         specifier: 3.31.3
-        version: 3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 3.31.3(patch_hash=0a61e6f4df28825a5a2de677eaa9306209414b55c77a25a2eb515ad582a21996)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       entities:
         specifier: ^8.1.0
         version: 8.1.0
@@ -190,16 +195,16 @@ importers:
         version: 1.63.0
       '@qstyle/qwik':
         specifier: ^0.2.0
-        version: 0.2.0(@qwik.dev/core@2.0.0-beta.43(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11))
+        version: 0.2.0(@qwik.dev/core@2.0.0-beta.43(patch_hash=21bee86b48a81d8716f7decdb8c61c2bf4529bff3429668b201097246e3ca80b)(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11))
       '@qstyle/vite':
         specifier: ^0.2.0
-        version: 0.2.0(@qwik.dev/core@2.0.0-beta.43(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11))(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))
+        version: 0.2.0(patch_hash=045afb0b20d4652593a7dec3735a9acce728a7d3741b75a3dae5fbccfe1edd39)(@qwik.dev/core@2.0.0-beta.43(patch_hash=21bee86b48a81d8716f7decdb8c61c2bf4529bff3429668b201097246e3ca80b)(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11))(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))
       '@qwik.dev/core':
         specifier: 2.0.0-beta.43
-        version: 2.0.0-beta.43(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11)
+        version: 2.0.0-beta.43(patch_hash=21bee86b48a81d8716f7decdb8c61c2bf4529bff3429668b201097246e3ca80b)(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11)
       '@qwik.dev/router':
         specifier: 2.0.0-beta.43
-        version: 2.0.0-beta.43(@qwik.dev/core@2.0.0-beta.43(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11))(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(supports-color@10.2.2)(typescript@7.0.2)
+        version: 2.0.0-beta.43(@qwik.dev/core@2.0.0-beta.43(patch_hash=21bee86b48a81d8716f7decdb8c61c2bf4529bff3429668b201097246e3ca80b)(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11))(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(supports-color@10.2.2)(typescript@7.0.2)
       '@types/node':
         specifier: 26.4.1
         version: 26.4.1
@@ -5204,21 +5209,21 @@ snapshots:
     dependencies:
       '@qstyle/core': 0.1.1
 
-  '@qstyle/qwik@0.2.0(@qwik.dev/core@2.0.0-beta.43(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11))':
+  '@qstyle/qwik@0.2.0(@qwik.dev/core@2.0.0-beta.43(patch_hash=21bee86b48a81d8716f7decdb8c61c2bf4529bff3429668b201097246e3ca80b)(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11))':
     dependencies:
       '@qstyle/core': 0.1.1
-      '@qwik.dev/core': 2.0.0-beta.43(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11)
+      '@qwik.dev/core': 2.0.0-beta.43(patch_hash=21bee86b48a81d8716f7decdb8c61c2bf4529bff3429668b201097246e3ca80b)(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11)
       csstype: 3.2.3
 
-  '@qstyle/vite@0.2.0(@qwik.dev/core@2.0.0-beta.43(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11))(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))':
+  '@qstyle/vite@0.2.0(patch_hash=045afb0b20d4652593a7dec3735a9acce728a7d3741b75a3dae5fbccfe1edd39)(@qwik.dev/core@2.0.0-beta.43(patch_hash=21bee86b48a81d8716f7decdb8c61c2bf4529bff3429668b201097246e3ca80b)(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11))(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))':
     dependencies:
       '@qstyle/core': 0.1.1
       '@qstyle/inspector': 0.1.1
-      '@qstyle/qwik': 0.2.0(@qwik.dev/core@2.0.0-beta.43(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11))
-      '@qwik.dev/core': 2.0.0-beta.43(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11)
+      '@qstyle/qwik': 0.2.0(@qwik.dev/core@2.0.0-beta.43(patch_hash=21bee86b48a81d8716f7decdb8c61c2bf4529bff3429668b201097246e3ca80b)(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11))
+      '@qwik.dev/core': 2.0.0-beta.43(patch_hash=21bee86b48a81d8716f7decdb8c61c2bf4529bff3429668b201097246e3ca80b)(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11)
       vite: '@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0)'
 
-  '@qwik.dev/core@2.0.0-beta.43(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11)':
+  '@qwik.dev/core@2.0.0-beta.43(patch_hash=21bee86b48a81d8716f7decdb8c61c2bf4529bff3429668b201097246e3ca80b)(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11)':
     dependencies:
       '@qwik.dev/optimizer': 2.1.0-beta.8
       csstype: 3.2.3
@@ -5231,12 +5236,12 @@ snapshots:
 
   '@qwik.dev/optimizer@2.1.0-beta.8': {}
 
-  '@qwik.dev/router@2.0.0-beta.43(@qwik.dev/core@2.0.0-beta.43(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11))(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(supports-color@10.2.2)(typescript@7.0.2)':
+  '@qwik.dev/router@2.0.0-beta.43(@qwik.dev/core@2.0.0-beta.43(patch_hash=21bee86b48a81d8716f7decdb8c61c2bf4529bff3429668b201097246e3ca80b)(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11))(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(supports-color@10.2.2)(typescript@7.0.2)':
     dependencies:
       '@azure/functions': 3.5.1
       '@mdx-js/mdx': 3.1.1(supports-color@10.2.2)
       '@netlify/edge-functions': 3.0.8
-      '@qwik.dev/core': 2.0.0-beta.43(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11)
+      '@qwik.dev/core': 2.0.0-beta.43(patch_hash=21bee86b48a81d8716f7decdb8c61c2bf4529bff3429668b201097246e3ca80b)(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.1)(less@4.9.0(supports-color@10.2.2))(sass@1.103.1)(stylus@0.62.0(supports-color@10.2.2))(typescript@7.0.2)(yaml@2.9.0))(prettier@3.9.6)(vitest@4.1.11)
       '@types/mdx': 2.0.14
       estree-util-value-to-estree: 3.5.0
       github-slugger: 2.0.0
@@ -5462,7 +5467,7 @@ snapshots:
       '@tiptap/extensions': 3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)
       '@tiptap/pm': 3.31.3
 
-  '@tiptap/static-renderer@3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
+  '@tiptap/static-renderer@3.31.3(patch_hash=0a61e6f4df28825a5a2de677eaa9306209414b55c77a25a2eb515ad582a21996)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
       '@tiptap/core': 3.31.3(@tiptap/pm@3.31.3)
       '@tiptap/pm': 3.31.3
