@@ -743,11 +743,6 @@ const postCardStyles = css`
       transform: translate(0, 0);
     }
   }
-  @media (max-width: 600px) {
-    & + .dated-letter {
-      margin-top: -10px;
-    }
-  }
   @media (max-width: 760px) {
     & .letter {
       --flap-width: 24px;

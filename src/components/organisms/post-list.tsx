@@ -262,9 +262,6 @@ const postListStyles = css`
       top: calc(var(--archive-header-height) + var(--mobile-calendar-height));
       margin-left: var(--mobile-calendar-inset);
     }
-    & .letters {
-      gap: 0;
-    }
     & .post-desk[data-layout="grid"] .letters {
       grid-template-columns: 1fr;
     }

@@ -118,18 +118,21 @@ test("letter archive is SSR rendered and its corner peel opens deletion controls
   await expect(link).toBeVisible();
 });
 
-test("mobile envelopes overlap while year, month and day share the left column", async ({
+test("mobile envelopes keep desktop spacing while year, month and day share the left column", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/");
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   const cards = page.locator(".letter");
+  const first = page.locator(".letters").first().locator(".dated-letter").first();
   const second = page.locator(".letters").first().locator(".dated-letter").nth(1);
-  await expect(second).toHaveCSS("margin-top", "-10px");
+  await expect(page.locator(".letters").first()).toHaveCSS("gap", "8px");
+  await expect(second).toHaveCSS("margin-top", "0px");
   const firstBox = (await cards.first().boundingBox())!;
-  const secondBox = (await second.locator(".letter").boundingBox())!;
-  expect(secondBox.y).toBeLessThan(firstBox.y + firstBox.height);
+  const firstItemBox = (await first.boundingBox())!;
+  const secondItemBox = (await second.boundingBox())!;
+  expect(secondItemBox.y - (firstItemBox.y + firstItemBox.height)).toBeCloseTo(8, 0);
   expect(firstBox.x).toBeGreaterThanOrEqual(46);
   expect(firstBox.x).toBeLessThanOrEqual(56);
   expect(375 - (firstBox.x + firstBox.width)).toBeLessThanOrEqual(8);
