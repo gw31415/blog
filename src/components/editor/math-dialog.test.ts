@@ -34,6 +34,11 @@ describe("validateLatex", () => {
   });
 });
 
-it('supports current MathJax chemistry, physics and aligned equations',()=>{
- for(const source of [String.raw`\ce{H2O}`,String.raw`\dv{f}{x}`,String.raw`\begin{aligned}a&=b\\c&=d\end{aligned}`])expect(validateLatex(source,true).ok).toBe(true);
+it("supports current MathJax chemistry, physics and aligned equations", () => {
+  for (const source of [
+    String.raw`\ce{H2O}`,
+    String.raw`\dv{f}{x}`,
+    String.raw`\begin{aligned}a&=b\\c&=d\end{aligned}`,
+  ])
+    expect(validateLatex(source, true).ok).toBe(true);
 });

@@ -52,7 +52,10 @@ for (const width of [1280, 390])
     expect(sourceLayout.border).toBe(sourceLayout.articleBorder);
     expect(sourceLayout.background).toBe(sourceLayout.articleBackground);
     // Code spacing follows one body line, including user-adjusted type sizes.
-    expect(parseFloat(sourceLayout.articleMargin)).toBeCloseTo(parseFloat(sourceLayout.bodyLineHeight), 1);
+    expect(parseFloat(sourceLayout.articleMargin)).toBeCloseTo(
+      parseFloat(sourceLayout.bodyLineHeight),
+      1,
+    );
     await expect(page.locator(".editor-dock .render-source-dialog")).toHaveCount(1);
     await expect(page.locator(".editor-formatting")).toBeHidden();
     await expect(dialog).not.toHaveAttribute("aria-modal", "true");

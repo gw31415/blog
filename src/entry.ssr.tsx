@@ -26,11 +26,6 @@ export default createRenderer((opts) => {
         //   title: "My App",
         // },
       },
-      // 先読みプリローダーを無効化する。hover/idle 時の投機 fetch と
-      // bundle-graph.json (約1.3KB) の取得が無くなる。対話・遷移時の
-      // オンデマンド取得は qwikloader が担うため機能は保たれる。
-      // 内部リンク中心の app で先読みを戻す場合はこの1行を消す。
-      preloader: false,
     },
   };
 });

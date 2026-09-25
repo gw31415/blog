@@ -10,6 +10,9 @@ export class DocumentError extends Error {
     this.path = path;
   }
 }
+function fail(path: string, message: string): never {
+  throw new DocumentError(path, message);
+}
 const blocks = [
   "paragraph",
   "heading",
@@ -71,9 +74,6 @@ export function normalizeDocument(
   input: unknown,
   options: { editing?: boolean } = {},
 ): JSONContent {
-  function fail(path: string, message: string): never {
-    throw new DocumentError(path, message);
-  }
   function scalar(value: unknown, path: string): void {
     if (
       typeof value === "string" &&

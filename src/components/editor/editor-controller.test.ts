@@ -12,7 +12,9 @@ function fakeHandle(editableStates: boolean[]): EditorHandle {
     run() {
       return true;
     },
-    getJSON() { return { type: "doc", content: [{ type: "paragraph" }] }; },
+    getJSON() {
+      return { type: "doc", content: [{ type: "paragraph" }] };
+    },
     getMarkdown() {
       return "本文\n";
     },

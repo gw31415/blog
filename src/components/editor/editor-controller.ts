@@ -112,8 +112,12 @@ export function createEditorController(loadRuntime: EditorRuntimeLoader): Editor
       handle?.setEditable(false);
     },
 
-    getWorkingState() { return handle?.getWorkingState?.(); },
-    getJSON() { return handle?.getJSON(); },
+    getWorkingState() {
+      return handle?.getWorkingState?.();
+    },
+    getJSON() {
+      return handle?.getJSON();
+    },
 
     getMarkdown() {
       return handle?.getMarkdown();

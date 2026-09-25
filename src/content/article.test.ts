@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { normalizeSingleLine, formatJapaneseDate, formatJapaneseEraYear, formatShortDate } from "./article";
+import {
+  normalizeSingleLine,
+  formatJapaneseDate,
+  formatJapaneseEraYear,
+  formatShortDate,
+} from "./article";
 
 describe("article presentation", () => {
   it("derives the localized date from the ISO publication date", () => {

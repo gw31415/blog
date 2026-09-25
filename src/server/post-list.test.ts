@@ -11,13 +11,13 @@ function fakeDatabase(rows: unknown[]) {
     },
     all: async () => ({ results: rows }),
   };
-  // This test emulates only the D1 operations exercised by this module.
-  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   const db = {
     prepare: (query: string) => {
       sql = query;
       return statement;
     },
+    // This test emulates only the D1 operations exercised by this module.
+    // eslint-disable-next-line typescript/no-unsafe-type-assertion
   } as unknown as D1Database;
   return { db, sql: () => sql, bindings: () => bindings };
 }

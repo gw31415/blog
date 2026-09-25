@@ -56,7 +56,9 @@ export function renderPost(
             const caption = typeof node.attrs.caption === "string" ? node.attrs.caption : null;
             return renderDOMSpec(
               mermaidFigureDOMSpec(node.textContent, caption),
-              caption ? diagram.replace('alt="Mermaid図"', `alt="${escapeHtml(caption)}"`) : diagram,
+              caption
+                ? diagram.replace('alt="Mermaid図"', `alt="${escapeHtml(caption)}"`)
+                : diagram,
             );
           }
           const highlighted = highlightCode(language, node.textContent)

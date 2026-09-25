@@ -26,25 +26,26 @@ interface MathEditRequest {
 type HighlightCode = typeof import("./editor-syntax-highlighting").highlightCode;
 
 function createSyntaxHighlighting(highlightCode: HighlightCode): Extension {
+  const decorations = (doc: Parameters<typeof DecorationSet.create>[0]) => {
+    const ranges: Decoration[] = [];
+    for (const block of findChildren(doc, (node) => node.type.name === "codeBlock")) {
+      let from = block.pos + 1;
+      const language = String(block.node.attrs.language ?? "");
+      for (const span of highlightCode(language, block.node.textContent)) {
+        const to = from + span.text.length;
+        if (span.classes.length > 0) {
+          ranges.push(Decoration.inline(from, to, { class: span.classes.join(" ") }));
+        }
+        from = to;
+      }
+    }
+    return DecorationSet.create(doc, ranges);
+  };
+
   return Extension.create({
     name: "articleSyntaxHighlighting",
     addProseMirrorPlugins() {
       const key = new PluginKey<DecorationSet>("articleSyntaxHighlighting");
-      const decorations = (doc: Parameters<typeof DecorationSet.create>[0]) => {
-        const ranges: Decoration[] = [];
-        for (const block of findChildren(doc, (node) => node.type.name === "codeBlock")) {
-          let from = block.pos + 1;
-          const language = String(block.node.attrs.language ?? "");
-          for (const span of highlightCode(language, block.node.textContent)) {
-            const to = from + span.text.length;
-            if (span.classes.length > 0) {
-              ranges.push(Decoration.inline(from, to, { class: span.classes.join(" ") }));
-            }
-            from = to;
-          }
-        }
-        return DecorationSet.create(doc, ranges);
-      };
 
       return [
         new Plugin({

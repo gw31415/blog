@@ -2,7 +2,35 @@ import { qwikVite } from "@qwik.dev/core/optimizer";
 import { qwikRouter } from "@qwik.dev/router/vite";
 // import UnoCSS from "@qstyle/unocss"; // 未導入: 有効化時は `@qstyle/unocss` + `unocss` を deps に追加し下のコメントアウトを外す
 import { qstyle } from "@qstyle/vite";
-import { defineConfig, type ViteUserConfig } from "vite-plus";
+import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { defineConfig, type Plugin, type ViteUserConfig } from "vite-plus";
+
+const require = createRequire(import.meta.url);
+const mermaidBrowserPath = require.resolve("mermaid/dist/mermaid.min.js");
+
+const mermaidBrowserAsset = (): Plugin => ({
+  name: "mermaid-browser-asset",
+  configureServer(server) {
+    server.middlewares.use("/mermaid/mermaid.min.js", async (_request, response, next) => {
+      try {
+        response.statusCode = 200;
+        response.setHeader("Content-Type", "text/javascript; charset=utf-8");
+        response.end(await readFile(mermaidBrowserPath));
+      } catch (error) {
+        next(error);
+      }
+    });
+  },
+  async generateBundle() {
+    if (this.environment.config.build.ssr) return;
+    this.emitFile({
+      type: "asset",
+      fileName: "mermaid/mermaid.min.js",
+      source: await readFile(mermaidBrowserPath),
+    });
+  },
+});
 
 export default defineConfig(async ({ command, mode }) => {
   const proxy =
@@ -17,6 +45,7 @@ export default defineConfig(async ({ command, mode }) => {
     // qstyle は qwik optimizer より先に css prop を変換する。
     plugins: [
       // UnoCSS(), // 未導入: qstyle() より前に置く（class ユーティリティを css prop へ翻訳するため）
+      mermaidBrowserAsset(),
       qstyle(),
       qwikRouter({ trailingSlash: false, platform: proxy ? { env: proxy.env } : undefined }),
       qwikVite(),
@@ -78,6 +107,8 @@ export default defineConfig(async ({ command, mode }) => {
         "dummy-non-existing-folder",
         // Markdown から生成した初期記事の JSON / HTML
         "src/content/initial-article.generated.ts",
+        // 正本仕様は文意に無関係な表・フェンスの全面整形を避ける
+        "tiptap-document-spec-v2.md",
         // 移植元のソースアーティファクト
         "sample.html",
       ],

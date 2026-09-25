@@ -94,7 +94,13 @@ export function tableActionTransaction(
   if (target.position < 0 || target.position > state.doc.content.size) return null;
   const table = state.doc.nodeAt(target.position);
   if (!table || table.type.name !== "table" || table !== target.table) return null;
-  if (action.type === "delete" && action.axis === "column" && table.firstChild?.childCount === 1 && table.firstChild.firstChild?.type.name === "tableHeader") return state.tr.delete(target.position,target.position+table.nodeSize);
+  if (
+    action.type === "delete" &&
+    action.axis === "column" &&
+    table.firstChild?.childCount === 1 &&
+    table.firstChild.firstChild?.type.name === "tableHeader"
+  )
+    return state.tr.delete(target.position, target.position + table.nodeSize);
   const result = transformTable(table, action);
   return result.ok
     ? state.tr.replaceWith(target.position, target.position + table.nodeSize, result.table)
@@ -179,7 +185,9 @@ class TableControls {
     }
     if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
-    const items = [...this.menu.querySelectorAll<HTMLElement>('input[type="checkbox"], button:not(:disabled)')];
+    const items = [
+      ...this.menu.querySelectorAll<HTMLElement>('input[type="checkbox"], button:not(:disabled)'),
+    ];
     const current = items.findIndex((item) => item === document.activeElement);
     const next =
       event.key === "Home"
@@ -234,11 +242,17 @@ class TableControls {
         item.dataset.tableAction = action;
         item.setAttribute("role", "menuitem");
         const profile = handle.table.firstChild?.firstChild?.type.name === "tableHeader";
-        item.textContent = action === "delete" && handle.axis === "column" && length === 1 && profile ? "最終列を削除（表全体）" : labels[index];
+        item.textContent =
+          action === "delete" && handle.axis === "column" && length === 1 && profile
+            ? "最終列を削除（表全体）"
+            : labels[index];
         item.disabled =
           !!reorderDisabledReason(handle.table) ||
           (action === "delete" && length === 1 && !(profile && handle.axis === "column")) ||
-          (profile && handle.axis === "row" && ((handle.index === 0 && ["delete","previous","next"].includes(action)) || (handle.index === 1 && action === "previous"))) ||
+          (profile &&
+            handle.axis === "row" &&
+            ((handle.index === 0 && ["delete", "previous", "next"].includes(action)) ||
+              (handle.index === 1 && action === "previous"))) ||
           (action === "previous" && handle.index === 0) ||
           (action === "next" && handle.index === length - 1);
         if (reorderDisabledReason(handle.table)) {
@@ -253,7 +267,9 @@ class TableControls {
     this.menu = menu;
     this.root.appendChild(menu);
     this.position();
-    menu.querySelector<HTMLElement>('input[type="checkbox"], button')?.focus({ preventScroll: true });
+    menu
+      .querySelector<HTMLElement>('input[type="checkbox"], button')
+      ?.focus({ preventScroll: true });
   }
 
   private apply(handle: Handle, action: TableAction): void {

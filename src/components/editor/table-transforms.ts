@@ -108,7 +108,12 @@ export function transformTable(table: ProseMirrorNode, action: TableAction): Tab
 
   if (action.axis === "row") {
     const hasHeader = rows[0].firstChild?.type.name === "tableHeader";
-    if (hasHeader && ((action.type === "delete" && action.index === 0) || (action.type === "move" && (action.from === 0 || action.to === 0)))) return {ok:false,reason:"header-row"};
+    if (
+      hasHeader &&
+      ((action.type === "delete" && action.index === 0) ||
+        (action.type === "move" && (action.from === 0 || action.to === 0)))
+    )
+      return { ok: false, reason: "header-row" };
     if (action.type === "move") {
       return rebuildTable(table, moveItem(rows, action.from, action.to));
     }
@@ -128,8 +133,17 @@ export function transformTable(table: ProseMirrorNode, action: TableAction): Tab
             source,
             childNodes(source).map((sourceCell) => blankCell(sourceCell)),
           );
-    if (hasHeader) inserted = rebuildRow(inserted, childNodes(inserted).map(cell => table.type.schema.nodes.tableCell.create(cell.attrs,cell.content,cell.marks)));
-    const insertionIndex = Math.max(hasHeader ? 1 : 0, action.type === "insertBefore" ? action.index : action.index + 1);
+    if (hasHeader)
+      inserted = rebuildRow(
+        inserted,
+        childNodes(inserted).map((cell) =>
+          table.type.schema.nodes.tableCell.create(cell.attrs, cell.content, cell.marks),
+        ),
+      );
+    const insertionIndex = Math.max(
+      hasHeader ? 1 : 0,
+      action.type === "insertBefore" ? action.index : action.index + 1,
+    );
     const nextRows = [...rows];
     nextRows.splice(insertionIndex, 0, inserted);
     return rebuildTable(table, nextRows);

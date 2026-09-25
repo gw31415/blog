@@ -32,10 +32,10 @@ describe("article Markdown", () => {
   });
 
   it.each([
-    ['callout', ':::{note} 補足\n本文\n:::'],
-    ['figure', ':::{figure} /image.jpg\n:alt: 代替\n\n図の説明\n:::'],
-    ['details', ':::{dropdown} 詳細\n本文です。\n:::'],
-  ])('round-trips the %s extension', (_name, source) => {
+    ["callout", ":::{note} 補足\n本文\n:::"],
+    ["figure", ":::{figure} /image.jpg\n:alt: 代替\n\n図の説明\n:::"],
+    ["details", ":::{dropdown} 詳細\n本文です。\n:::"],
+  ])("round-trips the %s extension", (_name, source) => {
     expect(roundTrip(source)).toBe(source);
   });
 

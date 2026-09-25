@@ -1,0 +1,9 @@
+diff --git a/lib/index.qwik.mjs b/lib/index.qwik.mjs
+--- a/lib/index.qwik.mjs
++++ b/lib/index.qwik.mjs
+@@ -246,2 +246,3 @@
+-		if (mode.includes("b")) preloadRouteBundles(url.pathname);
+-		if (mode.includes("d")) prefetchRoute(url, true, .8, manifestHash, false);
++		const prefetchBundles = mode.includes("b");
++		const prefetchData = mode.includes("d");
++		if (prefetchBundles || prefetchData) prefetchRoute(url, prefetchData, .8, manifestHash, prefetchBundles);

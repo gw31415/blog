@@ -25,7 +25,9 @@ export const PostCard = component$<{
         )}
         <article class="letter">
           <h3 class="letter-title type-heading">
-            <Link href={canonicalPath(post)}>{post.title || "無題"}</Link>
+            <Link href={canonicalPath(post)} prefetchData="visible">
+              {post.title || "無題"}
+            </Link>
           </h3>
           <BlogTags tags={post.tags} wrap />
           {post.subtitle && (

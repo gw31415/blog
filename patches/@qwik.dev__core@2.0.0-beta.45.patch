@@ -2,7 +2,7 @@ diff --git a/dist/cli.mjs b/dist/cli.mjs
 index 630e3b2e3b3f7189a6e0531916a1950275898887..8d91ba770e5c3046f9279bb1672ed4c6e062915c 100644
 --- a/dist/cli.mjs
 +++ b/dist/cli.mjs
-@@ -12000,7 +12000,7 @@ async function runBuildCommand(app) {
+@@ -12022,7 +12022,7 @@ async function runBuildCommand(app) {
          stdout: "inherit",
          stderr: "inherit",
          env: {
@@ -11,7 +11,7 @@ index 630e3b2e3b3f7189a6e0531916a1950275898887..8d91ba770e5c3046f9279bb1672ed4c6
          }
        });
      } catch (e2) {
-@@ -12033,7 +12033,7 @@ async function runBuildCommand(app) {
+@@ -12055,7 +12055,7 @@ async function runBuildCommand(app) {
        stderr: "inherit",
        cwd: app.rootDir,
        env: {
@@ -20,7 +20,7 @@ index 630e3b2e3b3f7189a6e0531916a1950275898887..8d91ba770e5c3046f9279bb1672ed4c6
        }
      }).then((e2) => ({
        title: "Built library modules",
-@@ -12061,7 +12061,7 @@ async function runBuildCommand(app) {
+@@ -12083,7 +12083,7 @@ async function runBuildCommand(app) {
        stderr: "inherit",
        cwd: app.rootDir,
        env: {
@@ -29,7 +29,7 @@ index 630e3b2e3b3f7189a6e0531916a1950275898887..8d91ba770e5c3046f9279bb1672ed4c6
        }
      }).then((e2) => ({
        title: "Built preview (ssr) modules",
-@@ -12086,7 +12086,7 @@ async function runBuildCommand(app) {
+@@ -12108,7 +12108,7 @@ async function runBuildCommand(app) {
        stderr: "inherit",
        cwd: app.rootDir,
        env: {
@@ -38,7 +38,7 @@ index 630e3b2e3b3f7189a6e0531916a1950275898887..8d91ba770e5c3046f9279bb1672ed4c6
        }
      }).then((e2) => ({
        title: "Built server (ssr) modules",
-@@ -12110,7 +12110,7 @@ async function runBuildCommand(app) {
+@@ -12132,7 +12132,7 @@ async function runBuildCommand(app) {
        stderr: "inherit",
        cwd: app.rootDir,
        env: {
@@ -47,7 +47,7 @@ index 630e3b2e3b3f7189a6e0531916a1950275898887..8d91ba770e5c3046f9279bb1672ed4c6
        }
      }).then((e2) => ({
        title: "Built static (ssg) modules",
-@@ -12137,7 +12137,7 @@ async function runBuildCommand(app) {
+@@ -12159,7 +12159,7 @@ async function runBuildCommand(app) {
        stderr: "inherit",
        cwd: app.rootDir,
        env: {
@@ -56,7 +56,7 @@ index 630e3b2e3b3f7189a6e0531916a1950275898887..8d91ba770e5c3046f9279bb1672ed4c6
        }
      }).then(() => ({
        title: "Lint checked"
-@@ -12175,7 +12175,7 @@ async function runBuildCommand(app) {
+@@ -12197,7 +12197,7 @@ async function runBuildCommand(app) {
            stderr: "inherit",
            cwd: app.rootDir,
            env: {
@@ -65,7 +65,7 @@ index 630e3b2e3b3f7189a6e0531916a1950275898887..8d91ba770e5c3046f9279bb1672ed4c6
            }
          }).catch((e2) => {
            console.log(``);
-@@ -12198,7 +12198,7 @@ async function runBuildCommand(app) {
+@@ -12220,7 +12220,7 @@ async function runBuildCommand(app) {
          stderr: "inherit",
          cwd: app.rootDir,
          env: {

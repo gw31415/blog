@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "qwik build",
-    "build.client": "node scripts/prepare-mermaid.mjs && vp build",
+    "build.client": "vp build",
     "build.server": "qwik check-client src dist && vp build -c adapters/cloudflare-workers/vite.config.ts",
     "build.types": "wrangler types && tsc --incremental --noEmit",
     "check": "vp check",
@@ -12,7 +12,7 @@
     "check.fmt": "vp fmt --check",
     "db:migrate:local": "wrangler d1 migrations apply blog-posts --local",
     "deploy": "pnpm run build && wrangler deploy",
-    "dev": "node scripts/prepare-mermaid.mjs && vp dev -c adapters/cloudflare-workers/vite.config.ts --mode ssr --host 0.0.0.0",
+    "dev": "vp dev -c adapters/cloudflare-workers/vite.config.ts --mode ssr --host 0.0.0.0",
     "fmt": "vp fmt",
     "lint": "vp lint",
     "preview": "pnpm run build && wrangler dev",
@@ -42,26 +42,26 @@
     "@tiptap/static-renderer": "3.31.3",
     "entities": "^8.1.0",
     "lowlight": "3.3.0",
-    "marked": "17.0.6",
+    "marked": "18.0.14",
     "mermaid": "12.0.0"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.54.3",
+    "@cloudflare/vite-plugin": "^1.60.1",
     "@playwright/test": "^1.63.0",
     "@qstyle/qwik": "^0.2.0",
     "@qstyle/vite": "^0.2.0",
-    "@qwik.dev/core": "2.0.0-beta.43",
-    "@qwik.dev/router": "2.0.0-beta.43",
-    "@types/node": "26.4.1",
+    "@qwik.dev/core": "2.0.0-beta.45",
+    "@qwik.dev/router": "2.0.0-beta.45",
+    "@types/node": "26.6.2",
     "@unocss/reset": "^66.10.5",
-    "eslint-plugin-qwik": "2.0.0-beta.43",
+    "eslint-plugin-qwik": "2.0.0-beta.45",
     "highlight.js": "^11.12.0",
     "typescript": "^7.0.2",
-    "vite-plus": "^0.3.0",
-    "wrangler": "^4.128.0"
+    "vite-plus": "^1.0.0-rc.0",
+    "wrangler": "^4.140.0"
   },
   "engines": {
     "node": "^26"
   },
-  "packageManager": "pnpm@12.2.1"
+  "packageManager": "pnpm@12.6.0"
 }

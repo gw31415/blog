@@ -10,10 +10,12 @@ export default defineConfig({
     baseURL: process.env.BLOG_TEST_URL ?? `http://127.0.0.1:${port}`,
   },
   workers: 1,
-  webServer: process.env.BLOG_TEST_URL ? undefined : {
-    command: `pnpm dev --host 127.0.0.1 --port ${port} --strictPort`,
-    url: `http://127.0.0.1:${port}`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: process.env.BLOG_TEST_URL
+    ? undefined
+    : {
+        command: `pnpm dev --host 127.0.0.1 --port ${port} --strictPort`,
+        url: `http://127.0.0.1:${port}`,
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000,
+      },
 });

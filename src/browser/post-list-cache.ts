@@ -3,10 +3,12 @@
 async function openCache(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open("blog-post-list", 1);
-    request.onupgradeneeded = () => request.result.createObjectStore("entries");
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-    request.onblocked = () => reject(new Error("Cache database blocked"));
+    request.addEventListener("upgradeneeded", () => request.result.createObjectStore("entries"));
+    request.addEventListener("success", () => resolve(request.result), { once: true });
+    request.addEventListener("error", () => reject(request.error), { once: true });
+    request.addEventListener("blocked", () => reject(new Error("Cache database blocked")), {
+      once: true,
+    });
   });
 }
 
@@ -16,8 +18,8 @@ export async function readPostListCache<T>(key: string): Promise<T | undefined> 
     try {
       return await new Promise<T | undefined>((resolve, reject) => {
         const request = db.transaction("entries").objectStore("entries").get(key);
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
+        request.addEventListener("success", () => resolve(request.result), { once: true });
+        request.addEventListener("error", () => reject(request.error), { once: true });
       });
     } finally {
       db.close();
@@ -34,9 +36,9 @@ export async function writePostListCache(key: string, value: unknown): Promise<v
       await new Promise<void>((resolve, reject) => {
         const transaction = db.transaction("entries", "readwrite");
         transaction.objectStore("entries").put(value, key);
-        transaction.oncomplete = () => resolve();
-        transaction.onerror = () => reject(transaction.error);
-        transaction.onabort = () => reject(transaction.error);
+        transaction.addEventListener("complete", () => resolve(), { once: true });
+        transaction.addEventListener("error", () => reject(transaction.error), { once: true });
+        transaction.addEventListener("abort", () => reject(transaction.error), { once: true });
       });
     } finally {
       db.close();

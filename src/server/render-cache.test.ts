@@ -44,8 +44,6 @@ function database() {
     const info = query.columns().length ? undefined : query.run(...statement.args);
     return { results, success: true, meta: { changes: Number(info?.changes ?? results.length) } };
   }
-  // This test emulates only the D1 operations exercised by this module.
-  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   const db = {
     prepare: (sql: string) => new Statement(sql),
     async batch(statements: Statement[]) {
@@ -59,6 +57,8 @@ function database() {
         throw error;
       }
     },
+    // This test emulates only the D1 operations exercised by this module.
+    // eslint-disable-next-line typescript/no-unsafe-type-assertion
   } as unknown as D1Database;
   return { db, sqlite, queries };
 }
@@ -115,11 +115,11 @@ describe("shared persistent rendering cache", () => {
         insertRenderCache(db, entry, entry.kind === "mermaid" ? svg : generateMath(entry).output!),
       ),
     );
-    // Render cache hits only require the DB binding, not a live router request.
-    // eslint-disable-next-line typescript/no-unsafe-type-assertion
-    const result = await renderDocument(document, { platform: { env: { DB: db } } } as Parameters<
-      typeof renderDocument
-    >[1]);
+    const result = await renderDocument(document, {
+      platform: { env: { DB: db } },
+      // Render cache hits only require the DB binding, not a live router request.
+      // eslint-disable-next-line typescript/no-unsafe-type-assertion
+    } as Parameters<typeof renderDocument>[1]);
     expect(result.diagrams[0]).toContain("data:image/svg+xml,");
     expect(result.math).toHaveLength(2);
     expect(result.math.every((item) => item.output?.includes("mjx-container"))).toBe(true);
@@ -196,9 +196,9 @@ describe("shared persistent rendering cache", () => {
     });
     const saved = await findPost(db, id);
     // Cached rendering only needs the DB binding from the router request.
-    // eslint-disable-next-line typescript/no-unsafe-type-assertion
     const result = await renderDocument(saved!.body, {
       platform: { env: { DB: db } },
+      // eslint-disable-next-line typescript/no-unsafe-type-assertion
     } as Parameters<typeof renderDocument>[1]);
     expect(result.diagrams[0]).toContain("data:image/svg+xml,");
     expect(result.math[0].output).toContain("mjx-container");

@@ -1,13 +1,17 @@
 import { test, expect } from "@playwright/test";
+import { createRequire } from "node:module";
 import { MERMAID_CONFIG } from "../../src/components/editor/mermaid-theme";
 import { mermaidImageHTML } from "../../src/components/editor/mermaid-contract";
 import { finalizeMermaidSVG } from "../../src/components/editor/mermaid-svg";
+
+const require = createRequire(import.meta.url);
+const mermaidBrowserPath = require.resolve("mermaid/dist/mermaid.min.js");
 
 test("paper theme measures bold labels and masks relationships in both rendering paths", async ({
   page,
 }) => {
   await page.setContent('<!doctype html><body style="font-size:16px"></body>');
-  await page.addScriptTag({ path: "public/mermaid/mermaid.min.js" });
+  await page.addScriptTag({ path: mermaidBrowserPath });
   const sources = [
     'flowchart LR\nA["`**記事**を読む`"] -->|確認| B[公開]',
     "sequenceDiagram\nactor Reader\nReader->>Article: 記事を読む",

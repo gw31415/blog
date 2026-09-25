@@ -170,16 +170,25 @@ for (const width of [1280, 390]) {
       page.evaluate(() => {
         const marker = document.querySelector(".month-marker")!.getBoundingClientRect();
         const header = document.querySelector(".archive-header")!.getBoundingClientRect();
+        const scrollHeader = document
+          .querySelector("[data-scroll-header]")!
+          .getBoundingClientRect();
         const desk = document.querySelector(".post-desk")!.getBoundingClientRect();
         return {
           marker: marker.top,
           header: header.bottom,
+          scrollHeader: scrollHeader.bottom,
           desk: desk.top,
           overflow: document.documentElement.scrollWidth > innerWidth,
         };
       });
     await page.evaluate(() => window.scrollTo(0, 400));
-    await expect.poll(async () => (await measure()).marker).toBe(width > 600 ? 64 : 48);
+    await expect
+      .poll(async () => {
+        const position = await measure();
+        return Math.abs(position.marker - position.scrollHeader);
+      })
+      .toBeLessThanOrEqual(1);
     const a = await measure();
     await page.evaluate(() => window.scrollTo(0, 700));
     await expect.poll(async () => (await measure()).desk).toBeLessThan(a.desk - 250);
@@ -347,17 +356,25 @@ test("does not save intermediate scroll positions during delayed restoration", a
   await page.addInitScript(() => {
     const nativeScroll = window.scrollTo.bind(window);
     let pending = false;
-    window.scrollTo = ((...args: Parameters<typeof window.scrollTo>) => {
+
+    function delayedScroll(options?: ScrollToOptions): void;
+    function delayedScroll(x: number, top: number): void;
+    function delayedScroll(xOrOptions?: number | ScrollToOptions, top?: number) {
+      const restore = () => {
+        if (typeof xOrOptions === "number") nativeScroll(xOrOptions, top ?? 0);
+        else nativeScroll(xOrOptions);
+      };
       if (!pending) {
         pending = true;
         // Simulate restoration not taking effect until a later rendering turn.
         nativeScroll(0, 0);
         dispatchEvent(new Event("scroll"));
-        setTimeout(() => nativeScroll(...args), 300);
+        setTimeout(restore, 300);
         return;
       }
-      nativeScroll(...args);
-    }) as typeof window.scrollTo;
+      restore();
+    }
+    window.scrollTo = delayedScroll;
   });
   await page.reload();
   await expect.poll(() => page.evaluate(() => scrollY)).toBeCloseTo(y, 0);

@@ -275,6 +275,9 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(
     () => {
+      // The editor is a large dynamic chunk. Start it as soon as an article is
+      // interactive so a mobile tap does not have to wait for the whole chunk.
+      void loadEditorRuntime();
       if (props.autoEditFromQuery && new URLSearchParams(window.location.search).has("edit")) {
         void enterEdit$();
       }
