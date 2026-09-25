@@ -2,11 +2,7 @@ import { component$, Slot } from "@qwik.dev/core";
 import { css } from "@qstyle/qwik";
 
 export const BlogFooter = component$<{ left: string; right: string }>((props) => (
-  <footer
-    css={blogFooterStyles}
-    class="page-footer type-meta ink ink-muted"
-    data-layout-key="footer"
-  >
+  <footer css={blogFooterStyles} class="page-footer type-meta" data-layout-key="footer">
     <span>{props.left}</span>
     <span>{props.right}</span>
   </footer>

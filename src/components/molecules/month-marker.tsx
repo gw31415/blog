@@ -13,7 +13,6 @@ const monthMarkerStyles = css`
   &.month-marker {
     position: sticky;
     z-index: 4;
-    top: var(--body-leading);
     align-self: start;
     box-sizing: border-box;
     margin: 0;
@@ -41,8 +40,10 @@ const monthMarkerStyles = css`
   }
   @media (max-width: 600px) {
     &.month-marker {
-      width: 32px;
-      padding: 6px 0 8px 4px;
+      top: var(--archive-header-height);
+      width: var(--mobile-calendar-rail);
+      height: var(--mobile-calendar-height);
+      padding: var(--mobile-calendar-inset) 0 0 var(--mobile-calendar-inset);
     }
     & .month-number {
       font-size: 20px;
@@ -50,6 +51,7 @@ const monthMarkerStyles = css`
   }
   @media (min-width: 601px) {
     &.month-marker {
+      top: var(--archive-month-top);
       width: 100%;
       padding: 4px 10px 8px 12px;
     }

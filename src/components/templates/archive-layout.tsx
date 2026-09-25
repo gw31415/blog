@@ -3,7 +3,7 @@ import { css } from "@qstyle/qwik";
 import { PaperContainer } from "~/components/atoms/paper-container";
 import { StickyHeader } from "~/components/molecules/sticky-header";
 
-/** The archive owns scroll restoration without the editor's keyboard runtime. */
+/** The archive stays in document flow; the page owns its scrolling. */
 export const ArchiveLayout = component$(() => (
   <div css={archiveStyles}>
     <a
@@ -27,13 +27,14 @@ const archiveStyles = css`
   & .archive {
     display: flex;
     flex-direction: column;
-    height: 100svh;
-    min-height: 0;
-    overflow: hidden;
+    min-height: 100svh;
     background: var(--paper);
   }
-  & .archive-header {
+  & .archive-header[data-header-mode="persistent"] {
     flex: none;
+    position: sticky;
+    top: 0;
+    z-index: 4;
   }
   & .skip-link {
     position: fixed;
@@ -52,7 +53,6 @@ const archiveStyles = css`
   }
   & #articles {
     display: flex;
-    min-height: 0;
     flex: 1 1 auto;
     flex-direction: column;
   }

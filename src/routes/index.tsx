@@ -41,7 +41,6 @@ export default component$(() => {
     error: "",
   });
   const sentinel = useSignal<Element>();
-  const stream = useSignal<HTMLElement>();
   const cacheKey = useSignal("");
   const restored = useSignal(false);
   const create = useCreateDraft();
@@ -66,8 +65,8 @@ export default component$(() => {
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(
     async ({ cleanup }) => {
-      const scroller = stream.value ?? document.querySelector<HTMLElement>(".post-stream");
-      if (!scroller) return;
+      const scrollPosition = () => window.scrollY;
+      const maxScroll = () => Math.max(0, document.documentElement.scrollHeight - innerHeight);
       let disposed = false;
       cleanup(() => {
         disposed = true;
@@ -117,7 +116,7 @@ export default component$(() => {
       const targetY = Number.isFinite(y) && y > 0 ? y : 0;
       const finish = () => {
         if (!Number.isFinite(y)) {
-          lastY = scroller.scrollTop;
+          lastY = scrollPosition();
           restored.value = true;
           flushPosition();
           return;
@@ -131,13 +130,10 @@ export default component$(() => {
           frame = requestAnimationFrame(finish);
           return;
         }
-        const reachableY = Math.min(
-          targetY,
-          Math.max(0, scroller.scrollHeight - scroller.clientHeight),
-        );
-        if (Math.abs(scroller.scrollTop - reachableY) > 1) {
+        const reachableY = Math.min(targetY, maxScroll());
+        if (Math.abs(scrollPosition() - reachableY) > 1) {
           stableFrames = 0;
-          scroller.scrollTo({ top: reachableY, behavior: "instant" });
+          window.scrollTo({ top: reachableY, behavior: "instant" });
         } else {
           stableFrames++;
         }
@@ -146,7 +142,7 @@ export default component$(() => {
           frame = requestAnimationFrame(finish);
           return;
         }
-        lastY = scroller.scrollTop;
+        lastY = scrollPosition();
         restored.value = true;
         flushPosition();
       };
@@ -165,7 +161,7 @@ export default component$(() => {
         // Browser/router restoration can emit a later scroll event. Until the
         // user takes control, do not save that intermediate position over ours.
         if (targetY > 0 && !userInteracted) {
-          if (Math.abs(scroller.scrollTop - lastY) > 1) {
+          if (Math.abs(scrollPosition() - lastY) > 1) {
             restored.value = false;
             stableFrames = 0;
             cancelAnimationFrame(frame);
@@ -173,7 +169,7 @@ export default component$(() => {
           }
           return;
         }
-        lastY = scroller.scrollTop;
+        lastY = scrollPosition();
         try {
           sessionStorage.setItem(`${key}:y`, String(lastY));
         } catch {
@@ -203,7 +199,7 @@ export default component$(() => {
       const takeControl = () => {
         userInteracted = true;
         cancelAnimationFrame(frame);
-        lastY = scroller.scrollTop;
+        lastY = scrollPosition();
         restored.value = true;
       };
       const click = () => {
@@ -214,7 +210,7 @@ export default component$(() => {
       const inputEvents = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
       for (const event of inputEvents)
         document.addEventListener(event, takeControl, { passive: true });
-      scroller.addEventListener("scroll", savePosition, { passive: true });
+      window.addEventListener("scroll", savePosition, { passive: true });
       window.addEventListener("pagehide", hide);
       window.addEventListener("pageshow", show);
       document.addEventListener("visibilitychange", visibility);
@@ -223,7 +219,7 @@ export default component$(() => {
         cancelAnimationFrame(frame);
         clearTimeout(timer);
         for (const event of inputEvents) document.removeEventListener(event, takeControl);
-        scroller.removeEventListener("scroll", savePosition);
+        window.removeEventListener("scroll", savePosition);
         window.removeEventListener("pagehide", hide);
         window.removeEventListener("pageshow", show);
         document.removeEventListener("visibilitychange", visibility);
@@ -262,7 +258,7 @@ export default component$(() => {
           if (entries.some((entry) => entry.isIntersecting) && !state.error) void more();
         },
         {
-          root: stream.value ?? document.querySelector<HTMLElement>(".post-stream"),
+          root: null,
           rootMargin: "240px",
         },
       );
@@ -276,7 +272,6 @@ export default component$(() => {
       {canManagePosts() && <CreatePostAction q:slot="header-actions" action={create} />}
       <section id="articles" aria-labelledby="articles-title">
         <PostList
-          stream={stream}
           posts={state.posts}
           canManage={canManagePosts()}
           onDelete$={$(async (id) => {

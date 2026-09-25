@@ -3,14 +3,13 @@ import { PostCard } from "../molecules/post-card";
 import { MonthMarker } from "../molecules/month-marker";
 import { ConfirmationDialog } from "../molecules/confirmation-dialog";
 import { groupPostsByDay, groupPostsByMonth } from "../../content/post-groups";
-import { $, component$, Slot, useSignal, type QRL, type Signal } from "@qwik.dev/core";
+import { $, component$, Slot, useSignal, type QRL } from "@qwik.dev/core";
 import type { PostSummary } from "~/server/post-list";
 
 export const PostList = component$<{
   posts: PostSummary[];
   layout?: "list" | "grid";
   canManage?: boolean;
-  stream?: Signal<HTMLElement | undefined>;
   onDelete$?: QRL<(id: string) => Promise<boolean>>;
 }>((props) => {
   const dialog = useSignal<HTMLDialogElement>();
@@ -31,7 +30,7 @@ export const PostList = component$<{
     }
   });
   return (
-    <div class="post-stream" ref={props.stream} css={postListStyles}>
+    <div class="post-stream" css={postListStyles}>
       <div class="post-desk" data-layout={props.layout ?? "list"}>
         <Slot name="stream-start" />
         {groupPostsByMonth(props.posts).map((group) => (
@@ -89,12 +88,11 @@ export const PostList = component$<{
 });
 
 const postListStyles = css`
-  min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-  scrollbar-gutter: stable;
-  scroll-padding-top: var(--body-leading);
+  flex: 1 1 auto;
+  overflow-x: clip;
+  --archive-header-height: calc(1.6875rem + 1px + env(safe-area-inset-top));
+  --archive-month-top: calc(var(--archive-header-height) + 8px);
+  --archive-day-offset: 38px;
   --desk: #dfdbcd;
   --desk-dot: rgb(80 68 45 / 12%);
   --desk-glint: rgb(255 255 255 / 48%);
@@ -106,6 +104,7 @@ const postListStyles = css`
   background-image:
     radial-gradient(circle, var(--desk-dot) 0.55px, transparent 0.8px),
     radial-gradient(circle, var(--desk-glint) 0.55px, transparent 0.8px);
+  background-attachment: fixed, fixed;
   background-position:
     0 0,
     1px 1px;
@@ -138,7 +137,6 @@ const postListStyles = css`
   & .letter-day {
     position: sticky;
     z-index: 3;
-    top: var(--body-leading);
     align-self: start;
     padding: 4px 0;
     color: var(--date-ink);
@@ -201,19 +199,25 @@ const postListStyles = css`
     background: transparent;
   }
   @media (max-width: 600px) {
+    --mobile-calendar-inset: 12px;
+    --mobile-calendar-rail: 52px;
+    --mobile-calendar-height: 4.75rem;
+
     & .post-month {
-      display: block;
+      display: grid;
+      grid-template-columns: var(--mobile-calendar-rail) minmax(0, 1fr);
       padding: 0 0 4px;
     }
     & .month-days {
-      padding: 0 6px 4px 4px;
+      grid-column: 1 / -1;
+      padding: 0 6px 4px 0;
     }
     & .post-day {
-      grid-template-columns: 28px minmax(0, 1fr);
+      grid-template-columns: var(--mobile-calendar-rail) minmax(0, 1fr);
     }
     & .letter-day {
-      top: calc(var(--body-leading) + 64px);
-      padding-left: 0;
+      top: calc(var(--archive-header-height) + var(--mobile-calendar-height));
+      margin-left: var(--mobile-calendar-inset);
     }
     & .letters {
       gap: 0;
@@ -222,7 +226,7 @@ const postListStyles = css`
       grid-template-columns: 1fr;
     }
     & .more {
-      margin: 6px 6px 0 32px;
+      margin: 6px 6px 0 var(--mobile-calendar-rail);
       padding-bottom: 22px;
     }
   }
@@ -232,8 +236,14 @@ const postListStyles = css`
     }
   }
   @media (min-width: 601px) {
+    & .letter-day {
+      top: calc(var(--archive-month-top) + var(--archive-day-offset));
+    }
     & .post-month {
       padding: 0 0 8px;
+    }
+    & .post-day:first-child > .letter-day {
+      margin-top: var(--archive-day-offset);
     }
     & .post-desk[data-layout="grid"] .letters {
       grid-template-columns: repeat(2, minmax(0, 1fr));

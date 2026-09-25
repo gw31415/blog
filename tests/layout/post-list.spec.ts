@@ -92,12 +92,13 @@ test("mobile envelopes overlap while year, month and day share the left column",
   const firstBox = (await cards.first().boundingBox())!;
   const secondBox = (await second.locator(".letter").boundingBox())!;
   expect(secondBox.y).toBeLessThan(firstBox.y + firstBox.height);
-  expect(firstBox.x).toBeLessThanOrEqual(36);
+  expect(firstBox.x).toBeGreaterThanOrEqual(46);
+  expect(firstBox.x).toBeLessThanOrEqual(56);
   expect(375 - (firstBox.x + firstBox.width)).toBeLessThanOrEqual(8);
   await expect(cards.first()).not.toHaveCSS("transform", "none");
   const marker = (await page.locator(".month-marker").first().boundingBox())!;
   const title = (await cards.first().locator(".letter-title").boundingBox())!;
-  expect(marker.width).toBeCloseTo(32, 0);
+  expect(marker.width).toBeCloseTo(52, 0);
   expect(marker.x + marker.width).toBeLessThan(title.x);
   const leftEdges = await page.evaluate(() =>
     [".month-year", ".month-number", ".post-day > .letter-day"].map(
@@ -152,7 +153,7 @@ test("restores the loaded list without randomUUID on reload and back", async ({ 
   await target.scrollIntoViewIfNeeded();
   const href = await target.getAttribute("href");
   const count = await cards.count();
-  const y = await page.locator(".post-stream").evaluate((element) => element.scrollTop);
+  const y = await page.evaluate(() => window.scrollY);
   await expect(page).toHaveURL(/\/$/);
   expect(await page.evaluate(() => history.length)).toBe(historyLength);
   // SSR remains a fixed page even if an old count URL is requested.
@@ -164,16 +165,12 @@ test("restores the loaded list without randomUUID on reload and back", async ({ 
   });
   await page.reload();
   await expect(cards).toHaveCount(count);
-  await expect
-    .poll(() => page.locator(".post-stream").evaluate((element) => element.scrollTop))
-    .toBeCloseTo(y, 0);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeCloseTo(y, 0);
   await page.locator(`.letter-link[href="${href}"]`).click();
   await page.waitForURL((url) => url.pathname !== "/");
   await page.goBack();
   await expect(cards).toHaveCount(count);
-  await expect
-    .poll(() => page.locator(".post-stream").evaluate((element) => element.scrollTop))
-    .toBeCloseTo(y, 0);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeCloseTo(y, 0);
   expect(additionalRequests).toEqual([]);
   expect(errors).toEqual([]);
 });
@@ -196,9 +193,7 @@ test("restores the latest session position while history is still debounced", as
     history.replaceState({ ...history.state, postListY: 0 }, "");
   });
   await page.reload();
-  await expect
-    .poll(() => page.locator(".post-stream").evaluate((element) => element.scrollTop))
-    .toBe(320);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(320);
   await expect.poll(() => page.evaluate(() => history.state.postListY)).toBe(320);
 });
 
@@ -235,9 +230,7 @@ test("restores a thousand cached summaries without fetching a thousand rows", as
   });
   await page.reload();
   await expect(page.locator(".letter")).toHaveCount(1000);
-  await expect
-    .poll(() => page.locator(".post-stream").evaluate((element) => element.scrollTop))
-    .toBe(50000);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(50000);
   expect(requests).toEqual([]);
   await expect(page).toHaveURL(/\/$/);
 });
@@ -291,9 +284,7 @@ test("deletes only a newly created test draft after confirmation", async ({ page
 });
 
 for (const width of [1280, 390]) {
-  test(`calendar and date stay pinned while only envelopes scroll at ${width}`, async ({
-    page,
-  }) => {
+  test(`calendar and date stay pinned while the page scrolls at ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto("/");
     const measure = () =>
@@ -302,20 +293,28 @@ for (const width of [1280, 390]) {
         const dayElement = document.querySelector(".post-day > .letter-day")!;
         const marker = markerElement.getBoundingClientRect();
         const day = dayElement.getBoundingClientRect();
+        const year = markerElement.querySelector(".month-year")!.getBoundingClientRect();
+        const monthNumber = markerElement.querySelector(".month-number")!.getBoundingClientRect();
         const header = document.querySelector(".archive-header")!.getBoundingClientRect();
         const stream = document.querySelector<HTMLElement>(".post-stream")!;
-        const streamTop = stream.getBoundingClientRect().top;
         const letter = document.querySelector(".letter")!.getBoundingClientRect();
         const heading = document.querySelector("#articles-title")!.getBoundingClientRect();
         return {
           marker: marker.top,
+          markerBottom: marker.bottom,
           day: day.top,
+          dayBottom: day.bottom,
+          yearTop: year.top,
+          yearLeft: year.left,
+          monthNumberBottom: monthNumber.bottom,
+          streamLeft: stream.getBoundingClientRect().left,
           header: header.bottom,
           streamY: stream.scrollTop,
-          maxScroll: stream.scrollHeight - stream.clientHeight,
+          streamOverflow: getComputedStyle(stream).overflowY,
+          maxScroll: document.documentElement.scrollHeight - innerHeight,
           stickyAfter: Math.max(
-            marker.top - streamTop - parseFloat(getComputedStyle(markerElement).top),
-            day.top - streamTop - parseFloat(getComputedStyle(dayElement).top),
+            marker.top - parseFloat(getComputedStyle(markerElement).top),
+            day.top - parseFloat(getComputedStyle(dayElement).top),
           ),
           letter: letter.top,
           heading: heading.top,
@@ -324,6 +323,11 @@ for (const width of [1280, 390]) {
         };
       });
     const start = await measure();
+    expect(start.streamOverflow).toBe("visible");
+    expect(start.streamY).toBe(0);
+    if (width > 600) {
+      expect(Math.abs(start.dayBottom - start.monthNumberBottom)).toBeLessThan(1);
+    }
     // Exercise both sticky labels after their pinning threshold, within the actual scroll range.
     const firstY = Math.max(
       Math.ceil(start.stickyAfter) + 16,
@@ -334,22 +338,29 @@ for (const width of [1280, 390]) {
       secondY - firstY,
       "the fixture must allow a substantial pinned scroll",
     ).toBeGreaterThanOrEqual(100);
-    await page.locator(".post-stream").evaluate((element, y) => element.scrollTo(0, y), firstY);
-    await expect.poll(async () => (await measure()).streamY).toBe(firstY);
+    await page.evaluate((y) => window.scrollTo(0, y), firstY);
+    await expect.poll(async () => (await measure()).windowY).toBe(firstY);
     const a = await measure();
-    await page.locator(".post-stream").evaluate((element, y) => element.scrollTo(0, y), secondY);
-    await expect.poll(async () => (await measure()).streamY).toBe(secondY);
+    await page.evaluate((y) => window.scrollTo(0, y), secondY);
+    await expect.poll(async () => (await measure()).windowY).toBe(secondY);
     const b = await measure();
-    const distance = b.streamY - a.streamY;
+    const distance = b.windowY - a.windowY;
     expect(distance).toBeGreaterThanOrEqual(100);
     expect(Math.abs(a.letter - b.letter - distance)).toBeLessThan(0.5);
-    expect(Math.abs(start.heading - b.heading - (b.streamY - start.streamY))).toBeLessThan(0.5);
+    expect(Math.abs(start.heading - b.heading - (b.windowY - start.windowY))).toBeLessThan(0.5);
     expect(b.marker).toBe(a.marker);
     expect(b.day).toBe(a.day);
     expect(b.header).toBe(start.header);
     expect(b.marker).toBeGreaterThanOrEqual(b.header);
     expect(b.day).toBeGreaterThanOrEqual(b.marker);
-    expect(b.windowY).toBe(0);
+    if (width > 600) {
+      expect(Math.abs(b.yearTop - b.header - (b.yearLeft - b.streamLeft))).toBeLessThan(1);
+      expect(Math.abs(b.dayBottom - b.monthNumberBottom)).toBeLessThan(1);
+    } else {
+      expect(Math.abs(b.yearTop - b.header - (b.yearLeft - b.streamLeft))).toBeLessThan(1);
+      expect(Math.abs(b.day - b.markerBottom)).toBeLessThan(1);
+    }
+    expect(b.streamY).toBe(0);
     expect(b.overflow).toBe(false);
     const columns = await page
       .locator(".letters")
@@ -358,6 +369,18 @@ for (const width of [1280, 390]) {
     expect(columns).toBe(1);
   });
 }
+
+test("desk texture stays still while the page scrolls", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 844 });
+  await page.goto("/");
+  const stream = page.locator(".post-stream");
+  const bounds = (await stream.boundingBox())!;
+  const clip = { x: bounds.x + 50, y: 300, width: 10, height: 10 };
+  const before = await page.screenshot({ clip });
+  await page.evaluate(() => window.scrollTo(0, 1));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(1);
+  expect((await page.screenshot({ clip })).equals(before)).toBe(true);
+});
 
 test("article and list share tag styling and long titles fit the mobile envelope", async ({
   page,
@@ -429,7 +452,7 @@ test("restores from persistent cache after suspension and loss of session storag
   await expect.poll(() => cards.count()).toBeGreaterThan(firstCount);
   await cards.nth(firstCount).scrollIntoViewIfNeeded();
   const count = await cards.count();
-  const y = await page.locator(".post-stream").evaluate((element) => element.scrollTop);
+  const y = await page.evaluate(() => window.scrollY);
   await page.evaluate(() => {
     Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
     document.dispatchEvent(new Event("visibilitychange"));
@@ -453,9 +476,8 @@ test("restores from persistent cache after suspension and loss of session storag
     .toBe(count);
   // A hidden document's scroll reset must not replace its saved position.
   await page.evaluate(() => {
-    const stream = document.querySelector<HTMLElement>(".post-stream")!;
-    stream.scrollTo(0, 0);
-    stream.dispatchEvent(new Event("scroll"));
+    window.scrollTo(0, 0);
+    window.dispatchEvent(new Event("scroll"));
     dispatchEvent(new PageTransitionEvent("pagehide"));
   });
   expect(await page.evaluate(() => history.state.postListY)).toBe(y);
@@ -466,9 +488,7 @@ test("restores from persistent cache after suspension and loss of session storag
   });
   await page.reload();
   await expect(cards).toHaveCount(count);
-  await expect
-    .poll(() => page.locator(".post-stream").evaluate((element) => element.scrollTop))
-    .toBeCloseTo(y, 0);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeCloseTo(y, 0);
   expect(additionalRequests).toEqual([]);
   await expect(page).toHaveURL(/\/$/);
 });
@@ -479,23 +499,22 @@ test("does not save intermediate scroll positions during delayed restoration", a
   const firstCount = await cards.count();
   await page.getByRole("link", { name: "続きを読み込む" }).scrollIntoViewIfNeeded();
   await expect.poll(() => cards.count()).toBeGreaterThan(firstCount);
-  await cards.nth(firstCount).scrollIntoViewIfNeeded();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollHeight - innerHeight),
+  ).toBeGreaterThan(600);
+  await page.evaluate(() => window.scrollTo(0, 500));
   const stream = page.locator(".post-stream");
   await stream.dispatchEvent("pointerdown");
-  await stream.evaluate((element) => {
-    element.scrollTop += 1;
-    element.dispatchEvent(new Event("scroll"));
+  await page.evaluate(() => {
+    window.scrollBy(0, 1);
+    window.dispatchEvent(new Event("scroll"));
   });
   await expect
     .poll(() =>
       page.evaluate(() => {
         const y = history.state.postListY;
         const key = `blog:post-list:v1:${history.state.postListEntry}:true:y`;
-        return (
-          y > 0 &&
-          document.querySelector<HTMLElement>(".post-stream")!.scrollTop === y &&
-          Number(sessionStorage.getItem(key)) === y
-        );
+        return y > 0 && window.scrollY === y && Number(sessionStorage.getItem(key)) === y;
       }),
     )
     .toBe(true);
@@ -504,8 +523,7 @@ test("does not save intermediate scroll positions during delayed restoration", a
     addEventListener(
       "DOMContentLoaded",
       () => {
-        const restoredStream = document.querySelector<HTMLElement>(".post-stream")!;
-        const nativeScroll = restoredStream.scrollTo.bind(restoredStream);
+        const nativeScroll = window.scrollTo.bind(window);
         let pending = false;
 
         function delayedScroll(options?: ScrollToOptions): void;
@@ -519,28 +537,24 @@ test("does not save intermediate scroll positions during delayed restoration", a
             pending = true;
             // Simulate restoration not taking effect until a later rendering turn.
             nativeScroll(0, 0);
-            restoredStream.dispatchEvent(new Event("scroll"));
+            window.dispatchEvent(new Event("scroll"));
             setTimeout(restore, 300);
             return;
           }
           restore();
         }
-        restoredStream.scrollTo = delayedScroll;
+        window.scrollTo = delayedScroll;
       },
       { once: true },
     );
   });
   await page.reload();
-  await expect
-    .poll(() => page.locator(".post-stream").evaluate((element) => element.scrollTop))
-    .toBeCloseTo(y, 0);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeCloseTo(y, 0);
   // A second late browser/router scroll must not become the saved position.
   await page.evaluate(() => {
-    document.querySelector<HTMLElement>(".post-stream")!.scrollTo(0, 0);
+    window.scrollTo(0, 0);
   });
-  await expect
-    .poll(() => page.locator(".post-stream").evaluate((element) => element.scrollTop))
-    .toBeCloseTo(y, 0);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeCloseTo(y, 0);
   expect(await page.evaluate(() => history.state.postListY)).toBe(y);
   expect(
     await page.evaluate(() => {
@@ -553,8 +567,6 @@ test("does not save intermediate scroll positions during delayed restoration", a
   // Once the user scrolls, the new position must be saved normally.
   await page.locator(".post-stream").hover();
   await page.mouse.wheel(0, -200);
-  await expect
-    .poll(() => page.locator(".post-stream").evaluate((element) => element.scrollTop))
-    .toBeLessThan(y - 50);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(y - 50);
   await expect.poll(() => page.evaluate(() => history.state.postListY)).toBeLessThan(y - 50);
 });
