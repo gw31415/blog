@@ -63,7 +63,7 @@ export const PostCard = component$<{
               {(post.tags.length > 0 || post.status === "draft") && (
                 <div class="letter-bottom">
                   {post.tags.length > 0 && <BlogTags tags={post.tags} wrap ink />}
-                  {post.status === "draft" && <span class="draft ink">非公開</span>}
+                  {post.status === "draft" && <span class="draft">非公開</span>}
                 </div>
               )}
             </div>
@@ -374,7 +374,6 @@ const postCardStyles = css`
   }
   & .draft {
     --stamp-red: #953f36;
-    --ink-color: var(--stamp-red);
     display: inline-block;
     padding: 3px 7px;
     border: 2px solid var(--stamp-red);
@@ -384,18 +383,6 @@ const postCardStyles = css`
     color: var(--stamp-red);
     font: 700 12px/1.3 var(--sans);
     letter-spacing: 0.08em;
-    -webkit-mask-image: repeating-linear-gradient(
-      103deg,
-      #000 0 5px,
-      rgb(0 0 0 / 36%) 5px 5.7px,
-      #000 6.4px 11px
-    );
-    mask-image: repeating-linear-gradient(
-      103deg,
-      #000 0 5px,
-      rgb(0 0 0 / 36%) 5px 5.7px,
-      #000 6.4px 11px
-    );
   }
   & .letter-details::before {
     content: "";
