@@ -132,7 +132,7 @@ test("mobile envelopes keep desktop spacing while year, month and day share the 
   const firstBox = (await cards.first().boundingBox())!;
   const firstItemBox = (await first.boundingBox())!;
   const secondItemBox = (await second.boundingBox())!;
-  expect(secondItemBox.y - (firstItemBox.y + firstItemBox.height)).toBeCloseTo(8, 0);
+  expect(secondItemBox.y - (firstItemBox.y + firstItemBox.height)).toBeCloseTo(20, 0);
   expect(firstBox.x).toBeGreaterThanOrEqual(46);
   expect(firstBox.x).toBeLessThanOrEqual(56);
   expect(375 - (firstBox.x + firstBox.width)).toBeLessThanOrEqual(8);
@@ -160,6 +160,106 @@ test("mobile envelopes keep desktop spacing while year, month and day share the 
       return Math.abs(row.right - draft.right);
     }),
   ).toBeLessThan(1);
+});
+
+test("the desk texture and inset edges are painted behind the envelopes", async ({ page }) => {
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    const desk = page.locator(".post-stream");
+    await expect(desk).toHaveCSS("background-image", /radial-gradient/);
+    await expect(desk).toHaveCSS("background-attachment", "fixed, fixed");
+    await expect(desk).toHaveCSS("box-shadow", /inset/);
+  }
+});
+
+test("heading starts at the upper third and envelopes accelerate below and decelerate above", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    const cards = page.locator(".dated-letter");
+    const heading = (await page.locator("#articles-title").boundingBox())!;
+    const first = (await cards.first().locator(".letter").boundingBox())!;
+    const second = (await cards.nth(1).locator(".letter").boundingBox())!;
+    expect(heading.y).toBeGreaterThan(900 * 0.31);
+    expect(heading.y).toBeLessThan(900 * 0.35);
+    expect(first.y).toBeGreaterThan(900 * 0.36);
+    expect(first.y).toBeLessThan(900 * 0.43);
+    expect(first.y - heading.y - heading.height).toBeGreaterThan(20);
+    expect(second.y - first.y - first.height).toBeGreaterThan(4);
+    await expect(cards.nth(4).locator(".letter")).toHaveCSS(
+      "animation-timeline",
+      "--envelope-view",
+    );
+  }
+
+  const cards = page.locator(".dated-letter");
+  const card = cards.nth(4);
+  const initialTop = (await card.boundingBox())!.y;
+  const sampleAt = async (layoutTop: number) => {
+    await page.evaluate((y) => scrollTo(0, y), initialTop - layoutTop);
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+    return card.evaluate((item) => ({
+      layout: item.getBoundingClientRect().top,
+      visual: item.querySelector(".letter")!.getBoundingClientRect().top,
+    }));
+  };
+  const bottomStart = await sampleAt(850);
+  const bottomEnd = await sampleAt(800);
+  expect(bottomStart.visual - bottomEnd.visual).toBeGreaterThan(65);
+  const middleStart = await sampleAt(500);
+  const middleEnd = await sampleAt(400);
+  expect(middleStart.visual - middleEnd.visual).toBeCloseTo(100, 0);
+  const upper: { layout: number; visual: number }[] = [];
+  for (const top of [300, 250, 200, 150, 100]) upper.push(await sampleAt(top));
+  const upperSteps = upper.slice(1).map((position, index) => upper[index].visual - position.visual);
+  expect(upperSteps.every((step) => step > 25 && step < 50)).toBe(true);
+  expect(upperSteps.at(-1)!).toBeLessThan(upperSteps[0] - 5);
+  await sampleAt(200);
+  const previous = (await cards.nth(3).locator(".letter").boundingBox())!;
+  const current = (await card.locator(".letter").boundingBox())!;
+  expect(current.y).toBeLessThan(previous.y + previous.height - 20);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(card.locator(".letter")).toHaveCSS("translate", "none");
+});
+
+test("envelope hover is paused during scrolling and restored afterward", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+  const stream = page.locator(".post-stream");
+  const card = page.locator(".dated-letter").first();
+  const titleInk = () =>
+    card
+      .locator(".letter-title")
+      .evaluate((title) => getComputedStyle(title).getPropertyValue("--ink-color"));
+  const normalInk = await titleInk();
+  await card.locator(".letter-link").hover();
+  await expect.poll(titleInk).not.toBe(normalInk);
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        dispatchEvent(new Event("scroll"));
+        return document.querySelector(".post-stream")!.hasAttribute("data-scrolling");
+      }),
+    )
+    .toBe(true);
+  const scrollingInk = await page.evaluate(() => {
+    dispatchEvent(new Event("scroll"));
+    return getComputedStyle(
+      document.querySelector(".dated-letter .letter-title")!,
+    ).getPropertyValue("--ink-color");
+  });
+  expect(scrollingInk).toBe(normalInk);
+  await expect(stream).not.toHaveAttribute("data-scrolling", "");
+  await expect.poll(titleInk).not.toBe(normalInk);
 });
 
 test("loads the next page on scroll without duplicating cards", async ({ page }) => {
@@ -338,7 +438,7 @@ for (const width of [1280, 390]) {
         const monthNumber = markerElement.querySelector(".month-number")!.getBoundingClientRect();
         const header = document.querySelector(".archive-header")!.getBoundingClientRect();
         const stream = document.querySelector<HTMLElement>(".post-stream")!;
-        const letter = document.querySelector(".letter")!.getBoundingClientRect();
+        const letter = document.querySelector(".dated-letter")!.getBoundingClientRect();
         const heading = document.querySelector("#articles-title")!.getBoundingClientRect();
         return {
           marker: marker.top,
@@ -621,10 +721,17 @@ for (const width of [1280, 390]) {
     const card = page.locator(".letter").first();
     const original = (await card.boundingBox())!;
     await page.mouse.move(1, 800);
-    await page.evaluate((y) => window.scrollTo(0, y), original.y + 20);
-    const bounds = (await card.boundingBox())!;
-    // Mouse coordinates avoid Playwright scrolling the whole card back into view.
-    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height - 30);
+    await page.evaluate((y) => window.scrollTo(0, y), original.y + 55);
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+    // The papers overlap now; hover the exposed title instead of the covered lower edge.
+    const title = (await card.locator(".letter-title").boundingBox())!;
+    await page.mouse.move(title.x + title.width / 2, title.y + title.height / 2);
+    await expect.poll(() => card.evaluate((element) => element.matches(":hover"))).toBe(true);
     await expect
       .poll(() =>
         card.evaluate((element) => {

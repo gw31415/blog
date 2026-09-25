@@ -100,6 +100,9 @@ const postCardStyles = css`
   isolation: isolate;
   min-width: 0;
   display: flex;
+  view-timeline-name: --envelope-view;
+  view-timeline-axis: block;
+  --envelope-lift: -60px;
   --angle: -1.1deg;
   --shift: -2px;
   --envelope-tint: rgb(255 255 255 / 32%);
@@ -141,6 +144,32 @@ const postCardStyles = css`
     transform: translateX(var(--shift)) rotate(var(--angle));
     transform-origin: 50% 50%;
     transition: transform 180ms ease-out;
+  }
+  @media screen and (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      &:not([data-layout="grid"]) .letter {
+        animation-name: envelope-position;
+        animation-duration: 1ms;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: --envelope-view;
+        animation-range: cover;
+      }
+    }
+  }
+  @keyframes envelope-position {
+    0%,
+    86%,
+    100% {
+      translate: 0;
+    }
+    9% {
+      translate: 0 var(--envelope-lift);
+    }
+    55% {
+      translate: 0 var(--envelope-lift);
+      animation-timing-function: cubic-bezier(0.45, 0.05, 0.85, 0.4);
+    }
   }
   & .letter-shadow {
     position: absolute;
@@ -694,51 +723,61 @@ const postCardStyles = css`
     opacity: 1;
     transform: translate(0, 0);
   }
+  &:focus-within {
+    z-index: 10;
+  }
   @media (hover: hover) and (pointer: fine) {
-    &:has(.letter-link:hover),
-    &:has(.management button:hover) {
+    &:not(:where(.post-stream[data-scrolling] *)):hover {
       z-index: 10;
     }
-    & .letter:has(.letter-link:hover) {
+    &:not(:where(.post-stream[data-scrolling] *)) .letter:has(.letter-link:hover) {
       transform: translateX(var(--shift)) translateY(-4px) rotate(var(--angle)) scale(1.018);
     }
-    & .letter:has(.letter-link:hover) .letter-shadow-near {
+    &:not(:where(.post-stream[data-scrolling] *))
+      .letter:has(.letter-link:hover)
+      .letter-shadow-near {
       filter: blur(2px);
       transform: translate(1px, 3px);
       opacity: 0.28;
     }
-    & .letter:has(.letter-link:hover) .letter-shadow-far {
+    &:not(:where(.post-stream[data-scrolling] *))
+      .letter:has(.letter-link:hover)
+      .letter-shadow-far {
       filter: blur(10px);
       transform: translate(3px, 8px);
       opacity: 0.22;
     }
-    & .letter:has(.letter-link:hover)::before {
+    &:not(:where(.post-stream[data-scrolling] *)) .letter:has(.letter-link:hover)::before {
       opacity: 0.8;
     }
-    & .letter:has(.letter-link:hover) .letter-sheet::before {
+    &:not(:where(.post-stream[data-scrolling] *))
+      .letter:has(.letter-link:hover)
+      .letter-sheet::before {
       transform: matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0.48, 0.3, 0.001, 0, 2.9, 1.5, 0, 1)
         rotateY(-138deg);
       opacity: 0.47;
     }
-    & .letter:has(.letter-link:hover) .letter-mouth {
+    &:not(:where(.post-stream[data-scrolling] *)) .letter:has(.letter-link:hover) .letter-mouth {
       transform: translateX(0.5px) translateZ(5px) rotateY(-138deg);
     }
-    & .letter:has(.letter-link:hover) .letter-mouth::after {
+    &:not(:where(.post-stream[data-scrolling] *))
+      .letter:has(.letter-link:hover)
+      .letter-mouth::after {
       opacity: 0.95;
     }
-    & .letter-link:hover .letter-title {
+    &:not(:where(.post-stream[data-scrolling] *)) .letter-link:hover .letter-title {
       color: var(--red);
       --ink-color: var(--red);
     }
-    & .letter:has(.management button:hover) {
+    &:not(:where(.post-stream[data-scrolling] *)) .letter:has(.management button:hover) {
       --peel-size: 28px;
     }
-    & .management button:hover .delete-peel {
+    &:not(:where(.post-stream[data-scrolling] *)) .management button:hover .delete-peel {
       width: 28px;
       height: 28px;
       filter: brightness(0.956) sepia(0.204);
     }
-    & .management button:hover .delete-label {
+    &:not(:where(.post-stream[data-scrolling] *)) .management button:hover .delete-label {
       opacity: 1;
       transform: translate(0, 0);
     }

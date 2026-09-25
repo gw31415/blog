@@ -3,7 +3,7 @@ import { PostCard } from "../molecules/post-card";
 import { MonthMarker } from "../molecules/month-marker";
 import { ConfirmationDialog } from "../molecules/confirmation-dialog";
 import { groupPostsByDay, groupPostsByMonth } from "../../content/post-groups";
-import { $, component$, Slot, useSignal, type QRL } from "@qwik.dev/core";
+import { $, component$, Slot, useSignal, useVisibleTask$, type QRL } from "@qwik.dev/core";
 import type { PostSummary } from "~/server/post-list";
 
 export const PostList = component$<{
@@ -13,9 +13,36 @@ export const PostList = component$<{
   onDelete$?: QRL<(id: string) => Promise<boolean>>;
 }>((props) => {
   const dialog = useSignal<HTMLDialogElement>();
+  const stream = useSignal<HTMLDivElement>();
   const selected = useSignal<PostSummary>();
   const busy = useSignal(false);
   const error = useSignal("");
+  // Envelope movement stays CSS-driven; this flag only pauses hover during scrolling.
+  useVisibleTask$(
+    ({ cleanup }) => {
+      const element = stream.value;
+      if (!element) return;
+      let idleTimer: number | undefined;
+      const endScroll = () => {
+        window.clearTimeout(idleTimer);
+        idleTimer = undefined;
+        element.removeAttribute("data-scrolling");
+      };
+      const onScroll = () => {
+        if (!element.hasAttribute("data-scrolling")) element.setAttribute("data-scrolling", "");
+        window.clearTimeout(idleTimer);
+        idleTimer = window.setTimeout(endScroll, 150);
+      };
+      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("scrollend", endScroll);
+      cleanup(() => {
+        window.removeEventListener("scroll", onScroll);
+        window.removeEventListener("scrollend", endScroll);
+        endScroll();
+      });
+    },
+    { strategy: "document-ready" },
+  );
   const confirm = $(async () => {
     if (!selected.value || busy.value || !props.onDelete$) return;
     busy.value = true;
@@ -30,8 +57,7 @@ export const PostList = component$<{
     }
   });
   return (
-    <div class="post-stream" css={postListStyles}>
-      <span class="desk-surface" aria-hidden="true" />
+    <div class="post-stream" css={postListStyles} ref={stream}>
       <div class="post-desk" data-layout={props.layout ?? "list"}>
         <Slot name="stream-start" />
         {groupPostsByMonth(props.posts).map((group) => (
@@ -106,59 +132,24 @@ const postListStyles = css`
     radial-gradient(circle, var(--desk-dot) 0.55px, transparent 0.8px),
     radial-gradient(circle, var(--desk-glint) 0.55px, transparent 0.8px);
   --desk-edge-shadow: inset 1px 0 var(--edge), inset -1px 0 var(--edge);
-
-  @media screen {
-    position: relative;
-
-    /* Only the background is isolated/clipped. Cards must share the header's
-       stacking context so an active envelope can rise in front of it. */
-    & > .desk-surface {
-      position: absolute;
-      inset: 0;
-      z-index: 0;
-      isolation: isolate;
-      clip-path: inset(0);
-      pointer-events: none;
-    }
-    & > .desk-surface::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      pointer-events: none;
-      background-image: var(--desk-pattern);
-      background-position:
-        0 0,
-        1px 1px;
-      background-size: 5px 5px;
-    }
-    & > .desk-surface::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      z-index: -1;
-      pointer-events: none;
-      /* Keep the inset edge above the dots, as for a normal CSS background. */
-      box-shadow: var(--desk-edge-shadow);
-    }
-  }
-  @media print {
-    & > .desk-surface {
-      display: none;
-    }
-    background-image: var(--desk-pattern);
-    background-attachment: fixed, fixed;
-    background-position:
-      0 0,
-      1px 1px;
-    background-size: 5px 5px;
-    box-shadow: var(--desk-edge-shadow);
-  }
+  position: relative;
+  background-image: var(--desk-pattern);
+  background-attachment: fixed, fixed;
+  background-position:
+    0 0,
+    1px 1px;
+  background-size: 5px 5px;
+  box-shadow: var(--desk-edge-shadow);
 
   & .post-desk {
     position: relative;
     min-height: 100%;
     padding-top: var(--body-leading);
+  }
+  @media screen {
+    & .post-desk[data-layout="list"] {
+      padding-top: max(var(--body-leading), calc(33svh - var(--archive-header-height)));
+    }
   }
   & .post-month {
     position: relative;
@@ -200,6 +191,13 @@ const postListStyles = css`
   }
   & .post-desk[data-layout="grid"] .letters {
     gap: 28px;
+  }
+  &
+    .post-desk[data-layout="list"]
+    .post-month:first-of-type
+    .post-day:first-child
+    .dated-letter:first-child {
+    margin-bottom: 12px;
   }
   & .more {
     position: relative;
@@ -274,11 +272,11 @@ const postListStyles = css`
     &.post-stream {
       background: Canvas;
     }
-    & > .desk-surface {
-      display: none;
-    }
   }
   @media (min-width: 601px) {
+    & .post-desk[data-layout="list"] .post-month:first-of-type {
+      margin-top: 80px;
+    }
     & .letter-day {
       top: calc(var(--archive-month-top) + var(--archive-day-offset));
     }
