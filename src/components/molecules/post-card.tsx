@@ -48,6 +48,7 @@ export const PostCard = component$<{
               x={(stockSeed >>> 0) % 512}
               y={(stockSeed >>> 9) % 512}
             />
+            <span class="letter-right-flap" aria-hidden="true" />
             <h3 class="letter-title ink">{post.title || "無題"}</h3>
             {post.subtitle && <p class="letter-subtitle ink ink-muted">{post.subtitle}</p>}
             <div class="letter-details">
@@ -215,6 +216,8 @@ const postCardStyles = css`
   & .letter-sheet {
     position: relative;
     z-index: 1;
+    /* Composite the ink and paper together above the filtered shadow in Safari zoom. */
+    transform: translateZ(0);
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
@@ -231,6 +234,35 @@ const postCardStyles = css`
     height: calc(100% + 2px);
     clip-path: var(--stock-cut);
     transition: clip-path 160ms ease-out;
+  }
+  & .letter-right-flap {
+    position: absolute;
+    z-index: 2;
+    inset: 0 0 0 auto;
+    width: calc(var(--flap-width) / 2);
+    background-color: var(--envelope);
+    background-image:
+      linear-gradient(var(--envelope-tint), var(--envelope-tint)),
+      linear-gradient(90deg, rgb(77 56 30 / 16%), rgb(255 255 246 / 14%) 28%, transparent),
+      var(--paper-stock);
+    background-position:
+      0 0,
+      0 0,
+      calc(var(--stock-x) + 193px) calc(var(--stock-y) + 37px);
+    background-size:
+      100% 100%,
+      100% 100%,
+      var(--stock-size);
+    clip-path: polygon(
+      100% 0,
+      0 13%,
+      0 87%,
+      0 calc(100% - var(--peel-size) + var(--flap-width) / 2),
+      100% calc(100% - var(--peel-size))
+    );
+    filter: brightness(0.956) sepia(0.204);
+    transition: clip-path 160ms ease-out;
+    pointer-events: none;
   }
   & .letter-sheet::before {
     content: "";
@@ -341,9 +373,29 @@ const postCardStyles = css`
     transition: opacity 300ms ease;
   }
   & .draft {
-    color: #593c2c;
-    --ink-color: #593c2c;
-    font: 11px/1.5 var(--sans);
+    --stamp-red: #953f36;
+    --ink-color: var(--stamp-red);
+    display: inline-block;
+    padding: 3px 7px;
+    border: 2px solid var(--stamp-red);
+    box-shadow:
+      inset 0 0 0 2px var(--envelope),
+      inset 0 0 0 3px var(--stamp-red);
+    color: var(--stamp-red);
+    font: 700 12px/1.3 var(--sans);
+    letter-spacing: 0.08em;
+    -webkit-mask-image: repeating-linear-gradient(
+      103deg,
+      #000 0 5px,
+      rgb(0 0 0 / 36%) 5px 5.7px,
+      #000 6.4px 11px
+    );
+    mask-image: repeating-linear-gradient(
+      103deg,
+      #000 0 5px,
+      rgb(0 0 0 / 36%) 5px 5.7px,
+      #000 6.4px 11px
+    );
   }
   & .letter-details::before {
     content: "";
@@ -431,6 +483,21 @@ const postCardStyles = css`
     color: var(--muted);
     font: 13px/1.6 var(--sans);
     overflow-wrap: anywhere;
+  }
+  & .letter-subtitle::before,
+  & .letter-subtitle::after {
+    content: "";
+    display: inline-block;
+    inline-size: 1em;
+    block-size: 1em;
+    background: linear-gradient(var(--muted), var(--muted)) center / 100% 0.06em no-repeat;
+    vertical-align: text-top;
+  }
+  & .letter-subtitle::before {
+    margin-inline-end: 0.5em;
+  }
+  & .letter-subtitle::after {
+    margin-inline-start: 0.5em;
   }
   & .letter-description {
     margin: 12px 0 0;
@@ -706,6 +773,7 @@ const postCardStyles = css`
     }
     & .letter-shadow,
     & .letter-mouth,
+    & .letter-right-flap,
     & .letter-sheet::before,
     & .letter-sheet::after,
     & .letter-details::before,

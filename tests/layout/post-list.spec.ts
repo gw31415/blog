@@ -28,9 +28,12 @@ test("letter archive is SSR rendered and its corner peel opens deletion controls
   const remove = card.getByRole("button", { name: /を削除/ });
   const peelSize = () =>
     remove.evaluate((element) => parseFloat(getComputedStyle(element, "::before").width));
+  const rightFlapCut = () =>
+    card.locator(".letter-right-flap").evaluate((element) => getComputedStyle(element).clipPath);
   await expect(remove).toHaveCSS("width", "44px");
   await expect(remove).toHaveCSS("height", "44px");
   await expect.poll(peelSize).toBe(10);
+  await expect.poll(rightFlapCut).toContain("10px");
   await expect(remove.locator("span")).toHaveCSS("opacity", "0");
   const paperCut = () =>
     card.evaluate((element) => ({
@@ -66,6 +69,7 @@ test("letter archive is SSR rendered and its corner peel opens deletion controls
   const beforePeel = await footprint();
   await remove.hover();
   await expect.poll(peelSize).toBe(28);
+  await expect.poll(rightFlapCut).toContain("28px");
   await expect
     .poll(() => link.evaluate((element) => getComputedStyle(element, "::after").clipPath))
     .toContain("28px");
