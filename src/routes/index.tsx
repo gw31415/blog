@@ -5,6 +5,7 @@ import { $, component$, useSignal, useStore, useVisibleTask$ } from "@qwik.dev/c
 import { Form, routeAction$, routeLoader$, type DocumentHead } from "@qwik.dev/router";
 import { ArchiveLayout } from "~/components/templates/archive-layout";
 import { PostList } from "~/components/organisms/post-list";
+import { JournalHeading } from "~/components/organisms/journal-heading";
 import { BlogFooter, BlogFooterContainer } from "~/components/molecules/footer";
 import { BLOG_NAME, formatJapaneseEraYear } from "~/content/article";
 import { canManagePosts } from "~/content/permissions";
@@ -85,7 +86,11 @@ export default component$(() => {
       try {
         cached = JSON.parse(sessionStorage.getItem(key) ?? "null");
         const savedY = sessionStorage.getItem(`${key}:y`);
-        if (savedY !== null) y ??= Number(savedY);
+        const sessionY = savedY === null ? undefined : Number(savedY);
+        // Scroll events update the session copy immediately; history is debounced.
+        if (sessionY !== undefined && Number.isFinite(sessionY) && sessionY >= 0) {
+          y = sessionY;
+        }
       } catch {
         /* Fall back to the persistent copy. */
       }
@@ -281,9 +286,7 @@ export default component$(() => {
             return true;
           })}
         >
-          <h2 q:slot="stream-start" id="articles-title" class="stream-heading type-heading ink">
-            記事
-          </h2>
+          <JournalHeading q:slot="stream-start" />
           <div q:slot="stream-end" class="more" ref={sentinel} aria-busy={state.loading}>
             <p role="status">{state.loading ? "…" : state.error}</p>
             {state.next ? (

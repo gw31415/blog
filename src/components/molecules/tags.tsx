@@ -108,6 +108,7 @@ export function BlogTags(props: {
   initialTags?: string[];
   editable?: boolean;
   wrap?: boolean;
+  ink?: boolean;
   onTagsChange$?: QRL<(tags: string[]) => void>;
 }) {
   return (
@@ -174,7 +175,7 @@ export function BlogTags(props: {
       <RenderOnce>
         {(props.initialTags ?? props.tags).map((tag) => (
           <span class="meta-tag" contentEditable={props.editable ? "false" : undefined} key={tag}>
-            {tag}
+            {props.ink ? <span class="ink ink-muted">{tag}</span> : tag}
           </span>
         ))}
       </RenderOnce>

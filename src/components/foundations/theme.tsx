@@ -1,5 +1,6 @@
 import { component$, Slot } from "@qwik.dev/core";
 import { css } from "@qstyle/qwik";
+import { PaperMaterialDefinitions } from "../atoms/paper-material";
 
 /** Site tokens and shared typography for Qwik, SSR and editor surfaces. */
 const blogThemeStyles = css`
@@ -11,7 +12,9 @@ const blogThemeStyles = css`
   font-kerning: normal;
   font-synthesis: none;
   text-autospace: normal;
-  background: var(--page-background);
+  background-color: var(--page-background);
+  background-image: var(--desk-texture);
+  background-size: auto, var(--paper-stock-size);
   &::selection,
   & ::selection {
     color: var(--ink);
@@ -21,6 +24,10 @@ const blogThemeStyles = css`
   --page-background: #f2ead5;
   --paper: #f2ead5;
   --paper-deep: #e9dfc7;
+  --paper-stock: url("/assets/materials/fiber-paper-9142573283.avif");
+  --paper-stock-size: 32px 32px;
+  --desk-texture:
+    linear-gradient(rgb(243 234 210 / 84%), rgb(243 234 210 / 84%)), var(--paper-stock);
 
   --ink: #352f25;
   --muted: #655c4e;
@@ -187,10 +194,33 @@ const blogThemeStyles = css`
       text-decoration-color 120ms ease,
       background-color 120ms ease;
   }
+  @media (forced-colors: active) {
+    &.blog-theme {
+      background: Canvas;
+      --desk-texture: none;
+    }
+    & .ink {
+      color: CanvasText;
+      -webkit-text-fill-color: CanvasText;
+      background-image: none;
+    }
+    & .site-link,
+    & .article-style a {
+      color: LinkText;
+      -webkit-text-fill-color: LinkText;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    & .site-link,
+    & .article-style a {
+      transition: none;
+    }
+  }
 `;
 
 export const BlogTheme = component$(() => (
   <body class="blog-theme" css={blogThemeStyles}>
+    <PaperMaterialDefinitions />
     <Slot />
   </body>
 ));

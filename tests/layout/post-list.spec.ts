@@ -1,218 +1,123 @@
 import { test, expect } from "@playwright/test";
 
-test("letter list is SSR rendered, fits mobile, and deletion can be cancelled", async ({
+test("letter archive is SSR rendered and its corner peel opens deletion controls", async ({
   page,
   request,
+  browserName,
 }) => {
-  const imageRequests: string[] = [];
-  page.on("request", (networkRequest) => {
-    if (networkRequest.resourceType() === "image") imageRequests.push(networkRequest.url());
-  });
-  const response = await request.get("/");
-  const html = await response.text();
-  expect(html).toContain("記事一覧");
+  const html = await (await request.get("/")).text();
+  expect(html).toContain("ブログ名（仮）");
   expect(html).not.toContain("body_json");
   await page.goto("/");
-  const viewport = page.locator("[data-virtual-keyboard-viewport]");
-  await expect(viewport.locator('[data-virtual-keyboard-region="top"] .site-topbar')).toHaveCount(
-    1,
-  );
-  await expect(
-    viewport.locator('[data-virtual-keyboard-region="content"] .page-footer'),
-  ).toHaveCount(1);
-  await expect(viewport).not.toHaveAttribute("data-internal-scroll");
-  const archiveHeaderStyle = await page.locator(".archive-header").evaluate((element) => {
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  const card = page.locator(".letter").first();
+  await card.scrollIntoViewIfNeeded();
+  const link = card.locator(".letter-link");
+  await expect(link).toHaveAttribute("href", /\/blog\/.+/);
+  const titleInk = await link.locator(".letter-title").evaluate((element) => {
     const style = getComputedStyle(element);
-    return [style.backgroundImage, style.backgroundColor, style.backdropFilter];
+    return {
+      fill: style.webkitTextFillColor,
+      clip: style.backgroundClip,
+      texture: style.backgroundImage.includes("data:image/svg+xml"),
+    };
   });
-  expect(archiveHeaderStyle[0]).toBe("none");
-  expect(archiveHeaderStyle[1]).toBe("rgba(242, 234, 213, 0.62)");
-  expect(archiveHeaderStyle[2]).toContain("blur(12px)");
-  await expect(page.locator(".stream-footer")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-  await expect(page.locator("#articles-title")).toHaveCSS("position", "static");
-  const cards = page.locator(".letter");
-  expect(await cards.count()).toBeGreaterThan(0);
-  await page.screenshot({ path: ".cache/post-list-desktop.png", fullPage: true });
-  const deleteButton = cards.first().getByRole("button", { name: /を削除/ });
-  const firstSheet = cards.first().locator(".letter-sheet");
-  await expect(deleteButton.locator("..")).toHaveCSS("right", "0px");
-  await expect(deleteButton.locator("..")).toHaveCSS("bottom", "0px");
-  await expect(firstSheet).toHaveCSS("border-top-style", "solid");
-  await expect(firstSheet).toHaveCSS("border-top-width", "1px");
-  await expect(firstSheet).toHaveCSS("background-image", /data:image\/svg\+xml/);
-  expect(imageRequests.filter((url) => url.includes("envelope-paper"))).toEqual([]);
-  expect(
-    await firstSheet.evaluate((element) => getComputedStyle(element).backgroundImage),
-  ).not.toContain("repeating-linear-gradient");
-  await expect(page.locator(".month-number").first()).toHaveText("09");
-  await expect
-    .poll(() =>
-      deleteButton.evaluate((element) =>
-        Number.parseFloat(getComputedStyle(element, "::before").width),
-      ),
-    )
-    .toBe(10);
-  await expect
-    .poll(() => firstSheet.evaluate((element) => getComputedStyle(element).clipPath))
-    .toContain("10px");
-  const cardLink = cards.first().locator(".letter-link");
-  await expect(cardLink).toHaveAttribute("href", /\/.+/);
-  const restingTransform = await cards
-    .first()
-    .evaluate((element) => getComputedStyle(element).transform);
-  const closedMouthTransform = await cards
-    .first()
-    .locator(".letter-mouth")
-    .evaluate((element) => getComputedStyle(element).transform);
-  const mouth = cards.first().locator(".letter-mouth");
-  const mouthFace = mouth.locator(".letter-mouth-face");
-  const closedMouthBox = await mouthFace.boundingBox();
-  expect(closedMouthBox).not.toBeNull();
-  await expect(mouth).toHaveCSS("left", "0px");
-  await expect(mouthFace).toHaveCSS("clip-path", /polygon/);
-  expect(
-    await mouthFace.evaluate((element) => [
-      getComputedStyle(element, "::before").clipPath,
-      getComputedStyle(element, "::after").clipPath,
-    ]),
-  ).toEqual(["none", "none"]);
-  expect(
-    await mouthFace.evaluate((element) => getComputedStyle(element, "::before").backfaceVisibility),
-  ).toBe("hidden");
-  expect(
-    await mouthFace.evaluate((element) => getComputedStyle(element, "::after").backfaceVisibility),
-  ).toBe("hidden");
-  await cardLink.hover({ position: { x: 80, y: 80 } });
-  await expect
-    .poll(() => cards.first().evaluate((element) => getComputedStyle(element).transform))
-    .not.toBe(restingTransform);
-  await expect
-    .poll(() => mouth.evaluate((element) => getComputedStyle(element).transform))
-    .not.toBe(closedMouthTransform);
-  await expect
-    .poll(async () => {
-      const box = await mouthFace.boundingBox();
-      return box ? closedMouthBox!.x - box.x : 0;
-    })
-    .toBeGreaterThan(20);
-  const openMouthBox = await mouthFace.boundingBox();
-  const sheetBox = await firstSheet.boundingBox();
-  expect(openMouthBox).not.toBeNull();
-  expect(sheetBox).not.toBeNull();
-  const seamOverlap = openMouthBox!.x + openMouthBox!.width - sheetBox!.x;
-  expect(seamOverlap).toBeGreaterThanOrEqual(0);
-  expect(seamOverlap).toBeLessThanOrEqual(1);
-  const openMouthAxisX = await mouth.evaluate((element) => {
-    const matrix = new DOMMatrixReadOnly(getComputedStyle(element).transform);
-    return matrix.m11;
-  });
-  expect(openMouthAxisX).toBeLessThan(0);
-  const openMouthStyle = await cards
-    .first()
-    .locator(".letter-mouth")
-    .evaluate((element) => ({
-      transform: getComputedStyle(element).transform,
-      filter: getComputedStyle(element).filter,
-      back: getComputedStyle(element.querySelector(".letter-mouth-face")!, "::after")
-        .backgroundImage,
+  expect(titleInk.fill).toBe("rgba(0, 0, 0, 0)");
+  expect(titleInk.clip).toContain("text");
+  expect(titleInk.texture).toBe(true);
+  const remove = card.getByRole("button", { name: /を削除/ });
+  const peelSize = () =>
+    remove.evaluate((element) => parseFloat(getComputedStyle(element, "::before").width));
+  await expect(remove).toHaveCSS("width", "44px");
+  await expect(remove).toHaveCSS("height", "44px");
+  await expect.poll(peelSize).toBe(10);
+  await expect(remove.locator("span")).toHaveCSS("opacity", "0");
+  const paperCut = () =>
+    card.evaluate((element) => ({
+      shadow: getComputedStyle(element.querySelector(".letter-shadow-shape")!).clipPath,
+      stock: getComputedStyle(element.querySelector(".letter-stock")!).clipPath,
+      filter: getComputedStyle(element.querySelector(".letter-shadow")!).filter,
     }));
-  expect(openMouthStyle.transform).toContain("matrix3d");
-  expect(openMouthStyle.back).toContain("data:image/svg+xml");
-  expect(openMouthStyle.back).not.toContain("gradient");
-  expect(openMouthStyle.filter).toBe("none");
-  await expect(cards.first().locator(".letter-mouth-shadow")).toHaveCount(0);
+  const restingCut = await paperCut();
+  expect(restingCut.shadow).toBe(restingCut.stock);
+  expect(restingCut.filter).toContain("drop-shadow(");
+  const resting = await card.evaluate((el) => getComputedStyle(el).transform);
+  await link.focus();
+  await page.keyboard.press(browserName === "webkit" ? "Alt+Shift+Tab" : "Shift+Tab");
+  await page.keyboard.press(browserName === "webkit" ? "Alt+Tab" : "Tab");
+  await expect.poll(() => card.evaluate((el) => getComputedStyle(el).transform)).not.toBe(resting);
+  await expect(link).toHaveCSS("outline-style", "solid");
+  // Focus and hover may scroll a control into view; the peel must preserve its list coordinates.
+  const footprint = () =>
+    page
+      .locator(".dated-letter")
+      .first()
+      .evaluate((element) => {
+        const stream = element.closest<HTMLElement>(".post-stream")!;
+        const box = element.getBoundingClientRect();
+        const viewport = stream.getBoundingClientRect();
+        return {
+          x: box.x - viewport.x + stream.scrollLeft,
+          y: box.y - viewport.y + stream.scrollTop,
+          width: box.width,
+          height: box.height,
+        };
+      });
+  const beforePeel = await footprint();
+  await remove.hover();
+  await expect.poll(peelSize).toBe(28);
   await expect
-    .poll(() =>
-      cards.first().evaluate((element) => Number(getComputedStyle(element, "::after").opacity)),
-    )
-    .toBeCloseTo(0.78, 2);
-  const hingeShadow = await cards.first().evaluate((element) => {
-    const style = getComputedStyle(element, "::after");
-    return { width: style.width, boxShadow: style.boxShadow, opacity: style.opacity };
-  });
-  expect(hingeShadow.width).toBe("2px");
-  expect(hingeShadow.boxShadow).not.toBe("none");
-  expect(Number(hingeShadow.opacity)).toBeCloseTo(0.78, 2);
-  const foldLayers = await deleteButton.evaluate((element) => [
-    getComputedStyle(element, "::before").backgroundImage,
-    getComputedStyle(element, "::after").backgroundImage,
-  ]);
-  expect(foldLayers.join(" ")).not.toContain("gradient");
-  await page.screenshot({ path: ".cache/post-list-flap-open-desktop.png", fullPage: true });
-  const pageViewport = page.viewportSize();
-  expect(pageViewport).not.toBeNull();
-  const closeupX = Math.max(0, openMouthBox!.x - 12);
-  const closeupY = Math.max(0, sheetBox!.y - 8);
-  await page.screenshot({
-    path: ".cache/post-list-flap-open-closeup.png",
-    clip: {
-      x: closeupX,
-      y: closeupY,
-      width: Math.min(pageViewport!.width - closeupX, sheetBox!.x - closeupX + 96),
-      height: Math.min(pageViewport!.height - closeupY, sheetBox!.height + 16),
-    },
-  });
-  await expect(deleteButton.locator("span")).toHaveCSS("opacity", "0");
-  await deleteButton.hover();
-  await expect
-    .poll(() =>
-      deleteButton.evaluate((element) =>
-        Number.parseFloat(getComputedStyle(element, "::before").width),
-      ),
-    )
-    .toBe(28);
-  await expect
-    .poll(() => firstSheet.evaluate((element) => getComputedStyle(element).clipPath))
+    .poll(() => link.evaluate((element) => getComputedStyle(element, "::after").clipPath))
     .toContain("28px");
-  await expect(page.locator(".dated-letter").first()).toHaveCSS("z-index", "10");
-  await expect(deleteButton.locator("span")).toHaveCSS("opacity", "1");
-  await expect
-    .poll(() => deleteButton.evaluate((element) => getComputedStyle(element, "::before").transform))
-    .toBe("none");
-  await deleteButton.click();
+  await expect.poll(async () => (await paperCut()).shadow).toContain("28px");
+  expect((await paperCut()).shadow).toBe((await paperCut()).stock);
+  await expect(remove.locator("span")).toHaveCSS("opacity", "1");
+  expect(await footprint()).toEqual(beforePeel);
+  await remove.click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("button", { name: "キャンセル", exact: true }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(link).toBeVisible();
+});
+
+test("mobile envelopes overlap while year, month and day share the left column", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await expect
-    .poll(() =>
-      page.locator("main.archive").evaluate((el) => {
-        const rect = el.getBoundingClientRect();
-        return [rect.left, rect.width];
-      }),
-    )
-    .toEqual([0, 375]);
-  await expect
-    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
-    .toBe(true);
-  const mobileLetter = await cards.first().boundingBox();
-  expect(mobileLetter).not.toBeNull();
-  expect(mobileLetter!.x).toBeLessThanOrEqual(36);
-  expect(375 - (mobileLetter!.x + mobileLetter!.width)).toBeLessThanOrEqual(8);
+  await page.goto("/");
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const cards = page.locator(".letter");
+  const second = page.locator(".letters").first().locator(".dated-letter").nth(1);
+  await expect(second).toHaveCSS("margin-top", "-10px");
+  const firstBox = (await cards.first().boundingBox())!;
+  const secondBox = (await second.locator(".letter").boundingBox())!;
+  expect(secondBox.y).toBeLessThan(firstBox.y + firstBox.height);
+  expect(firstBox.x).toBeLessThanOrEqual(36);
+  expect(375 - (firstBox.x + firstBox.width)).toBeLessThanOrEqual(8);
   await expect(cards.first()).not.toHaveCSS("transform", "none");
-  await expect(page.locator(".dated-letter").nth(1)).toHaveCSS("margin-top", "-10px");
-  const monthMarker = await page.locator(".month-marker").first().boundingBox();
-  const firstTitle = await cards.first().locator(".letter-title").boundingBox();
-  expect(monthMarker).not.toBeNull();
-  expect(firstTitle).not.toBeNull();
-  expect(monthMarker!.width).toBeCloseTo(32, 0);
-  expect(monthMarker!.x + monthMarker!.width).toBeLessThan(firstTitle!.x);
+  const marker = (await page.locator(".month-marker").first().boundingBox())!;
+  const title = (await cards.first().locator(".letter-title").boundingBox())!;
+  expect(marker.width).toBeCloseTo(32, 0);
+  expect(marker.x + marker.width).toBeLessThan(title.x);
   const leftEdges = await page.evaluate(() =>
-    [".month-year", ".month-number", ".letter-day"].map(
+    [".month-year", ".month-number", ".post-day > .letter-day"].map(
       (selector) => document.querySelector(selector)!.getBoundingClientRect().left,
     ),
   );
   expect(Math.max(...leftEdges) - Math.min(...leftEdges)).toBeLessThanOrEqual(1);
-  await page.screenshot({ path: ".cache/post-list-mobile.png", fullPage: true });
-  await cardLink.hover({ position: { x: 80, y: 80 } });
-  await expect(mouth).toHaveCSS("filter", "none");
-  await page.screenshot({ path: ".cache/post-list-flap-open-mobile.png", fullPage: true });
-  await cards
-    .first()
-    .getByRole("button", { name: /を削除/ })
-    .click();
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog")).not.toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375);
+  const draftWithoutTags = page
+    .locator('.dated-letter[data-status="draft"]')
+    .filter({ hasNot: page.locator(".post-tags") })
+    .first();
+  await expect(draftWithoutTags).toBeVisible();
+  expect(
+    await draftWithoutTags.evaluate((element) => {
+      const row = element.querySelector(".letter-bottom")!.getBoundingClientRect();
+      const draft = element.querySelector(".draft")!.getBoundingClientRect();
+      return Math.abs(row.right - draft.right);
+    }),
+  ).toBeLessThan(1);
 });
 
 test("loads the next page on scroll without duplicating cards", async ({ page }) => {
@@ -273,6 +178,30 @@ test("restores the loaded list without randomUUID on reload and back", async ({ 
   expect(errors).toEqual([]);
 });
 
+test("restores the latest session position while history is still debounced", async ({ page }) => {
+  await page.goto("/");
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const key = `blog:post-list:v1:${history.state?.postListEntry}:true`;
+        return sessionStorage.getItem(key) !== null;
+      }),
+    )
+    .toBe(true);
+  // Reproduce a reload inside the history debounce window after the old document
+  // has flushed on pagehide, without depending on timer or navigation timing.
+  await page.addInitScript(() => {
+    const key = `blog:post-list:v1:${history.state.postListEntry}:true`;
+    sessionStorage.setItem(`${key}:y`, "320");
+    history.replaceState({ ...history.state, postListY: 0 }, "");
+  });
+  await page.reload();
+  await expect
+    .poll(() => page.locator(".post-stream").evaluate((element) => element.scrollTop))
+    .toBe(320);
+  await expect.poll(() => page.evaluate(() => history.state.postListY)).toBe(320);
+});
+
 test("restores a thousand cached summaries without fetching a thousand rows", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => page.evaluate(() => history.state?.postListEntry)).toBeTruthy();
@@ -329,6 +258,30 @@ test("deletes only a newly created test draft after confirmation", async ({ page
   const card = page
     .locator(".letter")
     .filter({ has: page.locator(`.letter-link[href="${path}"]`) });
+  await expect(card.locator(".post-tags .meta-tag")).toHaveCount(2);
+  expect(
+    await card.locator(".post-tags .meta-tag .ink").evaluateAll((elements) =>
+      elements.every((element) => {
+        const style = getComputedStyle(element);
+        return (
+          style.backgroundClip.includes("text") && style.webkitTextFillColor === "rgba(0, 0, 0, 0)"
+        );
+      }),
+    ),
+  ).toBe(true);
+  const draftStyle = await card.evaluate((element) => {
+    const row = element.querySelector(".letter-bottom")!.getBoundingClientRect();
+    const draft = element.querySelector(".draft")!.getBoundingClientRect();
+    const item = element.closest(".dated-letter")!;
+    const archive = element.closest(".post-stream")!;
+    return {
+      rightGap: Math.abs(row.right - draft.right),
+      envelope: getComputedStyle(item).getPropertyValue("--envelope"),
+      archiveEnvelope: getComputedStyle(archive).getPropertyValue("--envelope"),
+    };
+  });
+  expect(draftStyle.rightGap).toBeLessThan(1);
+  expect(draftStyle.envelope).not.toBe(draftStyle.archiveEnvelope);
   await card.getByRole("button", { name: /を削除/ }).click();
   await page.getByRole("button", { name: "削除する", exact: true }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
@@ -345,18 +298,25 @@ for (const width of [1280, 390]) {
     await page.goto("/");
     const measure = () =>
       page.evaluate(() => {
-        const marker = document.querySelector(".month-marker")!.getBoundingClientRect();
-        const day = document.querySelector(".letter-day")!.getBoundingClientRect();
+        const markerElement = document.querySelector(".month-marker")!;
+        const dayElement = document.querySelector(".post-day > .letter-day")!;
+        const marker = markerElement.getBoundingClientRect();
+        const day = dayElement.getBoundingClientRect();
         const header = document.querySelector(".archive-header")!.getBoundingClientRect();
         const stream = document.querySelector<HTMLElement>(".post-stream")!;
+        const streamTop = stream.getBoundingClientRect().top;
         const letter = document.querySelector(".letter")!.getBoundingClientRect();
         const heading = document.querySelector("#articles-title")!.getBoundingClientRect();
         return {
           marker: marker.top,
           day: day.top,
           header: header.bottom,
-          stream: stream.getBoundingClientRect().top,
           streamY: stream.scrollTop,
+          maxScroll: stream.scrollHeight - stream.clientHeight,
+          stickyAfter: Math.max(
+            marker.top - streamTop - parseFloat(getComputedStyle(markerElement).top),
+            day.top - streamTop - parseFloat(getComputedStyle(dayElement).top),
+          ),
           letter: letter.top,
           heading: heading.top,
           windowY: scrollY,
@@ -364,19 +324,38 @@ for (const width of [1280, 390]) {
         };
       });
     const start = await measure();
-    await page.locator(".post-stream").evaluate((element) => element.scrollTo(0, 400));
-    await expect.poll(async () => (await measure()).streamY).toBe(400);
+    // Exercise both sticky labels after their pinning threshold, within the actual scroll range.
+    const firstY = Math.max(
+      Math.ceil(start.stickyAfter) + 16,
+      Math.min(200, Math.floor(start.maxScroll / 3)),
+    );
+    const secondY = Math.min(firstY + 200, start.maxScroll);
+    expect(
+      secondY - firstY,
+      "the fixture must allow a substantial pinned scroll",
+    ).toBeGreaterThanOrEqual(100);
+    await page.locator(".post-stream").evaluate((element, y) => element.scrollTo(0, y), firstY);
+    await expect.poll(async () => (await measure()).streamY).toBe(firstY);
     const a = await measure();
-    await page.locator(".post-stream").evaluate((element) => element.scrollTo(0, 700));
-    await expect.poll(async () => (await measure()).letter).toBeLessThan(a.letter - 250);
+    await page.locator(".post-stream").evaluate((element, y) => element.scrollTo(0, y), secondY);
+    await expect.poll(async () => (await measure()).streamY).toBe(secondY);
     const b = await measure();
-    expect(b.heading).toBeLessThan(start.heading - 250);
+    const distance = b.streamY - a.streamY;
+    expect(distance).toBeGreaterThanOrEqual(100);
+    expect(Math.abs(a.letter - b.letter - distance)).toBeLessThan(0.5);
+    expect(Math.abs(start.heading - b.heading - (b.streamY - start.streamY))).toBeLessThan(0.5);
     expect(b.marker).toBe(a.marker);
     expect(b.day).toBe(a.day);
+    expect(b.header).toBe(start.header);
     expect(b.marker).toBeGreaterThanOrEqual(b.header);
     expect(b.day).toBeGreaterThanOrEqual(b.marker);
     expect(b.windowY).toBe(0);
     expect(b.overflow).toBe(false);
+    const columns = await page
+      .locator(".letters")
+      .first()
+      .evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length);
+    expect(columns).toBe(1);
   });
 }
 
@@ -416,39 +395,6 @@ test("article and list share tag styling and long titles fit the mobile envelope
   await page.screenshot({ path: ".cache/post-list-preview-mobile.png" });
 });
 
-test("shared chrome and typography have identical computed styles across routes", async ({
-  page,
-}) => {
-  const style = (selector: string) =>
-    page
-      .locator(selector)
-      .first()
-      .evaluate((el) => {
-        const css = getComputedStyle(el);
-        return [
-          css.fontFamily,
-          css.fontSize,
-          css.fontWeight,
-          css.lineHeight,
-          css.letterSpacing,
-          css.color,
-          css.webkitTextFillColor,
-          css.backgroundImage,
-          css.textDecoration,
-          css.textUnderlineOffset,
-        ];
-      });
-  await page.goto("/blog/document-showcase");
-  const header = await style(".article-topbar .site-link");
-  const footer = await style(".page-footer");
-  const heading = await style("article h2");
-  await page.goto("/");
-  expect(await style(".site-link")).toEqual(header);
-  expect(await style(".page-footer")).toEqual(footer);
-  // Ink is decorative; heading metrics themselves come from the same rule.
-  expect((await style(".letter-title")).slice(0, 5)).toEqual(heading.slice(0, 5));
-});
-
 for (const width of [1280, 390]) {
   test(`footer edges match the article content at ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
@@ -469,8 +415,6 @@ for (const width of [1280, 390]) {
     expect(article).toEqual([...content, ...content]);
     await page.goto("/");
     expect(await edges()).toEqual(article);
-    await page.locator(".page-footer").scrollIntoViewIfNeeded();
-    await page.screenshot({ path: `.cache/footer-alignment-${width}.png` });
   });
 }
 

@@ -98,7 +98,7 @@ const postListStyles = css`
   --desk: #dfdbcd;
   --desk-dot: rgb(80 68 45 / 12%);
   --desk-glint: rgb(255 255 255 / 48%);
-  --envelope: #f5eedc;
+  --envelope: #f8f6f0;
   --fold: #eee6d2;
   --edge: rgb(90 71 44 / 21%);
   --date-ink: var(--muted);
@@ -118,11 +118,6 @@ const postListStyles = css`
     position: relative;
     min-height: 100%;
     padding-top: var(--body-leading);
-  }
-  & .stream-heading {
-    position: static;
-    margin: 0;
-    padding: 0 68px 18px;
   }
   & .post-month {
     position: relative;
@@ -206,9 +201,6 @@ const postListStyles = css`
     background: transparent;
   }
   @media (max-width: 600px) {
-    & .stream-heading {
-      padding: 0 20px 16px;
-    }
     & .post-month {
       display: block;
       padding: 0 0 4px;

@@ -53,7 +53,9 @@ const stickyHeaderStyles = css`
     margin-bottom: 0;
   }
   &[data-header-surface="paper"] {
-    background: rgb(242 234 213 / 98%);
+    background-color: rgb(242 234 213 / 98%);
+    background-image: var(--desk-texture);
+    background-size: auto, var(--paper-stock-size);
   }
   &[data-header-surface="glass"] {
     background: rgb(242 234 213 / 62%);

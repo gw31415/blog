@@ -41,12 +41,20 @@ const articleShellStyles = css`
 
     overflow: hidden;
 
-    background: var(--paper);
+    background-color: color-mix(in srgb, var(--paper) 50%, white);
     font-size: var(--body-size);
 
     box-shadow:
+      inset 0 1px rgb(255 253 246 / 62%),
+      inset 1px 0 rgb(255 253 246 / 30%),
+      inset -1px 0 rgb(83 66 40 / 9%),
       0 1px 2px rgb(40 30 20 / 8%),
       0 16px 48px rgb(40 30 20 / 10%);
+  }
+
+  & .paper > .article-stock {
+    mix-blend-mode: multiply;
+    z-index: -1;
   }
 
   /* ─────────────────────────────
@@ -71,10 +79,13 @@ const articleShellStyles = css`
 
     pointer-events: none;
 
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='%236f5843'%3E%3Ccircle cx='13' cy='22' r='.45' opacity='.12'/%3E%3Ccircle cx='67' cy='11' r='.35' opacity='.1'/%3E%3Ccircle cx='123' cy='37' r='.5' opacity='.08'/%3E%3Ccircle cx='179' cy='18' r='.35' opacity='.12'/%3E%3Ccircle cx='199' cy='74' r='.55' opacity='.08'/%3E%3Ccircle cx='31' cy='91' r='.4' opacity='.1'/%3E%3Ccircle cx='83' cy='126' r='.35' opacity='.12'/%3E%3Ccircle cx='142' cy='108' r='.45' opacity='.1'/%3E%3Ccircle cx='207' cy='151' r='.4' opacity='.09'/%3E%3Ccircle cx='56' cy='183' r='.45' opacity='.09'/%3E%3Ccircle cx='118' cy='201' r='.35' opacity='.11'/%3E%3Ccircle cx='172' cy='188' r='.5' opacity='.08'/%3E%3C/g%3E%3Cg stroke='%23816c52' stroke-width='.45' stroke-linecap='round' opacity='.09'%3E%3Cpath d='M18 52l7 -1'/%3E%3Cpath d='M91 69l11 1'/%3E%3Cpath d='M156 53l5 -2'/%3E%3Cpath d='M38 146l9 -1'/%3E%3Cpath d='M132 160l8 2'/%3E%3Cpath d='M188 123l6 -1'/%3E%3Cpath d='M72 211l10 -1'/%3E%3C/g%3E%3Cg fill='%23382f26' opacity='.14'%3E%3Ccircle cx='24' cy='71' r='.55'/%3E%3Ccircle cx='102' cy='19' r='.4'/%3E%3Ccircle cx='163' cy='92' r='.65'/%3E%3Ccircle cx='211' cy='202' r='.45'/%3E%3Ccircle cx='46' cy='166' r='.35'/%3E%3C/g%3E%3Cg stroke='%23382f26' stroke-width='.5' stroke-linecap='round' opacity='.11'%3E%3Cpath d='M7 119l4 -.4'/%3E%3Cpath d='M74 48l7 1'/%3E%3Cpath d='M119 181l5 -1'/%3E%3Cpath d='M184 43l3 .6'/%3E%3C/g%3E%3Cg fill='%23a27f5d' opacity='.035'%3E%3Cpath d='M22 32c8-5 17-3 20 2s-8 8-16 6-10-5-4-8z'/%3E%3Cpath d='M150 137c7-4 19-2 21 3s-9 7-17 6-10-6-4-9z'/%3E%3C/g%3E%3C/svg%3E");
-
-    background-size: 220px 220px;
-    opacity: 0.85;
+    background-image: linear-gradient(
+      102deg,
+      rgb(255 254 247 / 12%),
+      transparent 24% 75%,
+      rgb(92 72 39 / 3%)
+    );
+    opacity: 1;
   }
 
   & .content {
@@ -735,6 +746,15 @@ const articleShellStyles = css`
   }
 
   @media (forced-colors: active) {
+    & .paper.paper {
+      background: Canvas;
+      background-blend-mode: normal;
+      box-shadow: none;
+    }
+    & .paper .paper-texture,
+    & .paper .grid-layer {
+      display: none;
+    }
     & .ink {
       color: CanvasText;
       -webkit-text-fill-color: CanvasText;
