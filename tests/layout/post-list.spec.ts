@@ -27,23 +27,48 @@ test("letter archive is SSR rendered and its corner peel opens deletion controls
   expect(titleInk.texture).toBe(true);
   const remove = card.getByRole("button", { name: /を削除/ });
   const peelSize = () =>
-    remove.evaluate((element) => parseFloat(getComputedStyle(element, "::before").width));
+    remove
+      .locator(".delete-peel")
+      .evaluate((element) => parseFloat(getComputedStyle(element).width));
   const rightFlapCut = () =>
     card.locator(".letter-right-flap").evaluate((element) => getComputedStyle(element).clipPath);
   await expect(remove).toHaveCSS("width", "44px");
   await expect(remove).toHaveCSS("height", "44px");
   await expect.poll(peelSize).toBe(10);
+  await expect(remove.locator(".delete-peel")).toHaveCSS("clip-path", "none");
+  await expect(remove.locator(".delete-peel")).not.toHaveCSS("filter", /drop-shadow/);
+  expect(
+    await remove
+      .locator(".delete-peel")
+      .evaluate((element) => getComputedStyle(element, "::before").content),
+  ).toBe('""');
   await expect.poll(rightFlapCut).toContain("10px");
-  await expect(remove.locator("span")).toHaveCSS("opacity", "0");
+  const rightFlap = card.locator(".letter-right-flap");
+  await expect(rightFlap).toHaveCSS("background-image", "none");
+  await expect(rightFlap).toHaveCSS("filter", "none");
+  expect(
+    await rightFlap.evaluate((element) => getComputedStyle(element, "::before").backgroundImage),
+  ).toBe("none");
+  expect(
+    await card.evaluate((element) => {
+      const seam = getComputedStyle(element.querySelector(".letter-details")!, "::after");
+      const flap = getComputedStyle(element.querySelector(".letter-right-flap")!, "::before");
+      return seam.clipPath === `inset(0px ${flap.width} 0px 0px)`;
+    }),
+  ).toBe(true);
+  expect(
+    await rightFlap.evaluate((element) => getComputedStyle(element, "::before").clipPath),
+  ).toBe("polygon(100% 0px, 0px 13%, 0px 87%, 100% 100%)");
+  await expect(remove.locator(".delete-label")).toHaveCSS("opacity", "0");
   const paperCut = () =>
     card.evaluate((element) => ({
       shadow: getComputedStyle(element.querySelector(".letter-shadow-shape")!).clipPath,
       stock: getComputedStyle(element.querySelector(".letter-stock")!).clipPath,
-      filter: getComputedStyle(element.querySelector(".letter-shadow")!).filter,
+      filter: getComputedStyle(element.querySelector(".letter-shadow-near")!).filter,
     }));
   const restingCut = await paperCut();
   expect(restingCut.shadow).toBe(restingCut.stock);
-  expect(restingCut.filter).toContain("drop-shadow(");
+  expect(restingCut.filter).toBe("blur(1px)");
   const resting = await card.evaluate((el) => getComputedStyle(el).transform);
   await link.focus();
   await page.keyboard.press(browserName === "webkit" ? "Alt+Shift+Tab" : "Shift+Tab");
@@ -75,7 +100,16 @@ test("letter archive is SSR rendered and its corner peel opens deletion controls
     .toContain("28px");
   await expect.poll(async () => (await paperCut()).shadow).toContain("28px");
   expect((await paperCut()).shadow).toBe((await paperCut()).stock);
-  await expect(remove.locator("span")).toHaveCSS("opacity", "1");
+  expect(await rightFlapCut()).toBe((await paperCut()).stock);
+  // The fold is in front of the sheet's 3D plane, including its right seam.
+  expect(
+    await card.evaluate((element) => {
+      const depth = (selector: string) =>
+        new DOMMatrixReadOnly(getComputedStyle(element.querySelector(selector)!).transform).m43;
+      return depth(".management") - depth(".letter-sheet");
+    }),
+  ).toBeGreaterThan(0);
+  await expect(remove.locator(".delete-label")).toHaveCSS("opacity", "1");
   expect(await footprint()).toEqual(beforePeel);
   await remove.click();
   await expect(page.getByRole("dialog")).toBeVisible();
@@ -574,3 +608,89 @@ test("does not save intermediate scroll positions during delayed restoration", a
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(y - 50);
   await expect.poll(() => page.evaluate(() => history.state.postListY)).toBeLessThan(y - 50);
 });
+
+for (const width of [1280, 390]) {
+  test(`active envelope covers the sticky bar and casts shadows from the peeled shape at ${width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    const card = page.locator(".letter").first();
+    const original = (await card.boundingBox())!;
+    await page.mouse.move(1, 800);
+    await page.evaluate((y) => window.scrollTo(0, y), original.y + 20);
+    const bounds = (await card.boundingBox())!;
+    // Mouse coordinates avoid Playwright scrolling the whole card back into view.
+    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height - 30);
+    await expect
+      .poll(() =>
+        card.evaluate((element) => {
+          const cardBox = element.getBoundingClientRect();
+          const header = document.querySelector(".archive-header")!.getBoundingClientRect();
+          return element.contains(
+            document.elementFromPoint(cardBox.x + cardBox.width / 2, header.y + header.height / 2),
+          );
+        }),
+      )
+      .toBe(true);
+
+    await page.mouse.move(1, 800);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await card.locator(".management button").hover();
+    await expect(card.locator(".delete-peel")).toHaveCSS("width", "28px");
+    await page.waitForTimeout(200);
+    const shadows = await card.evaluate((element) => ({
+      stock: getComputedStyle(element.querySelector(".letter-stock")!).clipPath,
+      outerClip: getComputedStyle(element.querySelector(".letter-shadow")!).clipPath,
+      layers: [".letter-shadow-near", ".letter-shadow-far"].map((selector) => {
+        const layer = element.querySelector(selector)!;
+        return {
+          clip: getComputedStyle(layer).clipPath,
+          filter: getComputedStyle(layer).filter,
+          sourceClip: getComputedStyle(layer.firstElementChild!).clipPath,
+        };
+      }),
+    }));
+    // Clip only the paper source. Each independent shadow must be free to diffuse
+    // past that outline, including into the exposed corner.
+    expect(shadows.outerClip).toBe("none");
+    for (const layer of shadows.layers) {
+      expect(layer.clip).toBe("none");
+      expect(layer.sourceClip).toBe(shadows.stock);
+      expect(layer.filter).toMatch(/^blur\([\d.]+px\)$/);
+    }
+    const corner = await card.evaluate((element) => {
+      const el = element as HTMLElement;
+      const box = el.getBoundingClientRect();
+      const matrix = new DOMMatrixReadOnly(getComputedStyle(el).transform);
+      const x = el.offsetWidth / 2 - 8;
+      const y = el.offsetHeight / 2 - 8;
+      return {
+        x: box.x + box.width / 2 + matrix.a * x + matrix.c * y - 2,
+        y: box.y + box.height / 2 + matrix.b * x + matrix.d * y - 2,
+        width: 4,
+        height: 4,
+      };
+    });
+    const cutShadow = await page.screenshot({ clip: corner });
+    // The fold must not cast a second, rectangular shadow into the exposed
+    // lower-right corner. Hiding it leaves the envelope's diffused shadow intact.
+    await card.locator(".delete-peel").evaluate((element) => {
+      (element as HTMLElement).style.visibility = "hidden";
+    });
+    expect((await page.screenshot({ clip: corner })).equals(cutShadow)).toBe(true);
+    await card.locator(".delete-peel").evaluate((element) => {
+      (element as HTMLElement).style.removeProperty("visibility");
+    });
+    // Verify rendered pixels, not just computed clip-path: restoring a square
+    // shadow source must darken the exposed corner. Diffusion remains allowed.
+    await card.locator(".letter-shadow-shape").evaluateAll((elements) => {
+      for (const element of elements) {
+        const style = (element as HTMLElement).style;
+        style.transition = "none";
+        style.clipPath = "none";
+      }
+    });
+    expect((await page.screenshot({ clip: corner })).equals(cutShadow)).toBe(false);
+  });
+}

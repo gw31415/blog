@@ -31,6 +31,7 @@ export const PostList = component$<{
   });
   return (
     <div class="post-stream" css={postListStyles}>
+      <span class="desk-surface" aria-hidden="true" />
       <div class="post-desk" data-layout={props.layout ?? "list"}>
         <Slot name="stream-start" />
         {groupPostsByMonth(props.posts).map((group) => (
@@ -101,17 +102,58 @@ const postListStyles = css`
   --edge: rgb(90 71 44 / 21%);
   --date-ink: var(--muted);
   background-color: var(--desk);
-  background-image:
+  --desk-pattern:
     radial-gradient(circle, var(--desk-dot) 0.55px, transparent 0.8px),
     radial-gradient(circle, var(--desk-glint) 0.55px, transparent 0.8px);
-  background-attachment: fixed, fixed;
-  background-position:
-    0 0,
-    1px 1px;
-  background-size: 5px 5px;
-  box-shadow:
-    inset 1px 0 var(--edge),
-    inset -1px 0 var(--edge);
+  --desk-edge-shadow: inset 1px 0 var(--edge), inset -1px 0 var(--edge);
+
+  @media screen {
+    position: relative;
+
+    /* Only the background is isolated/clipped. Cards must share the header's
+       stacking context so an active envelope can rise in front of it. */
+    & > .desk-surface {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      isolation: isolate;
+      clip-path: inset(0);
+      pointer-events: none;
+    }
+    & > .desk-surface::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background-image: var(--desk-pattern);
+      background-position:
+        0 0,
+        1px 1px;
+      background-size: 5px 5px;
+    }
+    & > .desk-surface::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      /* Keep the inset edge above the dots, as for a normal CSS background. */
+      box-shadow: var(--desk-edge-shadow);
+    }
+  }
+  @media print {
+    & > .desk-surface {
+      display: none;
+    }
+    background-image: var(--desk-pattern);
+    background-attachment: fixed, fixed;
+    background-position:
+      0 0,
+      1px 1px;
+    background-size: 5px 5px;
+    box-shadow: var(--desk-edge-shadow);
+  }
 
   & .post-desk {
     position: relative;
@@ -195,6 +237,7 @@ const postListStyles = css`
     outline-offset: 4px;
   }
   & .stream-footer {
+    position: relative;
     padding: 0 0 var(--body-leading);
     background: transparent;
   }
@@ -233,6 +276,9 @@ const postListStyles = css`
   @media (forced-colors: active) {
     &.post-stream {
       background: Canvas;
+    }
+    & > .desk-surface {
+      display: none;
     }
   }
   @media (min-width: 601px) {

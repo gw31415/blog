@@ -31,7 +31,12 @@ export const PostCard = component$<{
       <PostActions>
         <article class="letter" data-managed={props.canManage ? "true" : undefined}>
           <span class="letter-shadow" aria-hidden="true">
-            <span class="letter-shadow-shape" />
+            <span class="letter-shadow-near">
+              <span class="letter-shadow-shape" />
+            </span>
+            <span class="letter-shadow-far">
+              <span class="letter-shadow-shape" />
+            </span>
           </span>
           <span class="letter-mouth" aria-hidden="true">
             <span class="letter-mouth-face" />
@@ -75,7 +80,10 @@ export const PostCard = component$<{
                 aria-label={`「${post.title || "無題"}」を削除`}
                 onClick$={() => props.onDeleteRequest$?.(post)}
               >
-                <span aria-hidden="true">削除</span>
+                <span class="delete-peel" aria-hidden="true" />
+                <span class="delete-label" aria-hidden="true">
+                  削除
+                </span>
               </button>
             </div>
           )}
@@ -104,6 +112,8 @@ const postCardStyles = css`
 
   & .letter {
     --flap-width: 30px;
+    --flap-edge: rgb(83 66 40 / 27%);
+    --flap-highlight: rgb(255 255 248 / 57%);
     --stock-size: var(--paper-stock-size);
     --paper-left: 36px;
     --paper-right: 24px;
@@ -137,15 +147,34 @@ const postCardStyles = css`
     z-index: 0;
     inset: 0;
     pointer-events: none;
-    filter: drop-shadow(1px 2px 1px rgb(59 47 30 / 24%))
-      drop-shadow(2px 5px 6px rgb(59 47 30 / 19%));
-    transition: filter 180ms ease-out;
+  }
+  & .letter-shadow-near,
+  & .letter-shadow-far {
+    position: absolute;
+    inset: 0;
+    transition:
+      filter 180ms ease-out,
+      transform 180ms ease-out,
+      opacity 180ms ease-out;
+  }
+  /* Blur the colored silhouette itself instead of deriving a drop-shadow
+     from a separately composited clip. Keep the blur outside the clipped
+     child so it can diffuse freely as the corner changes shape. */
+  & .letter-shadow-near {
+    filter: blur(1px);
+    transform: translate(1px, 2px);
+    opacity: 0.24;
+  }
+  & .letter-shadow-far {
+    filter: blur(6px);
+    transform: translate(2px, 5px);
+    opacity: 0.19;
   }
   & .letter-shadow-shape {
     position: absolute;
     inset: 0;
     display: block;
-    background: var(--envelope);
+    background: rgb(59 47 30);
     clip-path: var(--stock-cut);
     transition: clip-path 160ms ease-out;
   }
@@ -238,31 +267,36 @@ const postCardStyles = css`
   & .letter-right-flap {
     position: absolute;
     z-index: 2;
+    inset: -1px;
+    /* The stationary fold shares the sheet's paper and its peeled corner. */
+    clip-path: var(--stock-cut);
+    transition: clip-path 160ms ease-out;
+    pointer-events: none;
+  }
+  & .letter-right-flap::before,
+  & .letter-right-flap::after {
+    content: "";
+    position: absolute;
     inset: 0 0 0 auto;
     width: calc(var(--flap-width) / 2);
-    background-color: var(--envelope);
-    background-image:
-      linear-gradient(var(--envelope-tint), var(--envelope-tint)),
-      linear-gradient(90deg, rgb(77 56 30 / 16%), rgb(255 255 246 / 14%) 28%, transparent),
-      var(--paper-stock);
-    background-position:
-      0 0,
-      0 0,
-      calc(var(--stock-x) + 193px) calc(var(--stock-y) + 37px);
-    background-size:
-      100% 100%,
-      100% 100%,
-      var(--stock-size);
+  }
+  & .letter-right-flap::before {
+    box-shadow: inset -0.5px 0 var(--flap-highlight);
+    clip-path: polygon(100% 0, 0 13%, 0 87%, 100% 100%);
+  }
+  & .letter-right-flap::after {
+    background: var(--flap-edge);
+    /* A thin seam along both sloped ends and the inset vertical edge. */
     clip-path: polygon(
       100% 0,
       0 13%,
       0 87%,
-      0 calc(100% - var(--peel-size) + var(--flap-width) / 2),
-      100% calc(100% - var(--peel-size))
+      100% 100%,
+      100% calc(100% - 0.7px),
+      0.7px calc(87% - 0.35px),
+      0.7px calc(13% + 0.35px),
+      100% 0.7px
     );
-    filter: brightness(0.956) sepia(0.204);
-    transition: clip-path 160ms ease-out;
-    pointer-events: none;
   }
   & .letter-sheet::before {
     content: "";
@@ -330,8 +364,8 @@ const postCardStyles = css`
       100% 100%,
       var(--stock-size);
     box-shadow:
-      inset -0.65px 0 rgb(83 66 40 / 27%),
-      inset 0.5px 0 rgb(255 255 248 / 57%);
+      inset -0.65px 0 var(--flap-edge),
+      inset 0.5px 0 var(--flap-highlight);
     transform: translateZ(0.2px);
   }
   & .letter-mouth-face::after {
@@ -396,6 +430,12 @@ const postCardStyles = css`
       radial-gradient(ellipse 19px 2px at 100% 0, rgb(74 54 29 / 11%), transparent),
       linear-gradient(180deg, rgb(74 54 29 / 6%), transparent 3px),
       linear-gradient(112deg, rgb(255 254 245 / 7%), transparent 45%, rgb(104 78 39 / 3%));
+    background-size:
+      calc(100% - var(--flap-width) / 2) 100%,
+      calc(100% - var(--flap-width) / 2) 100%,
+      calc(100% - var(--flap-width) / 2) 100%,
+      100% 100%;
+    background-repeat: no-repeat;
     clip-path: var(--detail-cut);
     transition: clip-path 160ms ease-out;
     pointer-events: none;
@@ -435,6 +475,8 @@ const postCardStyles = css`
     left: calc(-1 * var(--paper-left));
     right: calc(-1 * var(--paper-right));
     height: 3px;
+    /* The horizontal seam ends at the stationary right fold. */
+    clip-path: inset(0 calc(var(--flap-width) / 2) 0 0);
     mask-image: linear-gradient(
       90deg,
       black,
@@ -519,9 +561,15 @@ const postCardStyles = css`
   & .letter:has(.letter-link:focus-visible) {
     transform: translateX(var(--shift)) translateY(-4px) rotate(var(--angle)) scale(1.018);
   }
-  & .letter:has(.letter-link:focus-visible) .letter-shadow {
-    filter: drop-shadow(1px 3px 2px rgb(59 47 30 / 28%))
-      drop-shadow(3px 8px 10px rgb(59 47 30 / 22%));
+  & .letter:has(.letter-link:focus-visible) .letter-shadow-near {
+    filter: blur(2px);
+    transform: translate(1px, 3px);
+    opacity: 0.28;
+  }
+  & .letter:has(.letter-link:focus-visible) .letter-shadow-far {
+    filter: blur(10px);
+    transform: translate(3px, 8px);
+    opacity: 0.22;
   }
   & .letter:has(.letter-link:focus-visible)::before {
     opacity: 0.8;
@@ -540,6 +588,8 @@ const postCardStyles = css`
   & .management {
     position: absolute;
     z-index: 4;
+    /* z-index alone does not lift the fold above the sheet's 3D plane. */
+    transform: translateZ(1px);
     right: 0;
     bottom: 0;
   }
@@ -558,23 +608,24 @@ const postCardStyles = css`
     perspective: 80px;
     transform-style: preserve-3d;
   }
-  & .management button::before,
-  & .management button::after {
-    content: "";
+  & .management .delete-peel {
     position: absolute;
+    z-index: 2;
     pointer-events: none;
     bottom: 0;
     right: 0;
     width: 10px;
     height: 10px;
-    backface-visibility: hidden;
+    filter: brightness(0.956) sepia(0.204);
     transition:
       width 160ms ease-out,
       height 160ms ease-out,
       filter 160ms ease-out;
   }
-  & .management button::before {
-    z-index: 2;
+  & .delete-peel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
     background-color: var(--envelope);
     background-image:
       linear-gradient(var(--envelope-tint), var(--envelope-tint)),
@@ -594,16 +645,23 @@ const postCardStyles = css`
       0 0,
       calc(var(--stock-x) + 97px) calc(var(--stock-y) + 181px);
     clip-path: polygon(0 0, 100% 0, 87% 11%, 72% 25%, 55% 43%, 38% 61%, 21% 79%, 8% 92%, 0 100%);
-    filter: brightness(0.956) sepia(0.204) drop-shadow(1px 2px 1px rgb(75 55 30 / 17%));
-    transform-origin: 100% 100%;
   }
-  & .management button::after {
-    z-index: 3;
-    background: transparent;
-    box-shadow: inset 0.6px -0.6px rgb(92 70 42 / 24%);
-    clip-path: polygon(0 0, 100% 0, 86% 12%, 70% 27%, 53% 45%, 36% 63%, 20% 80%, 7% 93%, 0 100%);
+  /* Contact shading belongs to the two lifted paper edges, not the square
+     bounds of the peel. Only letter-shadow casts the envelope's outer shadow. */
+  & .delete-peel::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -3px 0 0 -3px;
+    background:
+      linear-gradient(0deg, rgb(75 55 30 / 26%), transparent) 3px 0 / calc(100% - 3px) 3px no-repeat,
+      linear-gradient(270deg, rgb(75 55 30 / 26%), transparent) 0 3px / 3px calc(100% - 3px)
+        no-repeat,
+      radial-gradient(ellipse at 100% 100%, rgb(75 55 30 / 26%), transparent 70%) 0 0 / 3px 3px
+        no-repeat;
+    pointer-events: none;
   }
-  & .management button span {
+  & .management .delete-label {
     position: absolute;
     z-index: 1;
     right: 3px;
@@ -627,15 +685,12 @@ const postCardStyles = css`
   & .letter:has(.management button:focus-visible) {
     --peel-size: 28px;
   }
-  & .management button:focus-visible::before,
-  & .management button:focus-visible::after {
+  & .management button:focus-visible .delete-peel {
     width: 28px;
     height: 28px;
+    filter: brightness(0.956) sepia(0.204);
   }
-  & .management button:focus-visible::before {
-    filter: brightness(0.956) sepia(0.204) drop-shadow(3px 4px 2px rgb(75 55 30 / 22%));
-  }
-  & .management button:focus-visible span {
+  & .management button:focus-visible .delete-label {
     opacity: 1;
     transform: translate(0, 0);
   }
@@ -647,9 +702,15 @@ const postCardStyles = css`
     & .letter:has(.letter-link:hover) {
       transform: translateX(var(--shift)) translateY(-4px) rotate(var(--angle)) scale(1.018);
     }
-    & .letter:has(.letter-link:hover) .letter-shadow {
-      filter: drop-shadow(1px 3px 2px rgb(59 47 30 / 28%))
-        drop-shadow(3px 8px 10px rgb(59 47 30 / 22%));
+    & .letter:has(.letter-link:hover) .letter-shadow-near {
+      filter: blur(2px);
+      transform: translate(1px, 3px);
+      opacity: 0.28;
+    }
+    & .letter:has(.letter-link:hover) .letter-shadow-far {
+      filter: blur(10px);
+      transform: translate(3px, 8px);
+      opacity: 0.22;
     }
     & .letter:has(.letter-link:hover)::before {
       opacity: 0.8;
@@ -672,15 +733,12 @@ const postCardStyles = css`
     & .letter:has(.management button:hover) {
       --peel-size: 28px;
     }
-    & .management button:hover::before,
-    & .management button:hover::after {
+    & .management button:hover .delete-peel {
       width: 28px;
       height: 28px;
+      filter: brightness(0.956) sepia(0.204);
     }
-    & .management button:hover::before {
-      filter: brightness(0.956) sepia(0.204) drop-shadow(3px 4px 2px rgb(75 55 30 / 22%));
-    }
-    & .management button:hover span {
+    & .management button:hover .delete-label {
       opacity: 1;
       transform: translate(0, 0);
     }
@@ -722,14 +780,14 @@ const postCardStyles = css`
       transform: none;
     }
     &.dated-letter .letter-sheet::after,
-    &.dated-letter .letter-shadow,
+    &.dated-letter .letter-shadow-near,
+    &.dated-letter .letter-shadow-far,
     &.dated-letter .letter-shadow-shape,
     &.dated-letter .letter-stock,
     &.dated-letter .letter-stock-detail,
     &.dated-letter .letter-details::before,
-    &.dated-letter .management button::before,
-    &.dated-letter .management button::after,
-    &.dated-letter .management button span {
+    &.dated-letter .management .delete-peel,
+    &.dated-letter .management .delete-label {
       transition: none;
     }
     &.dated-letter .letter:has(.letter-link:hover),
@@ -773,11 +831,10 @@ const postCardStyles = css`
       color: ButtonText;
       background: Canvas;
     }
-    & .management button::before,
-    & .management button::after {
+    & .management .delete-peel {
       display: none;
     }
-    &.dated-letter .management button span {
+    &.dated-letter .management .delete-label {
       position: static;
       color: ButtonText;
       font: 11px/1.5 var(--sans);
