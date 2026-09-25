@@ -5,7 +5,6 @@ import { $, component$, useSignal, useStore, useVisibleTask$ } from "@qwik.dev/c
 import { Form, routeAction$, routeLoader$, type DocumentHead } from "@qwik.dev/router";
 import { ArchiveLayout } from "~/components/templates/archive-layout";
 import { PostList } from "~/components/organisms/post-list";
-import { BlogTopbar } from "~/components/molecules/topbar";
 import { BlogFooter, BlogFooterContainer } from "~/components/molecules/footer";
 import { BLOG_NAME, formatJapaneseEraYear } from "~/content/article";
 import { canManagePosts } from "~/content/permissions";
@@ -41,6 +40,7 @@ export default component$(() => {
     error: "",
   });
   const sentinel = useSignal<Element>();
+  const stream = useSignal<HTMLElement>();
   const cacheKey = useSignal("");
   const restored = useSignal(false);
   const create = useCreateDraft();
@@ -65,6 +65,8 @@ export default component$(() => {
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(
     async ({ cleanup }) => {
+      const scroller = stream.value ?? document.querySelector<HTMLElement>(".post-stream");
+      if (!scroller) return;
       let disposed = false;
       cleanup(() => {
         disposed = true;
@@ -110,8 +112,9 @@ export default component$(() => {
       const targetY = Number.isFinite(y) && y > 0 ? y : 0;
       const finish = () => {
         if (!Number.isFinite(y)) {
-          lastY = window.scrollY;
+          lastY = scroller.scrollTop;
           restored.value = true;
+          flushPosition();
           return;
         }
         // Qwik must commit the cached cards before restoring a deep position.
@@ -125,11 +128,11 @@ export default component$(() => {
         }
         const reachableY = Math.min(
           targetY,
-          Math.max(0, document.documentElement.scrollHeight - window.innerHeight),
+          Math.max(0, scroller.scrollHeight - scroller.clientHeight),
         );
-        if (Math.abs(window.scrollY - reachableY) > 1) {
+        if (Math.abs(scroller.scrollTop - reachableY) > 1) {
           stableFrames = 0;
-          window.scrollTo({ top: reachableY, behavior: "instant" });
+          scroller.scrollTo({ top: reachableY, behavior: "instant" });
         } else {
           stableFrames++;
         }
@@ -138,8 +141,9 @@ export default component$(() => {
           frame = requestAnimationFrame(finish);
           return;
         }
-        lastY = window.scrollY;
+        lastY = scroller.scrollTop;
         restored.value = true;
+        flushPosition();
       };
       frame = requestAnimationFrame(finish);
       let suspended = document.visibilityState === "hidden";
@@ -156,7 +160,7 @@ export default component$(() => {
         // Browser/router restoration can emit a later scroll event. Until the
         // user takes control, do not save that intermediate position over ours.
         if (targetY > 0 && !userInteracted) {
-          if (Math.abs(window.scrollY - lastY) > 1) {
+          if (Math.abs(scroller.scrollTop - lastY) > 1) {
             restored.value = false;
             stableFrames = 0;
             cancelAnimationFrame(frame);
@@ -164,7 +168,7 @@ export default component$(() => {
           }
           return;
         }
-        lastY = window.scrollY;
+        lastY = scroller.scrollTop;
         try {
           sessionStorage.setItem(`${key}:y`, String(lastY));
         } catch {
@@ -194,7 +198,7 @@ export default component$(() => {
       const takeControl = () => {
         userInteracted = true;
         cancelAnimationFrame(frame);
-        lastY = window.scrollY;
+        lastY = scroller.scrollTop;
         restored.value = true;
       };
       const click = () => {
@@ -205,7 +209,7 @@ export default component$(() => {
       const inputEvents = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
       for (const event of inputEvents)
         document.addEventListener(event, takeControl, { passive: true });
-      window.addEventListener("scroll", savePosition, { passive: true });
+      scroller.addEventListener("scroll", savePosition, { passive: true });
       window.addEventListener("pagehide", hide);
       window.addEventListener("pageshow", show);
       document.addEventListener("visibilitychange", visibility);
@@ -214,7 +218,7 @@ export default component$(() => {
         cancelAnimationFrame(frame);
         clearTimeout(timer);
         for (const event of inputEvents) document.removeEventListener(event, takeControl);
-        window.removeEventListener("scroll", savePosition);
+        scroller.removeEventListener("scroll", savePosition);
         window.removeEventListener("pagehide", hide);
         window.removeEventListener("pageshow", show);
         document.removeEventListener("visibilitychange", visibility);
@@ -252,7 +256,10 @@ export default component$(() => {
         (entries) => {
           if (entries.some((entry) => entry.isIntersecting) && !state.error) void more();
         },
-        { rootMargin: "240px" },
+        {
+          root: stream.value ?? document.querySelector<HTMLElement>(".post-stream"),
+          rootMargin: "240px",
+        },
       );
       observer.observe(sentinel.value);
       cleanup(() => observer.disconnect());
@@ -261,17 +268,10 @@ export default component$(() => {
   );
   return (
     <ArchiveLayout>
-      <BlogTopbar q:slot="header">
-        {canManagePosts() && <CreatePostAction action={create} />}
-      </BlogTopbar>
-      {canManagePosts() && <CreatePostAction q:slot="sticky-actions" action={create} />}
+      {canManagePosts() && <CreatePostAction q:slot="header-actions" action={create} />}
       <section id="articles" aria-labelledby="articles-title">
-        <div class="heading">
-          <h1 id="articles-title" class="type-heading ink">
-            記事
-          </h1>
-        </div>
         <PostList
+          stream={stream}
           posts={state.posts}
           canManage={canManagePosts()}
           onDelete$={$(async (id) => {
@@ -280,28 +280,34 @@ export default component$(() => {
             state.posts = state.posts.filter((post) => post.id !== id);
             return true;
           })}
-        />
-        <div class="more" ref={sentinel} aria-busy={state.loading}>
-          <p role="status">{state.loading ? "…" : state.error}</p>
-          {state.next ? (
-            <a
-              href={`/?after=${encodeURIComponent(state.next)}#articles`}
-              preventdefault:click
-              onClick$={more}
-            >
-              続きを読み込む
-            </a>
-          ) : (
-            state.posts.length > 0 && <p>ここまでの記事</p>
-          )}
-        </div>
+        >
+          <h2 q:slot="stream-start" id="articles-title" class="stream-heading type-heading ink">
+            記事
+          </h2>
+          <div q:slot="stream-end" class="more" ref={sentinel} aria-busy={state.loading}>
+            <p role="status">{state.loading ? "…" : state.error}</p>
+            {state.next ? (
+              <a
+                href={`/?after=${encodeURIComponent(state.next)}#articles`}
+                preventdefault:click
+                onClick$={more}
+              >
+                続きを読み込む
+              </a>
+            ) : (
+              state.posts.length > 0 && <p>ここまでの記事</p>
+            )}
+          </div>
+          <div q:slot="stream-after" class="stream-footer">
+            <BlogFooterContainer>
+              <BlogFooter
+                left={BLOG_NAME}
+                right={formatJapaneseEraYear(new Date().toISOString().slice(0, 10))}
+              />
+            </BlogFooterContainer>
+          </div>
+        </PostList>
       </section>
-      <BlogFooterContainer>
-        <BlogFooter
-          left={BLOG_NAME}
-          right={formatJapaneseEraYear(new Date().toISOString().slice(0, 10))}
-        />
-      </BlogFooterContainer>
     </ArchiveLayout>
   );
 });

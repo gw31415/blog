@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { groupPostsByMonth } from "./post-groups";
+import { groupPostsByDay, groupPostsByMonth } from "./post-groups";
 import type { PostSummary } from "~/server/post-list";
 
 const post = (
@@ -31,5 +31,17 @@ describe("calendar groups", () => {
   it("uses creation date for unpublished entries without inventing a publication date", () => {
     expect(groupPostsByMonth([post("draft", null)])[0].month).toBe("2026-09");
     expect(groupPostsByMonth([])).toEqual([]);
+  });
+  it("keeps consecutive posts under one day label", () => {
+    expect(
+      groupPostsByDay([
+        post("a", "2026-09-25T12:00:00Z"),
+        post("b", "2026-09-25T08:00:00Z"),
+        post("c", "2026-09-24T23:00:00Z"),
+      ]).map((group) => [group.date, group.posts.map((item) => item.id)]),
+    ).toEqual([
+      ["2026-09-25", ["a", "b"]],
+      ["2026-09-24", ["c"]],
+    ]);
   });
 });

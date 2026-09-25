@@ -14,9 +14,9 @@ test("site links and draft creation use SPA navigation", async ({ page }) => {
   });
   await page.locator(".article-topbar .site-link").click();
   await expect(page).toHaveURL(/\/$/);
-  const first = page.locator(".letter-title a").first();
+  const first = page.locator(".letter-link").first();
   const href = await first.getAttribute("href");
-  const title = await first.textContent();
+  const title = await first.locator(".letter-title").textContent();
   await first.click();
   await expect(page).toHaveURL(new RegExp(`${href}$`));
   await expect(page.locator("[data-article-field=title]")).toHaveText(title!);

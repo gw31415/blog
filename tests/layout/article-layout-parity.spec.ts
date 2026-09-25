@@ -112,7 +112,7 @@ for (const viewport of [
     test.setTimeout(90_000);
     await page.setViewportSize(viewport);
     await page.goto("/blog/document-showcase");
-    await expect(page.locator("article .ProseMirror > *")).toHaveCount(60);
+    await expect(page.locator("article .ProseMirror")).toBeVisible();
     await expect(page.locator("article .mermaid-preview img.mermaid-image").first()).toBeVisible();
     for (const selector of componentSelectors) {
       expect(

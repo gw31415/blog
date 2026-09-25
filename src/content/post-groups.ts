@@ -15,3 +15,15 @@ export function groupPostsByMonth(posts: PostSummary[]) {
   }
   return groups;
 }
+
+/** Consecutive day groups keep the sticky date label scoped to its own letters. */
+export function groupPostsByDay(posts: PostSummary[]) {
+  const groups: { date: string; posts: PostSummary[] }[] = [];
+  for (const post of posts) {
+    const date = postDate(post);
+    const previous = groups.at(-1);
+    if (previous?.date === date) previous.posts.push(post);
+    else groups.push({ date, posts: [post] });
+  }
+  return groups;
+}

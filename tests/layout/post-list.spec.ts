@@ -4,6 +4,10 @@ test("letter list is SSR rendered, fits mobile, and deletion can be cancelled", 
   page,
   request,
 }) => {
+  const imageRequests: string[] = [];
+  page.on("request", (networkRequest) => {
+    if (networkRequest.resourceType() === "image") imageRequests.push(networkRequest.url());
+  });
   const response = await request.get("/");
   const html = await response.text();
   expect(html).toContain("記事一覧");
@@ -17,13 +21,155 @@ test("letter list is SSR rendered, fits mobile, and deletion can be cancelled", 
     viewport.locator('[data-virtual-keyboard-region="content"] .page-footer'),
   ).toHaveCount(1);
   await expect(viewport).not.toHaveAttribute("data-internal-scroll");
+  const archiveHeaderStyle = await page.locator(".archive-header").evaluate((element) => {
+    const style = getComputedStyle(element);
+    return [style.backgroundImage, style.backgroundColor, style.backdropFilter];
+  });
+  expect(archiveHeaderStyle[0]).toBe("none");
+  expect(archiveHeaderStyle[1]).toBe("rgba(242, 234, 213, 0.62)");
+  expect(archiveHeaderStyle[2]).toContain("blur(12px)");
+  await expect(page.locator(".stream-footer")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(page.locator("#articles-title")).toHaveCSS("position", "static");
   const cards = page.locator(".letter");
   expect(await cards.count()).toBeGreaterThan(0);
   await page.screenshot({ path: ".cache/post-list-desktop.png", fullPage: true });
-  await cards
+  const deleteButton = cards.first().getByRole("button", { name: /を削除/ });
+  const firstSheet = cards.first().locator(".letter-sheet");
+  await expect(deleteButton.locator("..")).toHaveCSS("right", "0px");
+  await expect(deleteButton.locator("..")).toHaveCSS("bottom", "0px");
+  await expect(firstSheet).toHaveCSS("border-top-style", "solid");
+  await expect(firstSheet).toHaveCSS("border-top-width", "1px");
+  await expect(firstSheet).toHaveCSS("background-image", /data:image\/svg\+xml/);
+  expect(imageRequests.filter((url) => url.includes("envelope-paper"))).toEqual([]);
+  expect(
+    await firstSheet.evaluate((element) => getComputedStyle(element).backgroundImage),
+  ).not.toContain("repeating-linear-gradient");
+  await expect(page.locator(".month-number").first()).toHaveText("09");
+  await expect
+    .poll(() =>
+      deleteButton.evaluate((element) =>
+        Number.parseFloat(getComputedStyle(element, "::before").width),
+      ),
+    )
+    .toBe(10);
+  await expect
+    .poll(() => firstSheet.evaluate((element) => getComputedStyle(element).clipPath))
+    .toContain("10px");
+  const cardLink = cards.first().locator(".letter-link");
+  await expect(cardLink).toHaveAttribute("href", /\/.+/);
+  const restingTransform = await cards
     .first()
-    .getByRole("button", { name: /を削除/ })
-    .click();
+    .evaluate((element) => getComputedStyle(element).transform);
+  const closedMouthTransform = await cards
+    .first()
+    .locator(".letter-mouth")
+    .evaluate((element) => getComputedStyle(element).transform);
+  const mouth = cards.first().locator(".letter-mouth");
+  const mouthFace = mouth.locator(".letter-mouth-face");
+  const closedMouthBox = await mouthFace.boundingBox();
+  expect(closedMouthBox).not.toBeNull();
+  await expect(mouth).toHaveCSS("left", "0px");
+  await expect(mouthFace).toHaveCSS("clip-path", /polygon/);
+  expect(
+    await mouthFace.evaluate((element) => [
+      getComputedStyle(element, "::before").clipPath,
+      getComputedStyle(element, "::after").clipPath,
+    ]),
+  ).toEqual(["none", "none"]);
+  expect(
+    await mouthFace.evaluate((element) => getComputedStyle(element, "::before").backfaceVisibility),
+  ).toBe("hidden");
+  expect(
+    await mouthFace.evaluate((element) => getComputedStyle(element, "::after").backfaceVisibility),
+  ).toBe("hidden");
+  await cardLink.hover({ position: { x: 80, y: 80 } });
+  await expect
+    .poll(() => cards.first().evaluate((element) => getComputedStyle(element).transform))
+    .not.toBe(restingTransform);
+  await expect
+    .poll(() => mouth.evaluate((element) => getComputedStyle(element).transform))
+    .not.toBe(closedMouthTransform);
+  await expect
+    .poll(async () => {
+      const box = await mouthFace.boundingBox();
+      return box ? closedMouthBox!.x - box.x : 0;
+    })
+    .toBeGreaterThan(20);
+  const openMouthBox = await mouthFace.boundingBox();
+  const sheetBox = await firstSheet.boundingBox();
+  expect(openMouthBox).not.toBeNull();
+  expect(sheetBox).not.toBeNull();
+  const seamOverlap = openMouthBox!.x + openMouthBox!.width - sheetBox!.x;
+  expect(seamOverlap).toBeGreaterThanOrEqual(0);
+  expect(seamOverlap).toBeLessThanOrEqual(1);
+  const openMouthAxisX = await mouth.evaluate((element) => {
+    const matrix = new DOMMatrixReadOnly(getComputedStyle(element).transform);
+    return matrix.m11;
+  });
+  expect(openMouthAxisX).toBeLessThan(0);
+  const openMouthStyle = await cards
+    .first()
+    .locator(".letter-mouth")
+    .evaluate((element) => ({
+      transform: getComputedStyle(element).transform,
+      filter: getComputedStyle(element).filter,
+      back: getComputedStyle(element.querySelector(".letter-mouth-face")!, "::after")
+        .backgroundImage,
+    }));
+  expect(openMouthStyle.transform).toContain("matrix3d");
+  expect(openMouthStyle.back).toContain("data:image/svg+xml");
+  expect(openMouthStyle.back).not.toContain("gradient");
+  expect(openMouthStyle.filter).toBe("none");
+  await expect(cards.first().locator(".letter-mouth-shadow")).toHaveCount(0);
+  await expect
+    .poll(() =>
+      cards.first().evaluate((element) => Number(getComputedStyle(element, "::after").opacity)),
+    )
+    .toBeCloseTo(0.78, 2);
+  const hingeShadow = await cards.first().evaluate((element) => {
+    const style = getComputedStyle(element, "::after");
+    return { width: style.width, boxShadow: style.boxShadow, opacity: style.opacity };
+  });
+  expect(hingeShadow.width).toBe("2px");
+  expect(hingeShadow.boxShadow).not.toBe("none");
+  expect(Number(hingeShadow.opacity)).toBeCloseTo(0.78, 2);
+  const foldLayers = await deleteButton.evaluate((element) => [
+    getComputedStyle(element, "::before").backgroundImage,
+    getComputedStyle(element, "::after").backgroundImage,
+  ]);
+  expect(foldLayers.join(" ")).not.toContain("gradient");
+  await page.screenshot({ path: ".cache/post-list-flap-open-desktop.png", fullPage: true });
+  const pageViewport = page.viewportSize();
+  expect(pageViewport).not.toBeNull();
+  const closeupX = Math.max(0, openMouthBox!.x - 12);
+  const closeupY = Math.max(0, sheetBox!.y - 8);
+  await page.screenshot({
+    path: ".cache/post-list-flap-open-closeup.png",
+    clip: {
+      x: closeupX,
+      y: closeupY,
+      width: Math.min(pageViewport!.width - closeupX, sheetBox!.x - closeupX + 96),
+      height: Math.min(pageViewport!.height - closeupY, sheetBox!.height + 16),
+    },
+  });
+  await expect(deleteButton.locator("span")).toHaveCSS("opacity", "0");
+  await deleteButton.hover();
+  await expect
+    .poll(() =>
+      deleteButton.evaluate((element) =>
+        Number.parseFloat(getComputedStyle(element, "::before").width),
+      ),
+    )
+    .toBe(28);
+  await expect
+    .poll(() => firstSheet.evaluate((element) => getComputedStyle(element).clipPath))
+    .toContain("28px");
+  await expect(page.locator(".dated-letter").first()).toHaveCSS("z-index", "10");
+  await expect(deleteButton.locator("span")).toHaveCSS("opacity", "1");
+  await expect
+    .poll(() => deleteButton.evaluate((element) => getComputedStyle(element, "::before").transform))
+    .toBe("none");
+  await deleteButton.click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("button", { name: "キャンセル", exact: true }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
@@ -39,7 +185,28 @@ test("letter list is SSR rendered, fits mobile, and deletion can be cancelled", 
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
     .toBe(true);
+  const mobileLetter = await cards.first().boundingBox();
+  expect(mobileLetter).not.toBeNull();
+  expect(mobileLetter!.x).toBeLessThanOrEqual(36);
+  expect(375 - (mobileLetter!.x + mobileLetter!.width)).toBeLessThanOrEqual(8);
+  await expect(cards.first()).not.toHaveCSS("transform", "none");
+  await expect(page.locator(".dated-letter").nth(1)).toHaveCSS("margin-top", "-10px");
+  const monthMarker = await page.locator(".month-marker").first().boundingBox();
+  const firstTitle = await cards.first().locator(".letter-title").boundingBox();
+  expect(monthMarker).not.toBeNull();
+  expect(firstTitle).not.toBeNull();
+  expect(monthMarker!.width).toBeCloseTo(32, 0);
+  expect(monthMarker!.x + monthMarker!.width).toBeLessThan(firstTitle!.x);
+  const leftEdges = await page.evaluate(() =>
+    [".month-year", ".month-number", ".letter-day"].map(
+      (selector) => document.querySelector(selector)!.getBoundingClientRect().left,
+    ),
+  );
+  expect(Math.max(...leftEdges) - Math.min(...leftEdges)).toBeLessThanOrEqual(1);
   await page.screenshot({ path: ".cache/post-list-mobile.png", fullPage: true });
+  await cardLink.hover({ position: { x: 80, y: 80 } });
+  await expect(mouth).toHaveCSS("filter", "none");
+  await page.screenshot({ path: ".cache/post-list-flap-open-mobile.png", fullPage: true });
   await cards
     .first()
     .getByRole("button", { name: /を削除/ })
@@ -57,7 +224,7 @@ test("loads the next page on scroll without duplicating cards", async ({ page })
   await next.scrollIntoViewIfNeeded();
   await expect.poll(() => cards.count()).toBeGreaterThan(count);
   const urls = await cards
-    .locator("h3 a")
+    .locator(".letter-link")
     .evaluateAll((links) => links.map((link) => link.getAttribute("href")));
   expect(new Set(urls).size).toBe(urls.length);
 });
@@ -76,11 +243,11 @@ test("restores the loaded list without randomUUID on reload and back", async ({ 
   expect(await next.count(), "fixture must include more than one page").toBe(1);
   await next.scrollIntoViewIfNeeded();
   await expect.poll(() => cards.count()).toBeGreaterThan(firstCount);
-  const target = cards.nth(firstCount).locator("h3 a");
+  const target = cards.nth(firstCount).locator(".letter-link");
   await target.scrollIntoViewIfNeeded();
   const href = await target.getAttribute("href");
   const count = await cards.count();
-  const y = await page.evaluate(() => scrollY);
+  const y = await page.locator(".post-stream").evaluate((element) => element.scrollTop);
   await expect(page).toHaveURL(/\/$/);
   expect(await page.evaluate(() => history.length)).toBe(historyLength);
   // SSR remains a fixed page even if an old count URL is requested.
@@ -92,12 +259,16 @@ test("restores the loaded list without randomUUID on reload and back", async ({ 
   });
   await page.reload();
   await expect(cards).toHaveCount(count);
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeCloseTo(y, 0);
-  await page.locator(`h3 a[href="${href}"]`).click();
+  await expect
+    .poll(() => page.locator(".post-stream").evaluate((element) => element.scrollTop))
+    .toBeCloseTo(y, 0);
+  await page.locator(`.letter-link[href="${href}"]`).click();
   await page.waitForURL((url) => url.pathname !== "/");
   await page.goBack();
   await expect(cards).toHaveCount(count);
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeCloseTo(y, 0);
+  await expect
+    .poll(() => page.locator(".post-stream").evaluate((element) => element.scrollTop))
+    .toBeCloseTo(y, 0);
   expect(additionalRequests).toEqual([]);
   expect(errors).toEqual([]);
 });
@@ -135,7 +306,9 @@ test("restores a thousand cached summaries without fetching a thousand rows", as
   });
   await page.reload();
   await expect(page.locator(".letter")).toHaveCount(1000);
-  await expect.poll(() => page.evaluate(() => scrollY)).toBe(50000);
+  await expect
+    .poll(() => page.locator(".post-stream").evaluate((element) => element.scrollTop))
+    .toBe(50000);
   expect(requests).toEqual([]);
   await expect(page).toHaveURL(/\/$/);
 });
@@ -153,48 +326,56 @@ test("deletes only a newly created test draft after confirmation", async ({ page
   await page.reload();
   await expect(page.locator(".meta-tag")).toHaveText(["共通部品", "TypeScript"]);
   await page.goto("/");
-  const card = page.locator(".letter").filter({ has: page.locator(`h3 a[href="${path}"]`) });
+  const card = page
+    .locator(".letter")
+    .filter({ has: page.locator(`.letter-link[href="${path}"]`) });
   await card.getByRole("button", { name: /を削除/ }).click();
   await page.getByRole("button", { name: "削除する", exact: true }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await expect(card).toHaveCount(0);
   await page.reload();
-  await expect(page.locator(`h3 a[href="${path}"]`)).toHaveCount(0);
+  await expect(page.locator(`.letter-link[href="${path}"]`)).toHaveCount(0);
 });
 
 for (const width of [1280, 390]) {
-  test(`calendar sticks below chrome while the surface scrolls at ${width}`, async ({ page }) => {
+  test(`calendar and date stay pinned while only envelopes scroll at ${width}`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto("/");
     const measure = () =>
       page.evaluate(() => {
         const marker = document.querySelector(".month-marker")!.getBoundingClientRect();
+        const day = document.querySelector(".letter-day")!.getBoundingClientRect();
         const header = document.querySelector(".archive-header")!.getBoundingClientRect();
-        const scrollHeader = document
-          .querySelector("[data-scroll-header]")!
-          .getBoundingClientRect();
-        const desk = document.querySelector(".post-desk")!.getBoundingClientRect();
+        const stream = document.querySelector<HTMLElement>(".post-stream")!;
+        const letter = document.querySelector(".letter")!.getBoundingClientRect();
+        const heading = document.querySelector("#articles-title")!.getBoundingClientRect();
         return {
           marker: marker.top,
+          day: day.top,
           header: header.bottom,
-          scrollHeader: scrollHeader.bottom,
-          desk: desk.top,
+          stream: stream.getBoundingClientRect().top,
+          streamY: stream.scrollTop,
+          letter: letter.top,
+          heading: heading.top,
+          windowY: scrollY,
           overflow: document.documentElement.scrollWidth > innerWidth,
         };
       });
-    await page.evaluate(() => window.scrollTo(0, 400));
-    await expect
-      .poll(async () => {
-        const position = await measure();
-        return Math.abs(position.marker - position.scrollHeader);
-      })
-      .toBeLessThanOrEqual(1);
+    const start = await measure();
+    await page.locator(".post-stream").evaluate((element) => element.scrollTo(0, 400));
+    await expect.poll(async () => (await measure()).streamY).toBe(400);
     const a = await measure();
-    await page.evaluate(() => window.scrollTo(0, 700));
-    await expect.poll(async () => (await measure()).desk).toBeLessThan(a.desk - 250);
+    await page.locator(".post-stream").evaluate((element) => element.scrollTo(0, 700));
+    await expect.poll(async () => (await measure()).letter).toBeLessThan(a.letter - 250);
     const b = await measure();
+    expect(b.heading).toBeLessThan(start.heading - 250);
     expect(b.marker).toBe(a.marker);
+    expect(b.day).toBe(a.day);
     expect(b.marker).toBeGreaterThanOrEqual(b.header);
+    expect(b.day).toBeGreaterThanOrEqual(b.marker);
+    expect(b.windowY).toBe(0);
     expect(b.overflow).toBe(false);
   });
 }
@@ -274,8 +455,9 @@ for (const width of [1280, 390]) {
     const edges = () =>
       page.locator(".page-footer").evaluate((footer) => {
         const rect = footer.getBoundingClientRect();
-        const left = footer.firstElementChild!.getBoundingClientRect();
-        const right = footer.lastElementChild!.getBoundingClientRect();
+        const labels = footer.querySelectorAll("span");
+        const left = labels[0].getBoundingClientRect();
+        const right = labels[labels.length - 1].getBoundingClientRect();
         return [rect.left, rect.right, left.left, right.right];
       });
     await page.goto("/blog/document-showcase");
@@ -303,7 +485,7 @@ test("restores from persistent cache after suspension and loss of session storag
   await expect.poll(() => cards.count()).toBeGreaterThan(firstCount);
   await cards.nth(firstCount).scrollIntoViewIfNeeded();
   const count = await cards.count();
-  const y = await page.evaluate(() => scrollY);
+  const y = await page.locator(".post-stream").evaluate((element) => element.scrollTop);
   await page.evaluate(() => {
     Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
     document.dispatchEvent(new Event("visibilitychange"));
@@ -327,8 +509,9 @@ test("restores from persistent cache after suspension and loss of session storag
     .toBe(count);
   // A hidden document's scroll reset must not replace its saved position.
   await page.evaluate(() => {
-    scrollTo(0, 0);
-    dispatchEvent(new Event("scroll"));
+    const stream = document.querySelector<HTMLElement>(".post-stream")!;
+    stream.scrollTo(0, 0);
+    stream.dispatchEvent(new Event("scroll"));
     dispatchEvent(new PageTransitionEvent("pagehide"));
   });
   expect(await page.evaluate(() => history.state.postListY)).toBe(y);
@@ -339,7 +522,9 @@ test("restores from persistent cache after suspension and loss of session storag
   });
   await page.reload();
   await expect(cards).toHaveCount(count);
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeCloseTo(y, 0);
+  await expect
+    .poll(() => page.locator(".post-stream").evaluate((element) => element.scrollTop))
+    .toBeCloseTo(y, 0);
   expect(additionalRequests).toEqual([]);
   await expect(page).toHaveURL(/\/$/);
 });
@@ -351,38 +536,67 @@ test("does not save intermediate scroll positions during delayed restoration", a
   await page.getByRole("link", { name: "続きを読み込む" }).scrollIntoViewIfNeeded();
   await expect.poll(() => cards.count()).toBeGreaterThan(firstCount);
   await cards.nth(firstCount).scrollIntoViewIfNeeded();
-  const y = await page.evaluate(() => scrollY);
-  await expect.poll(() => page.evaluate(() => history.state.postListY)).toBe(y);
+  const stream = page.locator(".post-stream");
+  await stream.dispatchEvent("pointerdown");
+  await stream.evaluate((element) => {
+    element.scrollTop += 1;
+    element.dispatchEvent(new Event("scroll"));
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const y = history.state.postListY;
+        const key = `blog:post-list:v1:${history.state.postListEntry}:true:y`;
+        return (
+          y > 0 &&
+          document.querySelector<HTMLElement>(".post-stream")!.scrollTop === y &&
+          Number(sessionStorage.getItem(key)) === y
+        );
+      }),
+    )
+    .toBe(true);
+  const y = await page.evaluate(() => history.state.postListY);
   await page.addInitScript(() => {
-    const nativeScroll = window.scrollTo.bind(window);
-    let pending = false;
+    addEventListener(
+      "DOMContentLoaded",
+      () => {
+        const restoredStream = document.querySelector<HTMLElement>(".post-stream")!;
+        const nativeScroll = restoredStream.scrollTo.bind(restoredStream);
+        let pending = false;
 
-    function delayedScroll(options?: ScrollToOptions): void;
-    function delayedScroll(x: number, top: number): void;
-    function delayedScroll(xOrOptions?: number | ScrollToOptions, top?: number) {
-      const restore = () => {
-        if (typeof xOrOptions === "number") nativeScroll(xOrOptions, top ?? 0);
-        else nativeScroll(xOrOptions);
-      };
-      if (!pending) {
-        pending = true;
-        // Simulate restoration not taking effect until a later rendering turn.
-        nativeScroll(0, 0);
-        dispatchEvent(new Event("scroll"));
-        setTimeout(restore, 300);
-        return;
-      }
-      restore();
-    }
-    window.scrollTo = delayedScroll;
+        function delayedScroll(options?: ScrollToOptions): void;
+        function delayedScroll(x: number, top: number): void;
+        function delayedScroll(xOrOptions?: number | ScrollToOptions, top?: number) {
+          const restore = () => {
+            if (typeof xOrOptions === "number") nativeScroll(xOrOptions, top ?? 0);
+            else nativeScroll(xOrOptions);
+          };
+          if (!pending) {
+            pending = true;
+            // Simulate restoration not taking effect until a later rendering turn.
+            nativeScroll(0, 0);
+            restoredStream.dispatchEvent(new Event("scroll"));
+            setTimeout(restore, 300);
+            return;
+          }
+          restore();
+        }
+        restoredStream.scrollTo = delayedScroll;
+      },
+      { once: true },
+    );
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeCloseTo(y, 0);
+  await expect
+    .poll(() => page.locator(".post-stream").evaluate((element) => element.scrollTop))
+    .toBeCloseTo(y, 0);
   // A second late browser/router scroll must not become the saved position.
   await page.evaluate(() => {
-    scrollTo(0, 0);
+    document.querySelector<HTMLElement>(".post-stream")!.scrollTo(0, 0);
   });
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeCloseTo(y, 0);
+  await expect
+    .poll(() => page.locator(".post-stream").evaluate((element) => element.scrollTop))
+    .toBeCloseTo(y, 0);
   expect(await page.evaluate(() => history.state.postListY)).toBe(y);
   expect(
     await page.evaluate(() => {
@@ -393,7 +607,10 @@ test("does not save intermediate scroll positions during delayed restoration", a
   // Let the deliberately delayed native restoration above complete.
   await page.waitForTimeout(350);
   // Once the user scrolls, the new position must be saved normally.
+  await page.locator(".post-stream").hover();
   await page.mouse.wheel(0, -200);
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeLessThan(y - 50);
+  await expect
+    .poll(() => page.locator(".post-stream").evaluate((element) => element.scrollTop))
+    .toBeLessThan(y - 50);
   await expect.poll(() => page.evaluate(() => history.state.postListY)).toBeLessThan(y - 50);
 });
