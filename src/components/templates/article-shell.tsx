@@ -92,6 +92,7 @@ interface EditorUiState {
 }
 
 interface ArticleShellProps {
+  postId?: string;
   article: ArticleDraft;
   initialHtml: string;
   initialContent: JSONContent;
@@ -127,6 +128,7 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
   const initialHeader = useConstant(() => ({
     title: article.title,
     subtitle: article.subtitle,
+    description: article.description,
     tags: article.tags,
   }));
   const editorMount = useSignal<HTMLElement>();
@@ -242,6 +244,7 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
         }
         await controller.value?.enterEdit(mount, {
           content: props.initialContent,
+          postId: props.postId,
           workingState: props.article.editingState,
           onUpdate: (content) => {
             ui.body = content;
@@ -291,6 +294,8 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
       ui.error = "";
       ui.saving = true;
       try {
+        if (controller.value?.getWorkingState()?.uploading)
+          throw new Error("画像の変換・アップロードが完了するまでお待ちください。");
         if (controller.value?.getWorkingState()?.pending)
           throw new Error("入力中のフォームを適用するかキャンセルしてください。");
         await props.onSave$({
@@ -370,6 +375,7 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
             publicationStatus={props.publicationStatus ? ui.status : undefined}
             initialTitle={initialHeader.title}
             initialSubtitle={initialHeader.subtitle}
+            initialDescription={initialHeader.description}
             initialTags={initialHeader.tags}
             subtitle={ui.subtitle}
             editable={ui.mode === "edit"}
@@ -393,6 +399,9 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
             })}
             onSubtitleInput$={$((value) => {
               ui.subtitle = value;
+            })}
+            onDescriptionInput$={$((value) => {
+              ui.description = value;
             })}
           />
           {/* After mounting, Tiptap owns this DOM; mode updates must not restore the SSR HTML. */}

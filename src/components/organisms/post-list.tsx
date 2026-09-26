@@ -134,7 +134,7 @@ const postListStyles = css`
   --desk-edge-shadow: inset 1px 0 var(--edge), inset -1px 0 var(--edge);
   position: relative;
   background-image: var(--desk-pattern);
-  background-attachment: fixed, fixed;
+  background-attachment: scroll, scroll;
   background-position:
     0 0,
     1px 1px;

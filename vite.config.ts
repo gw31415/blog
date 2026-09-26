@@ -68,6 +68,7 @@ export default defineConfig(async ({ command, mode }) => {
       tsconfigPaths: true,
     },
     lint: {
+      ignorePatterns: ["public/codecs/**"],
       options: {
         typeAware: true,
         typeCheck: true,
@@ -102,6 +103,7 @@ export default defineConfig(async ({ command, mode }) => {
     fmt: {
       // wrangler types による生成物はフォーマット対象外
       ignorePatterns: [
+        "public/codecs/**",
         "worker-configuration.d.ts",
         // vite-plus test がテスト実行時に作る ESM 判定用ディレクトリ
         "dummy-non-existing-folder",

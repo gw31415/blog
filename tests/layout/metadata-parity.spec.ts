@@ -14,6 +14,7 @@ for (const width of [1280, 467, 390])
             "[data-layout-key=header]",
             "[data-article-field=title]",
             "[data-article-field=subtitle]",
+            "[data-article-field=description]",
             "[data-article-field=tags]",
             "article",
           ].map((s) => {

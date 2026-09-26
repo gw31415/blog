@@ -1,3 +1,4 @@
+import { postImageIds, removeUnusedVariants } from "~/server/images";
 import { BlogTopbar } from "~/components/molecules/topbar";
 import { sendMarkdown } from "~/server/markdown-response";
 import { $, component$ } from "@qwik.dev/core";
@@ -54,7 +55,9 @@ export const useSavePost = routeAction$(async (values, event) => {
   const post = await findRequestPost(event);
   if (!post) throw event.error(404, "記事が見つかりません。");
   try {
+    const imageIds = await postImageIds(database(event), post.id);
     await savePostContent(database(event), post.id, values);
+    await removeUnusedVariants(database(event), event.platform.env.IMAGES, imageIds);
     event.sharedMap.delete("blog.post");
     return { ok: true };
   } catch (error) {
@@ -72,6 +75,7 @@ export default component$(() => {
   return (
     <ArticleShell
       key={post.id}
+      postId={post.id}
       article={{
         publishedAt: post.published_at?.slice(0, 10) ?? "",
         title: post.title,

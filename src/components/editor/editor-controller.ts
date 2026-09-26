@@ -44,6 +44,7 @@ export interface EditorHandle {
 }
 
 export interface MountArticleEditorOptions {
+  postId?: string;
   element: HTMLElement;
   content: JSONContent;
   workingState?: Record<string, unknown> | null;
@@ -95,6 +96,7 @@ export function createEditorController(loadRuntime: EditorRuntimeLoader): Editor
         handle = await runtime.mountArticleEditor({
           element,
           content: options?.content ?? EMPTY_DOCUMENT,
+          postId: options?.postId,
           workingState: options?.workingState,
           onUpdate: options?.onUpdate ?? NOOP,
           onSelectionChange: options?.onSelectionChange ?? NOOP,

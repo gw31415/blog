@@ -196,7 +196,7 @@ test("the desk texture and inset edges are painted behind the envelopes", async 
     await page.goto("/");
     const desk = page.locator(".post-stream");
     await expect(desk).toHaveCSS("background-image", /radial-gradient/);
-    await expect(desk).toHaveCSS("background-attachment", "fixed, fixed");
+    await expect(desk).toHaveCSS("background-attachment", "scroll, scroll");
     await expect(desk).toHaveCSS("box-shadow", /inset/);
   }
 });
@@ -539,16 +539,20 @@ for (const width of [1280, 390]) {
   });
 }
 
-test("desk texture stays still while the page scrolls", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 844 });
-  await page.goto("/");
-  const stream = page.locator(".post-stream");
-  const bounds = (await stream.boundingBox())!;
-  const clip = { x: bounds.x + 50, y: 300, width: 10, height: 10 };
-  const before = await page.screenshot({ clip });
-  await page.evaluate(() => window.scrollTo(0, 1));
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(1);
-  expect((await page.screenshot({ clip })).equals(before)).toBe(true);
+test("desk texture moves with the page while scrolling", async ({ page }) => {
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/");
+    const stream = page.locator(".post-stream");
+    const bounds = (await stream.boundingBox())!;
+    const clip = { x: bounds.x + 20, y: 200, width: 10, height: 10 };
+    const before = await page.screenshot({ clip });
+    await page.evaluate(() => window.scrollTo(0, 1));
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(1);
+    expect((await page.screenshot({ clip })).equals(before)).toBe(false);
+    const shifted = await page.screenshot({ clip: { ...clip, y: clip.y - 1 } });
+    expect(shifted.equals(before)).toBe(true);
+  }
 });
 
 test("article and list share tag styling and long titles fit the mobile envelope", async ({

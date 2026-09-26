@@ -1,3 +1,5 @@
+import { postImageIds, removeUnusedVariants } from "~/server/images";
+import { css } from "@qstyle/qwik";
 import { readPostListCache, writePostListCache } from "~/browser/post-list-cache";
 import type { PostPage } from "~/server/post-list";
 import { loadMore } from "~/api/post-list";
@@ -27,8 +29,10 @@ export const useDeletePost = routeAction$(async (values, event) => {
   const id = typeof values.id === "string" ? values.id : "";
   if (!isUlid(id) || values.confirm !== "yes")
     return event.fail(400, { message: "削除を確認してください。" });
+  const imageIds = await postImageIds(database(event), id);
   if (!(await deletePost(database(event), id)))
     return event.fail(404, { message: "記事が見つかりません。" });
+  await removeUnusedVariants(database(event), event.platform.env.IMAGES, imageIds);
   return { ok: true };
 });
 
@@ -312,9 +316,24 @@ export default component$(() => {
 export const head: DocumentHead = { title: `記事一覧 — ${BLOG_NAME}` };
 
 const CreatePostAction = component$<{ action: ReturnType<typeof useCreateDraft> }>(({ action }) => (
-  <Form action={action}>
+  <Form action={action} css={managementActionsStyles}>
+    <a href="/manage/images">画像</a>
     <button type="submit" disabled={action.isRunning}>
       新規記事
     </button>
   </Form>
 ));
+
+const managementActionsStyles = css`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  & a {
+    color: var(--muted);
+    text-decoration: none;
+  }
+  & a:hover {
+    color: var(--link);
+    text-decoration: underline;
+  }
+`;

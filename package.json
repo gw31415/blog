@@ -41,6 +41,7 @@
     "@tiptap/starter-kit": "3.31.3",
     "@tiptap/static-renderer": "3.31.3",
     "entities": "^8.1.0",
+    "gifuct-js": "^2.1.2",
     "lowlight": "3.3.0",
     "marked": "18.0.14",
     "mermaid": "12.0.0"

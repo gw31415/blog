@@ -18,6 +18,17 @@ function database() {
   sqlite.exec("PRAGMA foreign_keys=ON");
   const queries: string[] = [];
   sqlite.exec(readFileSync("migrations/0001_posts.sql", "utf8"));
+  for (const migration of [
+    "0002_image_library",
+    "0003_image_reference_urls",
+    "0004_original_image_objects",
+    "0005_r2_image_families",
+    "0006_content_addressed_images",
+    "0007_simple_image_variants",
+    "0008_image_url_matching",
+    "0009_remove_post_aliases",
+  ])
+    sqlite.exec(readFileSync(`migrations/${migration}.sql`, "utf8"));
   class Statement {
     constructor(
       public sql: string,
@@ -368,4 +379,40 @@ it("rejects unfinished saves regardless of publication status and does not persi
   await savePostContent(db, id, { ...values, editingState: { document } });
   expect((await findPost(db, id))!.editing_state).toBeNull();
   expect((await findPost(db, id))!.body).toEqual(document);
+});
+
+describe("current article alias", () => {
+  const input = (alias: string) => ({
+    alias,
+    title: "Article",
+    body: JSON.stringify({ type: "doc", content: [{ type: "paragraph" }] }),
+    tags: "[]",
+    formatVersion: 2,
+    bodyFormat: "tiptap-json",
+    contentSchemaVersion: 1,
+    status: "draft",
+  });
+  it("resolves only the current alias and permits reuse of released aliases", async () => {
+    const { db, sqlite } = database();
+    const a = await createDraft(db),
+      b = await createDraft(db);
+    await savePostContent(db, a, input("old-name"));
+    expect((await findPost(db, "old-name"))?.id).toBe(a);
+    await savePostContent(db, a, input("new-name"));
+    expect(await findPost(db, "old-name")).toBeNull();
+    expect((await findPost(db, "new-name"))?.id).toBe(a);
+    expect((await findPost(db, a))?.id).toBe(a);
+    await savePostContent(db, b, input("old-name"));
+    expect((await findPost(db, "old-name"))?.id).toBe(b);
+    await expect(savePostContent(db, b, input("new-name"))).rejects.toThrow(
+      "エイリアスが他の記事で使用されています",
+    );
+    expect((await findPost(db, "new-name"))?.id).toBe(a);
+    await savePostContent(db, a, input(""));
+    expect(await findPost(db, "new-name")).toBeNull();
+    expect((await findPost(db, a))?.canonical_alias).toBeNull();
+    expect(
+      sqlite.prepare("SELECT name FROM sqlite_master WHERE name='post_aliases'").get(),
+    ).toBeUndefined();
+  });
 });

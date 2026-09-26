@@ -9,6 +9,13 @@ for (const width of [1280, 467]) {
     await page.locator(".article-header-edit").click();
     const body = page.locator("article .ProseMirror");
     await expect(body).toBeVisible({ timeout: 45000 });
+    const imageBase64 = await page.evaluate(() => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 4;
+      canvas.height = 4;
+      canvas.getContext("2d")!.fillRect(0, 0, 4, 4);
+      return canvas.toDataURL("image/png").split(",")[1];
+    });
     await body.locator("p").first().click();
     const tables = await body.locator("table").count();
     const trigger = page.getByRole("button", { name: "表を挿入", exact: true });
@@ -49,7 +56,7 @@ for (const width of [1280, 467]) {
     await chooser.setFiles({
       name: "image.png",
       mimeType: "image/png",
-      buffer: Buffer.from("test"),
+      buffer: Buffer.from(imageBase64, "base64"),
     });
     const figures = body
       .locator("figure")
@@ -58,11 +65,15 @@ for (const width of [1280, 467]) {
     await figures.first().locator("figcaption p").click();
     await page.keyboard.type("Direct caption");
     await expect(figures.first().locator("figcaption")).toHaveText("Direct caption");
-    const data = await page.evaluateHandle(() => {
+    const data = await page.evaluateHandle((base64) => {
       const transfer = new DataTransfer();
-      transfer.items.add(new File(["test"], "dropped.png", { type: "image/png" }));
+      transfer.items.add(
+        new File([Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))], "dropped.png", {
+          type: "image/png",
+        }),
+      );
       return transfer;
-    });
+    }, imageBase64);
     const paragraph = body.locator("p").first();
     await paragraph.scrollIntoViewIfNeeded();
     const target = await paragraph.boundingBox();

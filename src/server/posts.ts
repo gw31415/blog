@@ -109,9 +109,7 @@ export async function findPost(db: D1Database, identifier: string): Promise<Post
         .bind(identifier.toUpperCase())
         .first<PostRow>()
     : await db
-        .prepare(
-          "SELECT p.* FROM post_aliases a JOIN posts p ON p.id = a.post_id WHERE a.alias = ?",
-        )
+        .prepare("SELECT * FROM posts WHERE canonical_alias = ?")
         .bind(identifier)
         .first<PostRow>();
   return row ? decodePost(row) : null;
@@ -193,14 +191,10 @@ export async function savePostContent(
     alias !== old.canonical_alias ||
     publishedAt !== old.published_at;
   const statements: D1PreparedStatement[] = [];
-  if (alias)
-    statements.push(
-      db.prepare("INSERT OR IGNORE INTO post_aliases(alias,post_id) VALUES (?,?)").bind(alias, id),
-    );
   statements.push(
     db
       .prepare(
-        `UPDATE posts SET title=?,subtitle=?,description=?,tags=?,body_json=?,status=?,canonical_alias=?,published_at=?,updated_at=?,editing_state=? WHERE id=? AND (? IS NULL OR EXISTS(SELECT 1 FROM post_aliases WHERE alias=? AND post_id=?))`,
+        `UPDATE posts SET title=?,subtitle=?,description=?,tags=?,body_json=?,status=?,canonical_alias=?,published_at=?,updated_at=?,editing_state=? WHERE id=? AND (? IS NULL OR NOT EXISTS(SELECT 1 FROM posts WHERE canonical_alias=? AND id<>?))`,
       )
       .bind(
         input.title,

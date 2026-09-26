@@ -17,6 +17,8 @@ vite-plus が dev / build / lint / fmt を兼ねるため、専用の ESLint・P
 
 ## 記事編集
 
+記事の別名は `posts.canonical_alias` の現在値のみを保持します。変更・解除後の旧別名URLは404となり、ULIDのURLは維持されます。
+
 記事ページの「編集」でタイトル・副題・タグと本文を編集します。本文の正本は **Tiptap JSON** です。通常の保存・再読込でMarkdownへ変換しません。初回公開日時は初めて公開したときに記録し、再公開でも保持します。
 
 段落の先頭または空白の後で `/`、選択範囲には `Mod+/`、タッチ操作では「コマンド」を使用します。固定ツールバーには表挿入と画像アップロードを配置しています。図のキャプション、入れ子の補足・トグル、H2〜H6、数式、Mermaidも編集できます。未確定の入力は下書きの編集状態に保持できます。
@@ -30,6 +32,20 @@ vite-plus が dev / build / lint / fmt を兼ねるため、専用の ESLint・P
 記事の初期表示は、MathJaxでTeXからSVGと支援技術向けMathMLを生成したSSR済みHTMLです。TipTap、ProseMirror、編集用MathJaxランタイムは最初に「編集」を押したときだけ動的に読み込み、その後は同じエディターインスタンスのeditable状態だけを切り替えます。
 
 アプリ固有のスタイルは各コンポーネントと同一モジュールの qstyle tagged template / `css` prop で管理します。色・文字組みは `src/components/foundations/theme.tsx`、記事と編集DOMの共通規則は `ArticleStyleBoundary` / `ArticleSurfaceBoundary` が所有します。ページ間ではスタイル付きコンポーネントを共有し、独自の別CSSは使用しません。詳細は `.agents/skills/blog-qstyle-components/SKILL.md` を参照してください。MathJaxは自己完結したSVGを出力するため、数式用の外部CSSやWebフォントは読み込みません。
+
+### 画像の保存と管理
+
+画像はファイル選択・ドロップ・貼り付けで挿入できます。静止画PNG/JPEG/GIF/WebP/AVIFとアニメーションGIF（最大25MB）を受け付け、ブラウザーのWeb Workerで向き補正・長辺2560px以内への縮小・AVIF変換を行います。配信用AVIFには元のEXIF等をコピーしません。画像・図の属性編集からファイルを差し替えると、altやキャプション等を保持します。
+
+静止画とアニメーションは同じlibavif WASMを使用します。ビルド済みの変換器を同梱しており、通常の開発にネイティブコンパイラーは不要です。[変換器のソース・再ビルド手順](scripts/image-codec/README.md)
+
+画像本体はR2 binding `IMAGES` に保存します。元画像は `images/originals/{ULID}.{ext}`、配信用画像は `images/variants/{別のULID}.{ext}`。MIMEタイプはR2のHTTPメタデータに保存し、配信時はD1を参照しません。
+
+画像関連のD1は `image_variants(id, original_id, width, height)` と `post_images(post_id, variant_id)` の2テーブルです。記事保存で参照を同期し、リンク解除・記事削除で未使用になった配信用ファイルをR2から削除します。対応レコードと元画像は残し、履歴は持ちません。再生成・差し替えには新しいIDを発行します。
+
+`/manage/images` では現在の関連記事と紐付けのない元画像を確認できます。未使用画像の整理は編集終了後に実行してください。削除失敗も整理操作で再試行できます。認可は記事編集と同じ仮実装で、Better Authは後日対応します。
+
+`pnpm db:migrate:local` で更新します。0007は旧画像台帳を初期化する破壊的変更のため、旧画像URLは再アップロードが必要です。GIF以外のアニメーションは未対応です。
 
 ## プロジェクト構成
 

@@ -241,7 +241,7 @@ export async function mountArticleEditor(
   options.element.querySelectorAll("details").forEach((details, index) => {
     details.open = detailsOpen[index] ?? false;
   });
-  palette = createCommandPalette(editor);
+  palette = createCommandPalette(editor, options.postId);
   const editCalloutLabel = (event: MouseEvent) => {
     if (!editor.isEditable || !(event.target instanceof Element)) return;
     const label = event.target.closest('[data-article-role="callout-label"]');
@@ -313,7 +313,11 @@ export async function mountArticleEditor(
       return result;
     },
     getWorkingState() {
-      return { document: editor.getJSON(), pending: palette?.getState() ?? null };
+      return {
+        document: editor.getJSON(),
+        uploading: palette?.isUploading() ?? false,
+        pending: palette?.getState() ?? null,
+      };
     },
     getJSON() {
       return finalizeWorkingDocument(palette?.documentForSave() ?? editor.getJSON());

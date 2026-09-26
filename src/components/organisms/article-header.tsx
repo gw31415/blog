@@ -13,6 +13,7 @@ interface BlogHeaderProps {
   publicationStatus?: "draft" | "published";
   initialTitle: string;
   initialSubtitle: string;
+  initialDescription: string;
   subtitle?: string;
   editable?: boolean;
   canEdit?: boolean;
@@ -26,9 +27,10 @@ interface BlogHeaderProps {
   onPublicationToggle$?: QRL<() => void>;
   onTitleInput$?: QRL<(value: string) => void>;
   onSubtitleInput$?: QRL<(value: string) => void>;
+  onDescriptionInput$?: QRL<(value: string) => void>;
 }
 
-/** 記事ヘッダー (タグ・日付・公開状態・題・副題)。 */
+/** 記事ヘッダー (タグ・日付・公開状態・題・副題・説明)。 */
 export function BlogHeader(props: BlogHeaderProps) {
   // Keep browser-owned text nodes across mode changes as well as typing.
   // Removing the header during a remount can clamp a bottom-aligned scroller.
@@ -71,6 +73,24 @@ export function BlogHeader(props: BlogHeaderProps) {
           <RenderOnce>{props.initialSubtitle}</RenderOnce>
         </p>
       </hgroup>
+      <p
+        class="article-description type-meta ink ink-muted"
+        data-article-field="description"
+        data-placeholder="説明を入力"
+        aria-label="記事の説明"
+        role={props.editable ? "textbox" : undefined}
+        aria-multiline={props.editable ? "false" : undefined}
+        onBeforeInput$={singleLineInput}
+        onPaste$={singleLinePaste}
+        onKeyDown$={singleLineKey}
+        contentEditable={props.editable ? "true" : "false"}
+        onInput$={(event, element) => {
+          if (!event.isComposing && !element.textContent) element.replaceChildren();
+          void props.onDescriptionInput$?.(element.textContent ?? "");
+        }}
+      >
+        <RenderOnce>{props.initialDescription}</RenderOnce>
+      </p>
       <div class="meta type-meta">
         <BlogTags
           initialTags={props.initialTags}

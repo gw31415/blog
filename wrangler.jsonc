@@ -14,6 +14,7 @@
   "observability": {
     "enabled": true,
   },
+  "r2_buckets": [{ "binding": "IMAGES", "bucket_name": "blog-images" }],
   "d1_databases": [
     {
       "binding": "DB",

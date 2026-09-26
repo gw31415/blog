@@ -144,6 +144,7 @@ const articleShellStyles = css`
   /* Keep metadata geometry identical across reading, editing and focus. */
   & [data-article-field="title"],
   & [data-article-field="subtitle"],
+  & [data-article-field="description"],
   & [data-article-field="tags"] {
     padding-bottom: 0.2em;
     border-bottom: 1px solid transparent;
@@ -261,6 +262,14 @@ const articleShellStyles = css`
     min-block-size: 1lh;
   }
 
+  & .article-description {
+    position: relative;
+    margin: 1lh 0 0;
+    min-block-size: calc(1lh + 0.2em + 1px);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
   & [data-article-field="subtitle"]:is(:empty, :has(> br:only-child)) {
     min-block-size: calc(1lh + 0.2em + 1px);
   }
@@ -307,6 +316,7 @@ const articleShellStyles = css`
 
   & [data-article-field="title"]:empty::before,
   & .subtitle[data-article-field="subtitle"]:empty::before,
+  & [data-article-field="description"]:empty::before,
   & [data-article-field="tags"]:empty::before {
     content: attr(data-placeholder);
     position: absolute;

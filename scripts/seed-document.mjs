@@ -26,6 +26,6 @@ const refs = [...new Map(entries.map((entry) => [entry.key, entry])).values()]
   .join("\n");
 writeFileSync(
   "scripts/seed-document.sql",
-  `INSERT INTO posts(id,canonical_alias,status,title,subtitle,description,tags,created_at,updated_at,published_at,body_json) VALUES (${values.map(quote).join(",")});\nINSERT INTO post_aliases(alias,post_id) VALUES ('document-showcase',${quote(id)});\n${refs}\n`,
+  `INSERT INTO posts(id,canonical_alias,status,title,subtitle,description,tags,created_at,updated_at,published_at,body_json) VALUES (${values.map(quote).join(",")});\n${refs}\n`,
 );
 console.log(`Generated sample: ${JSON.stringify(sampleDocument).length} JSON characters`);

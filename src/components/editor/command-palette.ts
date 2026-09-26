@@ -1,3 +1,5 @@
+import { IMAGE_ACCEPT } from "../../content/image-policy";
+import { uploadImage } from "./image-upload";
 import { formatCommands } from "./inline-format-contract";
 import { createRenderSourceDialog } from "./render-source-dialog";
 import { closeHistory } from "@tiptap/pm/history";
@@ -182,7 +184,7 @@ const restoredRange = (value: unknown) => {
     return undefined;
   return { from: value.from, to: value.to };
 };
-export function createCommandPalette(editor: Editor) {
+export function createCommandPalette(editor: Editor, postId?: string) {
   let dialog: HTMLDialogElement | null = null;
   let currentCommand: string | undefined;
   let choosingSlash = false;
@@ -435,7 +437,21 @@ export function createCommandPalette(editor: Editor) {
   const uploadStatus = document.createElement("p");
   uploadStatus.className = "document-upload-status";
   uploadStatus.setAttribute("role", "status");
-  const uploadImages = async (files: File[], position = saved.from) => {
+  let uploading = false;
+  const uploadImages = async (files: File[], position = saved.from, replace = false) => {
+    if (uploading) {
+      uploadStatus.textContent = "別の画像を処理中です。完了後にもう一度追加してください";
+      return;
+    }
+    dialogHost.appendChild(uploadStatus);
+    if (!postId) {
+      uploadStatus.textContent = "記事を作成してから画像を追加してください";
+      return;
+    }
+    uploading = true;
+    let replacementPosition = position;
+    let replacementDeleted = false;
+    const originalNode = replace ? editor.state.doc.nodeAt(position) : null;
     // Map the insertion point through edits made while the request is in flight.
     let bookmark: import("@tiptap/pm/state").SelectionBookmark = TextSelection.create(
       editor.state.doc,
@@ -447,36 +463,44 @@ export function createCommandPalette(editor: Editor) {
       transaction: import("@tiptap/pm/state").Transaction;
     }) => {
       bookmark = bookmark.map(transaction.mapping);
+      if (replace) {
+        const mapped = transaction.mapping.mapResult(replacementPosition);
+        replacementPosition = mapped.pos;
+        replacementDeleted ||= mapped.deleted;
+      }
     };
     editor.on("transaction", mapPosition);
     dialogHost.appendChild(uploadStatus);
     uploadStatus.textContent = "画像をアップロード中…";
     try {
       for (const file of files) {
-        const payload = new FormData();
-        payload.set("image", file);
-        const response = await fetch("/api/images", { method: "POST", body: payload });
-        const result: unknown = await response.json();
-        if (
-          !result ||
-          typeof result !== "object" ||
-          !("url" in result) ||
-          typeof result.url !== "string" ||
-          !result.url ||
-          !response.ok
-        )
-          throw new Error(
-            result &&
-              typeof result === "object" &&
-              "error" in result &&
-              typeof result.error === "string"
-              ? result.error
-              : "アップロード失敗",
-          );
+        const url = await uploadImage(file, postId, (message) => {
+          uploadStatus.textContent = message;
+        });
         if (editor.isDestroyed) return;
         editor.view.dispatch(
           closeHistory(editor.state.tr.setSelection(bookmark.resolve(editor.state.doc))),
         );
+        if (replace) {
+          const node = editor.state.doc.nodeAt(replacementPosition);
+          if (
+            replacementDeleted ||
+            !node ||
+            node.type !== originalNode?.type ||
+            node.attrs.src !== originalNode.attrs.src
+          )
+            throw new Error("差し替え対象が変更されました。画像は管理画面から確認できます");
+          editor.view.dispatch(
+            editor.state.tr.setNodeMarkup(
+              replacementPosition,
+              undefined,
+              { ...node.attrs, src: url },
+              node.marks,
+            ),
+          );
+          editor.view.dispatch(closeHistory(editor.state.tr));
+          continue;
+        }
         if (slash) {
           editor.commands.deleteRange(slash);
           slash = null;
@@ -484,7 +508,7 @@ export function createCommandPalette(editor: Editor) {
         if (
           !insert({
             type: "figure",
-            attrs: { src: result.url, alt: "" },
+            attrs: { src: url, alt: "" },
             content: [{ type: "paragraph" }],
           })
         )
@@ -497,6 +521,7 @@ export function createCommandPalette(editor: Editor) {
     } catch (error) {
       uploadStatus.textContent = String(error);
     } finally {
+      uploading = false;
       editor.off("transaction", mapPosition);
     }
   };
@@ -513,6 +538,32 @@ export function createCommandPalette(editor: Editor) {
     void uploadImages(files, position ?? editor.state.selection.from);
   };
 
+  const paste = (event: ClipboardEvent) => {
+    const files = Array.from(event.clipboardData?.items ?? [])
+      .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => !!file);
+    if (!files.length) return;
+    event.preventDefault();
+    event.stopPropagation();
+    close();
+    slash = null;
+    void uploadImages(files, editor.state.selection.from);
+  };
+  const chooseImage = (replacePosition?: number) => {
+    close();
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = IMAGE_ACCEPT;
+    input.multiple = replacePosition === undefined;
+    input.addEventListener("change", () => {
+      const files = Array.from(input.files ?? []);
+      if (files.length)
+        void uploadImages(files, replacePosition ?? saved.from, replacePosition !== undefined);
+    });
+    input.click();
+  };
+  editor.view.dom.addEventListener("paste", paste, true);
   editor.view.dom.addEventListener("drop", drop, true);
   editor.view.dom.addEventListener("dragover", dragover);
   const fields = (
@@ -667,7 +718,7 @@ export function createCommandPalette(editor: Editor) {
       (id === "edit-element" && ["image", "figure"].includes(selected?.node.type.name ?? ""))
     ) {
       const figure = id === "figure" || selected?.node.type.name === "figure";
-      return fields(
+      fields(
         figure ? "図" : "画像",
         [
           { name: "src", label: "画像URL", value: String(selected?.node.attrs.src ?? "") },
@@ -740,6 +791,14 @@ export function createCommandPalette(editor: Editor) {
             : insert(node);
         },
       );
+      if (selected) {
+        const replaceButton = document.createElement("button");
+        replaceButton.type = "button";
+        replaceButton.textContent = "画像ファイルを差し替え";
+        replaceButton.addEventListener("click", () => chooseImage(selected.pos));
+        dialog?.querySelector("form")?.appendChild(replaceButton);
+      }
+      return;
     }
     if (
       ["note", "warning", "dropdown"].includes(id) ||
@@ -875,15 +934,7 @@ export function createCommandPalette(editor: Editor) {
       return;
     }
     if (id === "upload-image") {
-      close();
-      const input = document.createElement("input");
-      input.type = "file";
-      input.accept = "image/png,image/jpeg,image/gif,image/webp";
-      input.addEventListener("change", () => {
-        const file = input.files?.[0];
-        if (file) void uploadImages([file]);
-      });
-      input.click();
+      chooseImage();
       return;
     }
     commit(() => {
@@ -1206,9 +1257,11 @@ export function createCommandPalette(editor: Editor) {
   return {
     open,
     close,
+    isUploading: () => uploading,
     destroy() {
       close();
       uploadStatus.remove();
+      editor.view.dom.removeEventListener("paste", paste, true);
       editor.view.dom.removeEventListener("drop", drop, true);
       editor.view.dom.removeEventListener("dragover", dragover);
     },

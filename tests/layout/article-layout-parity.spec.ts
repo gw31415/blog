@@ -5,6 +5,7 @@ const contentSelector = [
   ".article-sticky-edit",
   "main.paper",
   "main.paper header hgroup",
+  "main.paper header .article-description",
   "main.paper header .meta",
   "main.paper header .meta-tags",
   "main.paper header .meta-controls",
