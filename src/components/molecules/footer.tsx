@@ -27,8 +27,8 @@ const blogFooterStyles = css`
 `;
 
 /** Use the article paper's content measure when the footer is outside its column. */
-export const BlogFooterContainer = component$(() => (
-  <div css={blogFooterContainerStyles}>
+export const BlogFooterContainer = component$<{ wide?: boolean }>((props) => (
+  <div css={blogFooterContainerStyles} data-wide={props.wide}>
     <div class="footer-content">
       <Slot />
     </div>
@@ -43,6 +43,13 @@ const blogFooterContainerStyles = css`
   & .footer-content {
     max-width: var(--content-measure);
     margin-inline: auto;
+  }
+
+  &[data-wide] {
+    padding-inline: var(--archive-chrome-inset);
+  }
+  &[data-wide] .footer-content {
+    max-width: none;
   }
 
   @media (max-width: 600px) {

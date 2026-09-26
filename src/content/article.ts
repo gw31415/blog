@@ -9,7 +9,7 @@ export interface ArticleDraft {
   tags: string[];
 }
 
-export const BLOG_NAME = "ブログ名（仮）";
+export const BLOG_NAME = "amas.dev";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
 const DIGITS = ["〇", "一", "二", "三", "四", "五", "六", "七", "八", "九"] as const;

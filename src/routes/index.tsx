@@ -10,6 +10,7 @@ import { loadMore } from "~/api/post-list";
 import { $, component$, useSignal, useStore, useVisibleTask$ } from "@qwik.dev/core";
 import { Form, routeAction$, routeLoader$, type DocumentHead } from "@qwik.dev/router";
 import { ArchiveLayout } from "~/components/templates/archive-layout";
+import { StreamStatus } from "~/components/molecules/stream-status";
 import { PostList } from "~/components/organisms/post-list";
 import { JournalHeading } from "~/components/organisms/journal-heading";
 import { BlogFooter, BlogFooterContainer } from "~/components/molecules/footer";
@@ -299,7 +300,7 @@ export default component$(() => {
           })}
         >
           <JournalHeading q:slot="stream-start" />
-          <div q:slot="stream-end" class="more" ref={sentinel} aria-busy={state.loading}>
+          <StreamStatus q:slot="stream-end" sentinel={sentinel} busy={state.loading}>
             <p role="status">{state.loading ? "…" : state.error}</p>
             {state.next ? (
               <a
@@ -310,11 +311,11 @@ export default component$(() => {
                 続きを読み込む
               </a>
             ) : (
-              state.posts.length > 0 && <p>ここまでの記事</p>
+              <p>{state.posts.length > 0 ? "ここまでの記事" : "記事はまだありません。"}</p>
             )}
-          </div>
+          </StreamStatus>
           <div q:slot="stream-after" class="stream-footer">
-            <BlogFooterContainer>
+            <BlogFooterContainer wide>
               <BlogFooter
                 left={BLOG_NAME}
                 right={formatJapaneseEraYear(new Date().toISOString().slice(0, 10))}

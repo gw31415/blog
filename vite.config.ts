@@ -35,7 +35,7 @@ const mermaidBrowserAsset = (): Plugin => ({
 export default defineConfig(async ({ command, mode }) => {
   const proxy =
     command === "serve" && mode !== "test"
-      ? await (await import("wrangler")).getPlatformProxy<Env>({ remoteBindings: false })
+      ? await (await import("wrangler")).getPlatformProxy<Env>({ remoteBindings: true })
       : undefined;
 
   return {

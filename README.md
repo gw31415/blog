@@ -17,6 +17,8 @@ vite-plus が dev / build / lint / fmt を兼ねるため、専用の ESLint・P
 
 ## 記事編集
 
+`pnpm dev` / `pnpm preview` はローカルでコードを実行し、本番D1 `blog-posts` と本番R2 `blog-images` に接続します。WranglerでのCloudflareログインが必要です。保存・削除も本番データに反映されます。Accessの認可は維持され、`amas.dev` のログインCookieはlocalhostには共有されません。自動テストは従来どおり一時DB・R2を使用し、`db:*:local` はローカルDBだけを操作します。
+
 記事の別名は `posts.canonical_alias` の現在値のみを保持します。変更・解除後の旧別名URLは404となり、ULIDのURLは維持されます。
 
 記事ページの「編集」でタイトル・副題・タグと本文を編集します。本文の正本は **Tiptap JSON** です。通常の保存・再読込でMarkdownへ変換しません。初回公開日時は初めて公開したときに記録し、再公開でも保持します。

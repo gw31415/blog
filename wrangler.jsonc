@@ -20,13 +20,14 @@
   "observability": {
     "enabled": true,
   },
-  "r2_buckets": [{ "binding": "IMAGES", "bucket_name": "blog-images" }],
+  "r2_buckets": [{ "binding": "IMAGES", "bucket_name": "blog-images", "remote": true }],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "blog-posts",
       "database_id": "74e71308-26ca-42d5-b319-6100b7823b4f",
       "migrations_dir": "migrations",
+      "remote": true,
     },
   ],
 }

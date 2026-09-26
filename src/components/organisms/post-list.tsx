@@ -95,7 +95,6 @@ export const PostList = component$<{
         ))}
         <Slot name="stream-end" />
       </div>
-      {props.posts.length === 0 && <p class="empty">記事はまだありません。</p>}
       <Slot name="stream-after" />
       {props.canManage && (
         <ConfirmationDialog
@@ -115,6 +114,8 @@ export const PostList = component$<{
 });
 
 const postListStyles = css`
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   overflow-x: clip;
   --archive-header-height: calc(1.6875rem + 1px + env(safe-area-inset-top));
@@ -143,7 +144,7 @@ const postListStyles = css`
 
   & .post-desk {
     position: relative;
-    min-height: 100%;
+    flex: 1 0 auto;
     padding-top: var(--body-leading);
   }
   @media screen {
@@ -185,10 +186,6 @@ const postListStyles = css`
     padding: 0;
     margin: 0;
   }
-  & .empty {
-    padding: 48px;
-    color: var(--muted);
-  }
   & .post-desk[data-layout="grid"] .letters {
     gap: 28px;
   }
@@ -198,41 +195,6 @@ const postListStyles = css`
     .post-day:first-child
     .dated-letter:first-child {
     margin-bottom: 12px;
-  }
-  & .more {
-    position: relative;
-    min-height: 72px;
-    margin: 8px 24px 0 104px;
-    padding: 22px 12px 28px;
-    box-sizing: border-box;
-    color: var(--muted);
-    font-size: var(--small-size);
-    text-align: center;
-  }
-  & .more::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: 18%;
-    left: 18%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--edge) 20% 80%, transparent);
-  }
-  & .more p {
-    margin: 0;
-  }
-  & .more p + p,
-  & .more p + a {
-    margin-top: 8px;
-  }
-  & .more a {
-    font: inherit;
-    color: var(--muted);
-    text-underline-offset: 4px;
-  }
-  & .more a:focus-visible {
-    outline: 2px solid var(--red);
-    outline-offset: 4px;
   }
   & .stream-footer {
     position: relative;
@@ -262,10 +224,6 @@ const postListStyles = css`
     }
     & .post-desk[data-layout="grid"] .letters {
       grid-template-columns: 1fr;
-    }
-    & .more {
-      margin: 6px 6px 0 var(--mobile-calendar-rail);
-      padding-bottom: 22px;
     }
   }
   @media (forced-colors: active) {
