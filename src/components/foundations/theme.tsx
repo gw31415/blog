@@ -13,8 +13,6 @@ const blogThemeStyles = css`
   font-synthesis: none;
   text-autospace: normal;
   background-color: var(--page-background);
-  background-image: var(--desk-texture);
-  background-size: auto, var(--paper-stock-size);
   &::selection,
   & ::selection {
     color: var(--ink);

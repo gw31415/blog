@@ -40,7 +40,6 @@ const stickyHeaderStyles = css`
     max(var(--paper-inset), env(safe-area-inset-left));
   color: var(--ink);
   border-bottom: 1px solid var(--line-soft);
-  box-shadow: 0 3px 12px rgb(40 30 20 / 8%);
   white-space: nowrap;
   transform: translateY(0);
   transition:
@@ -53,9 +52,7 @@ const stickyHeaderStyles = css`
     margin-bottom: 0;
   }
   &[data-header-surface="paper"] {
-    background-color: rgb(242 234 213 / 98%);
-    background-image: var(--desk-texture);
-    background-size: auto, var(--paper-stock-size);
+    background: var(--page-background);
   }
   &[data-header-surface="glass"] {
     background: rgb(242 234 213 / 62%);
