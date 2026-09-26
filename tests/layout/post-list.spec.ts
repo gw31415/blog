@@ -68,13 +68,14 @@ test("letter archive is SSR rendered and its corner peel opens deletion controls
     }));
   const restingCut = await paperCut();
   expect(restingCut.shadow).toBe(restingCut.stock);
-  expect(restingCut.filter).toBe("blur(1px)");
+  expect(restingCut.filter).toBe("none");
   const resting = await card.evaluate((el) => getComputedStyle(el).transform);
   await link.focus();
   await page.keyboard.press(browserName === "webkit" ? "Alt+Shift+Tab" : "Shift+Tab");
   await page.keyboard.press(browserName === "webkit" ? "Alt+Tab" : "Tab");
   await expect.poll(() => card.evaluate((el) => getComputedStyle(el).transform)).not.toBe(resting);
   await expect(link).toHaveCSS("outline-style", "solid");
+  await expect(card.locator(".letter-shadow-near")).toHaveCSS("filter", "none");
   // Focus and hover may scroll a control into view; the peel must preserve its list coordinates.
   const footprint = () =>
     page
@@ -761,14 +762,15 @@ for (const width of [1280, 390]) {
         };
       }),
     }));
-    // Clip only the paper source. Each independent shadow must be free to diffuse
-    // past that outline, including into the exposed corner.
+    // Both shadows follow the paper cut. Only the far shadow is blurred;
+    // the close contact shadow must stay unfiltered in Safari.
     expect(shadows.outerClip).toBe("none");
     for (const layer of shadows.layers) {
       expect(layer.clip).toBe("none");
       expect(layer.sourceClip).toBe(shadows.stock);
-      expect(layer.filter).toMatch(/^blur\([\d.]+px\)$/);
     }
+    expect(shadows.layers[0].filter).toBe("none");
+    expect(shadows.layers[1].filter).toMatch(/^blur\([\d.]+px\)$/);
     const corner = await card.evaluate((element) => {
       const el = element as HTMLElement;
       const box = el.getBoundingClientRect();
@@ -802,5 +804,11 @@ for (const width of [1280, 390]) {
       }
     });
     expect((await page.screenshot({ clip: corner })).equals(cutShadow)).toBe(false);
+    await card.locator(".letter-link").hover();
+    await expect(card.locator(".letter-shadow-near")).toHaveCSS("filter", "none");
+    await page.evaluate(() => {
+      document.body.style.zoom = "1.5";
+    });
+    await expect(card.locator(".letter-shadow-near")).toHaveCSS("filter", "none");
   });
 }

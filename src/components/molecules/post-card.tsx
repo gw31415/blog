@@ -186,11 +186,10 @@ const postCardStyles = css`
       transform 180ms ease-out,
       opacity 180ms ease-out;
   }
-  /* Blur the colored silhouette itself instead of deriving a drop-shadow
-     from a separately composited clip. Keep the blur outside the clipped
-     child so it can diffuse freely as the corner changes shape. */
+  /* The close contact shadow follows the cut directly. A small blur here
+     produces a pink edge in Safari at some scroll/zoom positions. Keep
+     softness in the separate far shadow, outside its clipped source. */
   & .letter-shadow-near {
-    filter: blur(1px);
     transform: translate(1px, 2px);
     opacity: 0.24;
   }
@@ -591,7 +590,6 @@ const postCardStyles = css`
     transform: translateX(var(--shift)) translateY(-4px) rotate(var(--angle)) scale(1.018);
   }
   & .letter:has(.letter-link:focus-visible) .letter-shadow-near {
-    filter: blur(2px);
     transform: translate(1px, 3px);
     opacity: 0.28;
   }
@@ -736,7 +734,6 @@ const postCardStyles = css`
     &:not(:where(.post-stream[data-scrolling] *))
       .letter:has(.letter-link:hover)
       .letter-shadow-near {
-      filter: blur(2px);
       transform: translate(1px, 3px);
       opacity: 0.28;
     }
