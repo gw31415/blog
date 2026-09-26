@@ -51,6 +51,8 @@ export const ConfirmationDialog = component$<{
 ));
 
 const confirmationDialogStyles = css`
+  position: fixed;
+  inset: 0;
   box-sizing: border-box;
   width: min(440px, calc(100% - 32px));
   margin: auto;

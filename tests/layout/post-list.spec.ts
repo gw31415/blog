@@ -1,5 +1,32 @@
 import { test, expect } from "@playwright/test";
 
+for (const width of [1280, 390]) {
+  test(`deletion confirmation stays centered after scrolling at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    const remove = page.getByRole("button", { name: /を削除/ }).nth(9);
+    await remove.scrollIntoViewIfNeeded();
+    const scrollBefore = await page.evaluate(() => window.scrollY);
+    expect(scrollBefore).toBeGreaterThan(900);
+    await remove.click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    const expectCentered = async () => {
+      await expect(dialog).toBeInViewport({ ratio: 1 });
+      const box = (await dialog.boundingBox())!;
+      expect(Math.abs(box.y + box.height / 2 - 450)).toBeLessThan(1);
+      expect(Math.abs(box.x + box.width / 2 - width / 2)).toBeLessThan(1);
+    };
+    await expectCentered();
+    expect(await page.evaluate(() => window.scrollY)).toBeCloseTo(scrollBefore, 0);
+    await page.evaluate(() => window.scrollBy(0, -200));
+    await expectCentered();
+    await page.getByRole("button", { name: "キャンセル", exact: true }).click();
+    await expect(dialog).not.toBeVisible();
+    await expect(remove).toBeInViewport();
+  });
+}
+
 test("letter archive is SSR rendered and its corner peel opens deletion controls", async ({
   page,
   request,
