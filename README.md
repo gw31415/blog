@@ -160,4 +160,6 @@ pnpm exec wrangler d1 migrations apply blog-posts --local --persist-to .cache/in
 pnpm exec wrangler d1 execute blog-posts --local --persist-to .cache/initial-schema-check --command 'SELECT count(*) AS posts FROM posts'
 ```
 
-Workers Buildsのコマンド変更、Access設定、実デプロイは未実施です。これらはローカルファイルの変更だけでは反映されません。
+Accessアプリ `Blog Editor` は作成済みです。Cloudflareアカウント認証のみを使用し、IDプロバイダーはこのCloudflareアカウントのメンバーに限定、`Blog Owner` ポリシーは所有者のメールアドレスだけを許可します。アプリセッションは1か月、ポリシーの期間はアプリ設定に従います。期限切れ後は `/auth/login` に直接アクセスして再認証します。独自セッションや自動更新処理は追加しません。発行されたAUDとチームドメインは `wrangler.jsonc` に反映済みです。
+
+Workers Buildsのコマンド変更、今回の設定を含む実デプロイ、本番ログインの動作確認は未実施です。Workerの設定変更は次回デプロイで反映されます。

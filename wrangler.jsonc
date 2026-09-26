@@ -11,8 +11,11 @@
     "binding": "ASSETS",
     "directory": "./dist",
   },
-  // Set the Access application issuer and AUD before enabling management.
-  "vars": { "ACCESS_TEAM_DOMAIN": "", "ACCESS_AUD": "" },
+  // Cloudflare Access: Blog Editor (amas.dev/auth/login).
+  "vars": {
+    "ACCESS_TEAM_DOMAIN": "https://gw31415.cloudflareaccess.com",
+    "ACCESS_AUD": "982d5073afdd4f4ba9be453e7917dabdb1499f5e6102184fa400af1c445c743c",
+  },
   "browser": { "binding": "BROWSER" },
   "observability": {
     "enabled": true,
