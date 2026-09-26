@@ -1,12 +1,12 @@
 import { component$ } from "@qwik.dev/core";
 import { Form, routeAction$, routeLoader$ } from "@qwik.dev/router";
-import { canManagePosts } from "~/content/permissions";
+import { requireManager } from "~/server/access";
 import { database } from "~/server/posts";
 import { collectUnusedImages, listOriginals } from "~/server/images";
 import { ArchiveLayout } from "~/components/templates/archive-layout";
 import { ImageLibrary } from "~/components/organisms/image-library";
 export const useImages = routeLoader$(async (event) => {
-  if (!canManagePosts()) throw event.error(403, "画像を管理できません");
+  await requireManager(event);
   event.headers.set("Cache-Control", "private, no-store");
   const unused = event.url.searchParams.get("filter") === "unused";
   return {
@@ -15,7 +15,7 @@ export const useImages = routeLoader$(async (event) => {
   };
 });
 export const useCollect = routeAction$(async (values, event) => {
-  if (!canManagePosts()) throw event.error(403, "画像を管理できません");
+  await requireManager(event);
   if (values.confirm !== "yes") return event.fail(400, { message: "削除を確認してください" });
   await collectUnusedImages(database(event), event.platform.env.IMAGES);
   return { message: "未使用の配信用画像を整理しました。オリジナルは保持しています。" };

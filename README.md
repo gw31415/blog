@@ -25,7 +25,7 @@ vite-plus が dev / build / lint / fmt を兼ねるため、専用の ESLint・P
 
 保存済み記事の正規化Markdownは `/blog/{IDまたはalias}.md` から取得します。`?type=github`、`?type=zenn`、`?type=qiita` でサイト別形式を指定できます。書き出しメニューや目次は表示しません。タグはヘッダーの既存位置で直接編集し、「、」で区切ります。説明の編集UIは提供しません。
 
-文書データ仕様の正本は [tiptap-document-spec-v2.md](tiptap-document-spec-v2.md) です。構造や意味を変える際は、[ローカルSkill](.agents/skills/blog-document-contract/SKILL.md) に従い、仕様書を先に変更します。
+文書データ仕様の正本は [tiptap-document-spec-v1.md](tiptap-document-spec-v1.md) です。構造や意味を変える際は、[ローカルSkill](.agents/skills/blog-document-contract/SKILL.md) に従い、仕様書を先に変更します。
 
 ローカルDBを初期化して長文サンプルを作る場合は `pnpm db:reset:local` を実行します。**ローカルの記事・画像をすべて破棄します。** 初期マイグレーションを適用し、`/blog/document-showcase` に全コンポーネントを含む記事を生成します。リモートDBは変更しません。
 
@@ -43,9 +43,9 @@ vite-plus が dev / build / lint / fmt を兼ねるため、専用の ESLint・P
 
 画像関連のD1は `image_variants(id, original_id, width, height)` と `post_images(post_id, variant_id)` の2テーブルです。記事保存で参照を同期し、リンク解除・記事削除で未使用になった配信用ファイルをR2から削除します。対応レコードと元画像は残し、履歴は持ちません。再生成・差し替えには新しいIDを発行します。
 
-`/manage/images` では現在の関連記事と紐付けのない元画像を確認できます。未使用画像の整理は編集終了後に実行してください。削除失敗も整理操作で再試行できます。認可は記事編集と同じ仮実装で、Better Authは後日対応します。
+`/manage/images` では現在の関連記事と紐付けのない元画像を確認できます。未使用画像の整理は編集終了後に実行してください。削除失敗も整理操作で再試行できます。管理操作はCloudflare Accessの検証済みユーザーだけに許可します。
 
-`pnpm db:migrate:local` で更新します。0007は旧画像台帳を初期化する破壊的変更のため、旧画像URLは再アップロードが必要です。GIF以外のアニメーションは未対応です。
+初期スキーマは `migrations/0001_initial.sql` の1本です。空のDBに5テーブルと必要なインデックス・トリガーだけを作成し、記事・画像データは投入しません。`pnpm db:migrate:local` でローカルへ適用します。旧0001〜0009を適用済みのDBへの追加入力には対応しません。旧ローカルDBを残したい場合は、別の `--persist-to` ディレクトリで検証してください。GIF以外のアニメーションは未対応です。
 
 ## プロジェクト構成
 
@@ -72,7 +72,8 @@ pnpm install
 pnpm dev            # 開発サーバー（SSR、adapter 経由）
 pnpm build          # 本番ビルド（型チェック・クライアント・サーバー・lint を qwik CLI が実行）
 pnpm preview        # 本番ビルドのローカルプレビュー（wrangler dev）
-pnpm deploy         # 本番ビルド + wrangler deploy
+pnpm deploy         # 本番ビルド + 本番D1マイグレーション + wrangler deploy
+pnpm deploy:built   # ビルド済み成果物に対し、本番D1マイグレーション + wrangler deploy
 
 pnpm check          # lint（oxlint + eslint-plugin-qwik）
 pnpm check:editor-chunk # TipTapが初期HTMLから参照されず動的chunkであることを検証
@@ -125,3 +126,38 @@ Atomic Designを参考に、UIの責務で配置しています。ルートは�
 | `routes`                 | ページ。loader/actionとテンプレートを接続                                                |
 
 小さなUIから上位のページ構造へ依存しないようにし、qstyleの定義と適用は同じモジュールに置きます。共有時はそのコンポーネントを直接importします。スタイルだけの再exportや全体のbarrel exportで編集ランタイムの遅延ロード境界を曖昧にしません。日時のグループ化のような描画に依存しない処理は `content` に置きます。
+
+## Cloudflare Accessによる認可
+
+`ACCESS_TEAM_DOMAIN`（`https://TEAM.cloudflareaccess.com`）と `ACCESS_AUD`（AccessアプリのAudience）を設定します。未設定・トークン不正の場合は管理を拒否し、ローカル開発にも自動的な認可バイパスはありません。
+
+公開・編集ともに `amas.dev` を使います。ログインボタンは設けず、`https://amas.dev/auth/login` に直接アクセスするとAccess認証後に `/` へ戻ります。ユーザー・セッション管理DBや独自の認証Cookieは作りません。
+
+Cloudflare OneでSelf-hostedアプリを作り、Public hostnameを `amas.dev`、Pathを `/auth/login` に設定します。Allowポリシーは所有者のメールアドレスだけを許可します。公開ルートやホスト全体はAccessで保護せず、Bypassポリシーも不要です。Cookie設定ではPathを `/`（既定のホスト全体）にし、認証パス限定のCookie Path設定は有効にしないでください。HttpOnlyを有効にし、SameSiteはLaxを使用します。設定方法は[Access Cookieの公式説明](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/)を参照してください。
+
+Workerは保護パスの `Cf-Access-Jwt-Assertion`、ヘッダーがない公開パスでは `CF_Authorization` CookieのJWTを検証します。署名・issuer・audience・期限・利用者トークンを確認し、メールヘッダーだけでは許可しません。不正なヘッダーがある場合にCookieへフォールバックはしません。記事作成・保存・削除・画像アップロード・整理はサーバー側で再検証し、変更リクエストには同一Originを要求します。下書きのHTML・Qwikデータ・Markdown、画像管理、元画像取得も保護します。公開記事と配信用画像は認証不要です。
+
+公開パスではAccessによるリクエストごとのポリシー再評価は行われず、WorkerがJWTの有効期限まで検証します。利用者の即時失効を確認する独自セッション照会はありません。セッション期間はこの動作を踏まえて設定してください。
+
+SSRとloader/action応答は `private, no-store`。管理者の一覧はIndexedDB/sessionStorageへ保存しません。設定を別のAccessアプリへ変更した場合は、そのAUDを更新してください。
+
+認可の検証は `pnpm exec vp test run src/server/access.test.ts`。実WorkerでのSSR/API検証は `pnpm run build`、`pnpm exec wrangler deploy --dry-run --outdir .cache/access-bundle`、`node tests/security/access-runtime.mjs` の順に実行します。テストは一時D1/R2と、その場で生成したRSA署名・JWKSを使い、実アカウントやデプロイ先にはアクセスしません。
+
+## amas.devへの初回デプロイ
+
+公開ドメインは `amas.dev`。既存Worker `blog` とWorkers Buildsの自動デプロイを使用します。`wrangler.jsonc` にCustom Domainを定義し、workers.devとプレビューURLは無効にしています。追加ドメインは不要です。Accessは `amas.dev/auth/login` を対象にします。Access未設定の段階では公開記事の閲覧だけが可能で、管理操作は拒否します。
+
+本番D1 `blog-posts` は既存の空DBを確認し、`0001_initial.sql` を適用済みです。IDは `wrangler.jsonc` の値を使用します。本番R2 `blog-images` も作成済みで、r2.dev公開は無効、R2カスタムドメインは未接続です。非公開のまま `IMAGES` bindingから利用します。記事・画像の投入やローカルデータ移行は行っていません。
+
+既存のWorkers Builds設定は、ビルドコマンドを `pnpm run build`、デプロイコマンドを `pnpm run deploy:built` に合わせます（依存関係はlockfileに従ってインストール）。Node 26・pnpm 12を使用してください。`deploy:built` は本番D1の未適用マイグレーションが成功してからWorkerを更新し、失敗時はデプロイしません。直接 `wrangler deploy` する設定ではマイグレーションが省略されます。本番への適用は本番ブランチだけに限定し、開発ブランチから実行しないでください。
+
+初期マイグレーションは `0001`、記事の `format_version=1`、本文の `content_schema_version=1`、仕様書はv1に統一しています。公開後の変更は新しいマイグレーションを追加します。DBスキーマを変更した後のWorkerロールバックはDBを巻き戻さないため、以後は旧Workerと互換性を保つ変更を先に適用します。
+
+ローカルで空のDBへの初期化だけを検証する場合は、通常の開発DBと別の保存先を指定します。seedや `db:reset:local` は実行しません。
+
+```sh
+pnpm exec wrangler d1 migrations apply blog-posts --local --persist-to .cache/initial-schema-check
+pnpm exec wrangler d1 execute blog-posts --local --persist-to .cache/initial-schema-check --command 'SELECT count(*) AS posts FROM posts'
+```
+
+Workers Buildsのコマンド変更、Access設定、実デプロイは未実施です。これらはローカルファイルの変更だけでは反映されません。

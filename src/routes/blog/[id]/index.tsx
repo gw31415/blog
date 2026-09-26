@@ -13,7 +13,7 @@ import {
 
 import { ArticleShell } from "~/components/templates/article-shell";
 import { CONTENT_SCHEMA_VERSION } from "~/content/document";
-import { canManagePosts } from "~/content/permissions";
+import { canManagePosts, requireManager } from "~/server/access";
 import { canonicalPath } from "~/content/post-url";
 import { database, findPost, redirectCanonical, savePostContent } from "~/server/posts";
 import { renderDocument } from "~/server/render-document";
@@ -25,7 +25,9 @@ async function findRequestPost(event: RequestEventCommon) {
   // eslint-disable-next-line typescript/no-unsafe-type-assertion
   let pending = cached as ReturnType<typeof findPost> | undefined;
   if (!pending) {
-    pending = findPost(database(event), event.params.id);
+    pending = findPost(database(event), event.params.id).then(async (post) =>
+      post && (post.status === "published" || (await canManagePosts(event))) ? post : null,
+    );
     event.sharedMap.set("blog.post", pending);
   }
   return pending;
@@ -47,11 +49,16 @@ export const usePost = routeLoader$(async (event) => {
   const post = await findRequestPost(event);
   if (!post) throw event.error(404, "記事が見つかりません。");
   const rendered = await renderDocument(post.body, event, post.id);
-  return { post, ...renderPost(post.body, rendered.diagrams, rendered.math) };
+  const canManage = await canManagePosts(event);
+  return {
+    post: canManage ? post : { ...post, editing_state: null },
+    canManage,
+    ...renderPost(post.body, rendered.diagrams, rendered.math),
+  };
 });
 
 export const useSavePost = routeAction$(async (values, event) => {
-  if (!canManagePosts()) throw event.error(403, "保存できません。");
+  await requireManager(event);
   const post = await findRequestPost(event);
   if (!post) throw event.error(404, "記事が見つかりません。");
   try {
@@ -89,7 +96,7 @@ export default component$(() => {
       initialContent={data.value.content}
       publicationStatus={post.status}
       canonicalAlias={post.canonical_alias}
-      canEdit={canManagePosts()}
+      canEdit={data.value.canManage}
       autoEditFromQuery
       onSave$={$(async (draft) => {
         const { validateMermaidDocument, prepareMermaidArtifacts } =

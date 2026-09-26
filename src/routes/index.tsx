@@ -1,6 +1,10 @@
 import { postImageIds, removeUnusedVariants } from "~/server/images";
 import { css } from "@qstyle/qwik";
-import { readPostListCache, writePostListCache } from "~/browser/post-list-cache";
+import {
+  clearLegacyPostListCache,
+  readPostListCache,
+  writePostListCache,
+} from "~/browser/post-list-cache";
 import type { PostPage } from "~/server/post-list";
 import { loadMore } from "~/api/post-list";
 import { $, component$, useSignal, useStore, useVisibleTask$ } from "@qwik.dev/core";
@@ -10,22 +14,26 @@ import { PostList } from "~/components/organisms/post-list";
 import { JournalHeading } from "~/components/organisms/journal-heading";
 import { BlogFooter, BlogFooterContainer } from "~/components/molecules/footer";
 import { BLOG_NAME, formatJapaneseEraYear } from "~/content/article";
-import { canManagePosts } from "~/content/permissions";
+import { canManagePosts, requireManager } from "~/server/access";
 import { createDraft, database, deletePost, isUlid } from "~/server/posts";
 import { listPostPage } from "~/server/post-list";
 
-export const usePosts = routeLoader$(async (event) =>
-  listPostPage(database(event), canManagePosts(), event.url.searchParams.get("after")),
-);
+export const usePosts = routeLoader$(async (event) => {
+  const canManage = await canManagePosts(event);
+  return {
+    ...(await listPostPage(database(event), canManage, event.url.searchParams.get("after"))),
+    canManage,
+  };
+});
 
 export const useCreateDraft = routeAction$(async (_, event) => {
-  if (!canManagePosts()) throw event.error(403, "作成できません。");
+  await requireManager(event);
   const id = await createDraft(database(event));
   throw event.redirect(303, `/blog/${id}?edit=1`);
 });
 
 export const useDeletePost = routeAction$(async (values, event) => {
-  if (!canManagePosts()) throw event.error(403, "削除できません。");
+  await requireManager(event);
   const id = typeof values.id === "string" ? values.id : "";
   if (!isUlid(id) || values.confirm !== "yes")
     return event.fail(400, { message: "削除を確認してください。" });
@@ -69,6 +77,11 @@ export default component$(() => {
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(
     async ({ cleanup }) => {
+      await clearLegacyPostListCache();
+      if (initial.value.canManage) {
+        restored.value = true;
+        return;
+      }
       const scrollPosition = () => window.scrollY;
       const maxScroll = () => Math.max(0, document.documentElement.scrollHeight - innerHeight);
       let disposed = false;
@@ -82,7 +95,7 @@ export default component$(() => {
         globalThis.crypto?.randomUUID?.() ??
         `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       history.replaceState({ ...history.state, postListEntry: id }, "");
-      const key = `blog:post-list:v1:${id}:${canManagePosts()}`;
+      const key = `blog:post-list:v2:${id}:${initial.value.canManage}`;
       cacheKey.value = key;
       let cached: PostPage | undefined;
       let y = history.state?.postListY;
@@ -239,7 +252,7 @@ export default component$(() => {
       const ready = track(() => restored.value);
       const posts = track(() => state.posts);
       const next = track(() => state.next);
-      if (!ready) return;
+      if (!ready || initial.value.canManage) return;
       const snapshot = JSON.stringify({ posts, next });
       void writePostListCache(cacheKey.value, JSON.parse(snapshot));
       try {
@@ -273,11 +286,11 @@ export default component$(() => {
   );
   return (
     <ArchiveLayout>
-      {canManagePosts() && <CreatePostAction q:slot="header-actions" action={create} />}
+      {initial.value.canManage && <CreatePostAction q:slot="header-actions" action={create} />}
       <section id="articles" aria-labelledby="articles-title">
         <PostList
           posts={state.posts}
-          canManage={canManagePosts()}
+          canManage={initial.value.canManage}
           onDelete$={$(async (id) => {
             const result = await remove.submit({ id, confirm: "yes" });
             if (result.value.failed) return false;

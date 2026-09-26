@@ -7,7 +7,12 @@ import type { RequestEventBase, RequestEventCommon } from "@qwik.dev/router";
 
 import { canonicalPath } from "~/content/post-url";
 
-import { normalizeDocument, EMPTY_DOCUMENT, CONTENT_SCHEMA_VERSION } from "../content/document";
+import {
+  normalizeDocument,
+  EMPTY_DOCUMENT,
+  CONTENT_SCHEMA_VERSION,
+  FORMAT_VERSION,
+} from "../content/document";
 import type { JSONContent } from "@tiptap/core";
 export interface Post {
   id: string;
@@ -38,7 +43,7 @@ function normalizeTags(value: unknown): string[] {
 }
 function decodePost(row: PostRow): Post {
   if (
-    row.format_version !== 2 ||
+    row.format_version !== FORMAT_VERSION ||
     row.content_schema_version !== CONTENT_SCHEMA_VERSION ||
     row.body_format !== "tiptap-json"
   )

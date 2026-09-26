@@ -110,7 +110,7 @@ export default defineConfig(async ({ command, mode }) => {
         // Markdown から生成した初期記事の JSON / HTML
         "src/content/initial-article.generated.ts",
         // 正本仕様は文意に無関係な表・フェンスの全面整形を避ける
-        "tiptap-document-spec-v2.md",
+        "tiptap-document-spec-v1.md",
         // 移植元のソースアーティファクト
         "sample.html",
       ],

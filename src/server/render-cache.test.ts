@@ -17,18 +17,7 @@ function database() {
   opened.push(sqlite);
   sqlite.exec("PRAGMA foreign_keys=ON");
   const queries: string[] = [];
-  sqlite.exec(readFileSync("migrations/0001_posts.sql", "utf8"));
-  for (const migration of [
-    "0002_image_library",
-    "0003_image_reference_urls",
-    "0004_original_image_objects",
-    "0005_r2_image_families",
-    "0006_content_addressed_images",
-    "0007_simple_image_variants",
-    "0008_image_url_matching",
-    "0009_remove_post_aliases",
-  ])
-    sqlite.exec(readFileSync(`migrations/${migration}.sql`, "utf8"));
+  sqlite.exec(readFileSync("migrations/0001_initial.sql", "utf8"));
   class Statement {
     constructor(
       public sql: string,

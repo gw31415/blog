@@ -349,7 +349,7 @@ test("restores the latest session position while history is still debounced", as
   await expect
     .poll(() =>
       page.evaluate(() => {
-        const key = `blog:post-list:v1:${history.state?.postListEntry}:true`;
+        const key = `blog:post-list:v2:${history.state?.postListEntry}:false`;
         return sessionStorage.getItem(key) !== null;
       }),
     )
@@ -357,7 +357,7 @@ test("restores the latest session position while history is still debounced", as
   // Reproduce a reload inside the history debounce window after the old document
   // has flushed on pagehide, without depending on timer or navigation timing.
   await page.addInitScript(() => {
-    const key = `blog:post-list:v1:${history.state.postListEntry}:true`;
+    const key = `blog:post-list:v2:${history.state.postListEntry}:false`;
     sessionStorage.setItem(`${key}:y`, "320");
     history.replaceState({ ...history.state, postListY: 0 }, "");
   });
@@ -372,13 +372,13 @@ test("restores a thousand cached summaries without fetching a thousand rows", as
   await expect
     .poll(() =>
       page.evaluate(() => {
-        const key = `blog:post-list:v1:${history.state.postListEntry}:true`;
+        const key = `blog:post-list:v2:${history.state.postListEntry}:false`;
         return sessionStorage.getItem(key) !== null;
       }),
     )
     .toBe(true);
   await page.evaluate(() => {
-    const key = `blog:post-list:v1:${history.state.postListEntry}:true`;
+    const key = `blog:post-list:v2:${history.state.postListEntry}:false`;
     const cached = JSON.parse(sessionStorage.getItem(key)!);
     cached.posts = Array.from({ length: 1000 }, (_, i) => ({
       ...cached.posts[0],
@@ -389,7 +389,7 @@ test("restores a thousand cached summaries without fetching a thousand rows", as
   });
   // Seed the saved position after the old document has saved its own pagehide position.
   await page.addInitScript(() => {
-    const key = `blog:post-list:v1:${history.state.postListEntry}:true`;
+    const key = `blog:post-list:v2:${history.state.postListEntry}:false`;
     sessionStorage.setItem(`${key}:y`, "50000");
     history.replaceState({ ...history.state, postListY: 50000 }, "");
   });
@@ -633,9 +633,9 @@ test("restores from persistent cache after suspension and loss of session storag
   await expect
     .poll(() =>
       page.evaluate(async () => {
-        const key = `blog:post-list:v1:${history.state.postListEntry}:true`;
+        const key = `blog:post-list:v2:${history.state.postListEntry}:false`;
         const db = await new Promise<IDBDatabase>((resolve) => {
-          const request = indexedDB.open("blog-post-list", 1);
+          const request = indexedDB.open("blog-post-list", 2);
           request.onsuccess = () => resolve(request.result);
         });
         const value = await new Promise<{ posts: unknown[] } | undefined>((resolve) => {
@@ -686,7 +686,7 @@ test("does not save intermediate scroll positions during delayed restoration", a
     .poll(() =>
       page.evaluate(() => {
         const y = history.state.postListY;
-        const key = `blog:post-list:v1:${history.state.postListEntry}:true:y`;
+        const key = `blog:post-list:v2:${history.state.postListEntry}:false:y`;
         return y > 0 && window.scrollY === y && Number(sessionStorage.getItem(key)) === y;
       }),
     )
@@ -731,7 +731,7 @@ test("does not save intermediate scroll positions during delayed restoration", a
   expect(await page.evaluate(() => history.state.postListY)).toBe(y);
   expect(
     await page.evaluate(() => {
-      const key = `blog:post-list:v1:${history.state.postListEntry}:true:y`;
+      const key = `blog:post-list:v2:${history.state.postListEntry}:false:y`;
       return Number(sessionStorage.getItem(key));
     }),
   ).toBe(y);

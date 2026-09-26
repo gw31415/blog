@@ -32,16 +32,7 @@ function setup() {
   const sql = new DatabaseSync(":memory:");
   opened.push(sql);
   sql.exec("PRAGMA foreign_keys=ON");
-  sql.exec(readFileSync("migrations/0001_posts.sql", "utf8"));
-  {
-    sql.exec(readFileSync("migrations/0002_image_library.sql", "utf8"));
-    sql.exec(readFileSync("migrations/0003_image_reference_urls.sql", "utf8"));
-    sql.exec(readFileSync("migrations/0004_original_image_objects.sql", "utf8"));
-    sql.exec(readFileSync("migrations/0005_r2_image_families.sql", "utf8"));
-    sql.exec(readFileSync("migrations/0006_content_addressed_images.sql", "utf8"));
-    sql.exec(readFileSync("migrations/0007_simple_image_variants.sql", "utf8"));
-    sql.exec(readFileSync("migrations/0008_image_url_matching.sql", "utf8"));
-  }
+  sql.exec(readFileSync("migrations/0001_initial.sql", "utf8"));
   class Statement {
     constructor(
       public query: string,

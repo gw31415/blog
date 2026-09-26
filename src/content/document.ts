@@ -1,6 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 
-export const FORMAT_VERSION = 2;
+export const FORMAT_VERSION = 1;
 export const CONTENT_SCHEMA_VERSION = 1;
 export const EMPTY_DOCUMENT: JSONContent = { type: "doc", content: [{ type: "paragraph" }] };
 export class DocumentError extends Error {

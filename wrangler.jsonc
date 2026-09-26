@@ -4,12 +4,15 @@
   "main": "./dist/_worker.js",
   "compatibility_date": "2026-09-04",
   "compatibility_flags": ["nodejs_compat"],
-  "workers_dev": true,
+  "workers_dev": false,
+  "routes": [{ "pattern": "amas.dev", "custom_domain": true }],
   "preview_urls": false,
   "assets": {
     "binding": "ASSETS",
     "directory": "./dist",
   },
+  // Set the Access application issuer and AUD before enabling management.
+  "vars": { "ACCESS_TEAM_DOMAIN": "", "ACCESS_AUD": "" },
   "browser": { "binding": "BROWSER" },
   "observability": {
     "enabled": true,
