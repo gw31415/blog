@@ -39,6 +39,11 @@ export default defineConfig(async ({ command, mode }) => {
       : undefined;
 
   return {
+    define: {
+      "import.meta.env.BLOG_DEV_SERVER": JSON.stringify(
+        command === "serve" && mode !== "test" && !process.env.VITEST,
+      ),
+    },
     // Concurrent local dev servers must not replace each other's optimized
     // dependency URLs while a page is importing the editor on demand.
     ...(command === "serve" ? { cacheDir: `node_modules/.vite/dev-${process.pid}` } : {}),

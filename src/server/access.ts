@@ -1,3 +1,4 @@
+import { DEV_MANAGER_COOKIE, isDevServer } from "~/dev/manager";
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 import type { RequestEventBase, RequestEventCommon } from "@qwik.dev/router";
 
@@ -69,6 +70,9 @@ export function accessIdentity(event: RequestEventBase): Promise<AccessIdentity 
   return identity;
 }
 export async function canManagePosts(event: RequestEventBase) {
+  if (isDevServer()) {
+    return event.cookie.get(DEV_MANAGER_COOKIE)?.value === "1";
+  }
   return !!(await accessIdentity(event));
 }
 export async function requireManager(event: RequestEventCommon) {

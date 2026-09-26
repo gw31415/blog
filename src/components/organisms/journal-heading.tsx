@@ -6,8 +6,8 @@ export const JournalHeading = component$(() => (
   <>
     <MusicRanma />
     <div id="journal" css={journalHeadingStyles} tabIndex={-1}>
-      <h1 id="articles-title" class="type-heading ink">
-        記事
+      <h1 id="articles-title" class="type-heading">
+        最近の記事
       </h1>
     </div>
   </>

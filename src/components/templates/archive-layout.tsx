@@ -25,14 +25,12 @@ export const ArchiveLayout = component$(() => (
 const archiveStyles = css`
   display: contents;
   & .archive {
-    --archive-chrome-inset: max(16px, env(safe-area-inset-left), env(safe-area-inset-right));
     display: flex;
     flex-direction: column;
     min-height: 100svh;
     background: var(--paper);
   }
   & .archive-header[data-header-mode="persistent"] {
-    padding-inline: var(--archive-chrome-inset);
     flex: none;
     position: sticky;
     top: 0;

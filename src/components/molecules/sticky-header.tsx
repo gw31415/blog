@@ -35,9 +35,7 @@ const stickyHeaderStyles = css`
   margin-inline: auto;
   margin-bottom: calc(-1 * var(--sticky-header-height));
   width: min(100%, 48rem);
-  padding: calc(env(safe-area-inset-top) + 0.25lh)
-    max(var(--paper-inset), env(safe-area-inset-right)) 0.25lh
-    max(var(--paper-inset), env(safe-area-inset-left));
+  padding: calc(env(safe-area-inset-top) + 0.25lh) var(--site-chrome-inset) 0.25lh;
   color: var(--ink);
   border-bottom: 1px solid var(--line-soft);
   white-space: nowrap;

@@ -17,7 +17,7 @@ import {
 } from "@qwik.dev/core";
 import type { JSONContent } from "@tiptap/core";
 
-import { BlogFooter } from "~/components/molecules/footer";
+import { BlogFooter, BlogFooterContainer } from "~/components/molecules/footer";
 import { BlogHeader } from "~/components/organisms/article-header";
 import { BlogPaper } from "~/components/templates/blog-paper";
 import { VirtualKeyboardViewport } from "~/components/templates/virtual-keyboard-viewport";
@@ -406,7 +406,9 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
           />
           {/* After mounting, Tiptap owns this DOM; mode updates must not restore the SSR HTML. */}
           <ArticleBody key="article-body" html={initialHtml} elementRef={editorMount} />
-          <BlogFooter left={BLOG_NAME} right={presentation.footerRight} />
+          <BlogFooterContainer q:slot="footer" wide>
+            <BlogFooter left={BLOG_NAME} right={presentation.footerRight} />
+          </BlogFooterContainer>
         </BlogPaper>
 
         {ui.mode === "edit" && (

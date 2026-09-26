@@ -198,7 +198,6 @@ const postListStyles = css`
   }
   & .stream-footer {
     position: relative;
-    padding: 0 0 var(--body-leading);
     background: transparent;
   }
   @media (max-width: 600px) {

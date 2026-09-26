@@ -1,6 +1,13 @@
-import { describe, expect, it, beforeAll } from "vite-plus/test";
+import { describe, expect, it, beforeAll, beforeEach, vi } from "vite-plus/test";
 import { generateKeyPair, SignJWT, createLocalJWKSet, exportJWK } from "jose";
-import { verifyAccess, requireManager } from "./access";
+import { verifyAccess, requireManager, canManagePosts } from "./access";
+import { isDevServer } from "~/dev/manager";
+vi.mock("~/dev/manager", () => ({
+  DEV_MANAGER_COOKIE: "blog_dev_manager",
+  isDevServer: vi.fn(() => false),
+}));
+beforeEach(() => vi.mocked(isDevServer).mockReturnValue(false));
+
 const issuer = "https://test.cloudflareaccess.com",
   audience = "blog-aud";
 let privateKey: CryptoKey;
@@ -102,4 +109,26 @@ describe("Access identity", () => {
       requireManager(event as unknown as Parameters<typeof requireManager>[0]),
     ).rejects.toThrow("送信元");
   });
+});
+
+it("does not grant production management from the development cookie", async () => {
+  const event = {
+    request: new Request("https://blog.example/", { headers: { Cookie: "blog_dev_manager=1" } }),
+    sharedMap: new Map(),
+    env: { get: () => undefined },
+    cookie: { get: () => ({ value: "1" }) },
+  };
+  expect(await canManagePosts(event as unknown as Parameters<typeof canManagePosts>[0])).toBe(
+    false,
+  );
+});
+
+it("uses the development cookie for both granting and removing management", async () => {
+  vi.mocked(isDevServer).mockReturnValue(true);
+  for (const value of [undefined, "0", "1"]) {
+    const event = { cookie: { get: () => (value === undefined ? undefined : { value }) } };
+    expect(await canManagePosts(event as unknown as Parameters<typeof canManagePosts>[0])).toBe(
+      value === "1",
+    );
+  }
 });

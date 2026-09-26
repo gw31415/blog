@@ -12,7 +12,7 @@ export const StreamStatus = component$<{ sentinel?: Signal<Element | undefined>;
 const streamStatusStyles = css`
   position: relative;
   min-height: 72px;
-  margin: 8px 24px 0 104px;
+  margin: 8px 24px 0;
   padding: 22px 12px 28px;
   box-sizing: border-box;
   color: var(--muted);
@@ -44,7 +44,7 @@ const streamStatusStyles = css`
     outline-offset: 4px;
   }
   @media (max-width: 600px) {
-    margin: 6px 6px 0 var(--mobile-calendar-rail);
+    margin: 6px 6px 0;
     padding-bottom: 22px;
   }
 `;

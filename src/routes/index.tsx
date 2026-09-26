@@ -301,18 +301,19 @@ export default component$(() => {
         >
           <JournalHeading q:slot="stream-start" />
           <StreamStatus q:slot="stream-end" sentinel={sentinel} busy={state.loading}>
-            <p role="status">{state.loading ? "…" : state.error}</p>
-            {state.next ? (
-              <a
-                href={`/?after=${encodeURIComponent(state.next)}#articles`}
-                preventdefault:click
-                onClick$={more}
-              >
-                続きを読み込む
-              </a>
-            ) : (
-              <p>{state.posts.length > 0 ? "ここまでの記事" : "記事はまだありません。"}</p>
-            )}
+            <p role="status">{state.loading ? "読み込み中" : state.error}</p>
+            {!state.loading &&
+              (state.next ? (
+                <a
+                  href={`/?after=${encodeURIComponent(state.next)}#articles`}
+                  preventdefault:click
+                  onClick$={more}
+                >
+                  続きを読み込む
+                </a>
+              ) : (
+                <p>{state.posts.length > 0 ? "一先ずここまで" : "まだ記事はありません"}</p>
+              ))}
           </StreamStatus>
           <div q:slot="stream-after" class="stream-footer">
             <BlogFooterContainer wide>

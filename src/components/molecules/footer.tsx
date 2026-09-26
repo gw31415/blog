@@ -46,7 +46,8 @@ const blogFooterContainerStyles = css`
   }
 
   &[data-wide] {
-    padding-inline: var(--archive-chrome-inset);
+    padding-inline: var(--site-chrome-inset);
+    padding-bottom: var(--body-leading);
   }
   &[data-wide] .footer-content {
     max-width: none;
