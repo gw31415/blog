@@ -149,7 +149,7 @@ const postListStyles = css`
   }
   @media screen {
     & .post-desk[data-layout="list"] {
-      padding-top: max(var(--body-leading), calc(33svh - var(--archive-header-height)));
+      padding-top: 0;
     }
   }
   & .post-month {

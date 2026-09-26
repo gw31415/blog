@@ -1,12 +1,16 @@
 import { component$ } from "@qwik.dev/core";
+import { MusicRanma } from "./music-ranma";
 import { css } from "@qstyle/qwik";
 
 export const JournalHeading = component$(() => (
-  <div id="journal" css={journalHeadingStyles} tabIndex={-1}>
-    <h1 id="articles-title" class="type-heading ink">
-      記事
-    </h1>
-  </div>
+  <>
+    <MusicRanma />
+    <div id="journal" css={journalHeadingStyles} tabIndex={-1}>
+      <h1 id="articles-title" class="type-heading ink">
+        記事
+      </h1>
+    </div>
+  </>
 ));
 
 const journalHeadingStyles = css`
@@ -15,9 +19,13 @@ const journalHeadingStyles = css`
     margin: 0;
   }
   @media (max-width: 600px) {
-    padding: 0 20px 16px;
+    & h1 {
+      padding: 0 20px 16px;
+    }
   }
   @media (min-width: 601px) {
-    padding: 0 68px 18px;
+    & h1 {
+      padding: 0 68px 18px;
+    }
   }
 `;
