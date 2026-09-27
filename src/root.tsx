@@ -4,17 +4,13 @@ import "@unocss/reset/normalize.css";
 import { BlogTheme } from "./components/foundations/theme";
 import { BlogDocumentHead } from "./components/foundations/document-head";
 
-import { PaperNavigation } from "./components/foundations/paper-navigation";
-
 export default component$(() => (
-  <QwikRouterProvider viewTransition>
+  <QwikRouterProvider>
     <head>
       <BlogDocumentHead />
     </head>
     <BlogTheme>
-      <PaperNavigation>
-        <RouterOutlet />
-      </PaperNavigation>
+      <RouterOutlet />
     </BlogTheme>
   </QwikRouterProvider>
 ));

@@ -130,11 +130,6 @@ const blogThemeStyles = css`
     }
   }
 
-  & main.paper,
-  & main.archive > #articles {
-    view-transition-name: paper-content;
-  }
-
   &::selection,
   & ::selection {
     color: var(--ink);
