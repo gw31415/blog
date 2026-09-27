@@ -6,6 +6,7 @@ import {
   writePostListCache,
 } from "~/browser/post-list-cache";
 import type { PostPage } from "~/server/post-list";
+import { restorePostList } from "~/browser/restore-post-list";
 import { loadMore } from "~/api/post-list";
 import { $, component$, useSignal, useStore, useVisibleTask$ } from "@qwik.dev/core";
 import { Form, routeAction$, routeLoader$, type DocumentHead } from "@qwik.dev/router";
@@ -119,11 +120,25 @@ export default component$(() => {
         Array.isArray(cached.posts) &&
         (cached.next === null || typeof cached.next === "string")
       ) {
-        state.posts = cached.posts;
-        state.next = cached.next;
+        try {
+          const fresh = await restorePostList(
+            initial.value,
+            cached.posts.length,
+            loadMore,
+            () => disposed,
+          );
+          if (disposed) return;
+          state.posts = fresh.posts;
+          state.next = fresh.next;
+        } catch {
+          // Keep the fresh SSR page if fetching the former list depth fails.
+          // Old snapshots can contain articles that are now private or deleted.
+          y = undefined;
+        }
       } else {
         y = undefined;
       }
+      if (disposed) return;
       let frame = 0;
       let stableFrames = 0;
       let userInteracted = false;

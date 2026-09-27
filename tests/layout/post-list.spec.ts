@@ -340,7 +340,7 @@ test("restores the loaded list without randomUUID on reload and back", async ({ 
   await page.goBack();
   await expect(cards).toHaveCount(count);
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeCloseTo(y, 0);
-  expect(additionalRequests).toEqual([]);
+  expect(additionalRequests.length).toBeGreaterThan(0);
   expect(errors).toEqual([]);
 });
 
@@ -366,7 +366,7 @@ test("restores the latest session position while history is still debounced", as
   await expect.poll(() => page.evaluate(() => history.state.postListY)).toBe(320);
 });
 
-test("restores a thousand cached summaries without fetching a thousand rows", async ({ page }) => {
+test("discards stale cached summaries and restores only current server rows", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => page.evaluate(() => history.state?.postListEntry)).toBeTruthy();
   await expect
@@ -398,9 +398,9 @@ test("restores a thousand cached summaries without fetching a thousand rows", as
     if (request.method() === "POST") requests.push(request.url());
   });
   await page.reload();
-  await expect(page.locator(".letter")).toHaveCount(1000);
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(50000);
-  expect(requests).toEqual([]);
+  await expect(page.getByText("記事は以上です", { exact: true })).toBeVisible();
+  await expect(page.locator('.letter-link[href^="/blog/cached-"]')).toHaveCount(0);
+  expect(requests.length).toBeGreaterThan(0);
   await expect(page).toHaveURL(/\/$/);
 });
 
@@ -662,7 +662,7 @@ test("restores from persistent cache after suspension and loss of session storag
   await page.reload();
   await expect(cards).toHaveCount(count);
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeCloseTo(y, 0);
-  expect(additionalRequests).toEqual([]);
+  expect(additionalRequests.length).toBeGreaterThan(0);
   await expect(page).toHaveURL(/\/$/);
 });
 
