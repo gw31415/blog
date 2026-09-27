@@ -19,7 +19,15 @@ test("saving article metadata refreshes the head while retaining page styles", a
   const appearance = () =>
     page.locator("main.paper").evaluate((element) => {
       const style = getComputedStyle(element);
-      return [style.position, style.backgroundColor, style.fontFamily, style.fontSize];
+      const background = getComputedStyle(document.body);
+      return [
+        style.position,
+        style.backgroundColor,
+        style.fontFamily,
+        style.fontSize,
+        background.backgroundImage,
+        background.backgroundSize,
+      ];
     });
   const before = await appearance();
   const edit = page.locator(".article-header-edit");

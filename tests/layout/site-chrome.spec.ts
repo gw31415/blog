@@ -42,13 +42,14 @@ for (const width of [927, 390]) {
       const range = document.createRange();
       range.selectNodeContents(link);
       const linkText = range.getBoundingClientRect();
-      range.selectNodeContents(button);
+      range.selectNodeContents(button.querySelector(".article-edit-line > span")!);
       const buttonText = range.getBoundingClientRect();
       const buttonBox = button.getBoundingClientRect();
       return {
         left: linkText.left - content.left,
         right: content.right - buttonText.right,
         centerY: buttonBox.y + buttonBox.height / 2 - (bar.y + bar.height / 2),
+        textBottom: buttonText.bottom - linkText.bottom,
       };
     });
     for (const gap of Object.values(controls)) expect(Math.abs(gap)).toBeLessThanOrEqual(1);

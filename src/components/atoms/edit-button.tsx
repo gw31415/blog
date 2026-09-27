@@ -23,12 +23,17 @@ export function ArticleEditButton(props: ArticleEditButtonProps) {
       onFocus$={props.editable ? undefined : props.onEditIntent$}
       onClick$={props.editable ? props.onDoneRequest$ : props.onEditRequest$}
     >
-      {props.busy ? "…" : props.editable ? "完了" : "編集"}
+      <span class="article-edit-line">
+        <span>{props.busy ? "…" : props.editable ? "完了" : "編集"}</span>
+      </span>
     </button>
   );
 }
 
 const editButtonStyles = css`
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
   color: var(--muted);
   border: 0;
@@ -38,9 +43,15 @@ const editButtonStyles = css`
   font-weight: inherit;
   line-height: inherit;
   cursor: pointer;
+  /* Center the same line box as the site name, with the smaller label on its baseline. */
+  & .article-edit-line {
+    font-size: var(--topbar-site-size, 16px);
+    line-height: 1.5;
+  }
+  & .article-edit-line > span {
+    font-size: 0.75em;
+  }
   &.article-header-edit {
-    display: flex;
-    align-items: center;
     justify-content: flex-end;
     min-width: 2.5em;
     min-height: 2em;

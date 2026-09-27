@@ -18,26 +18,29 @@ const blogThemeStyles = css`
   --surface-ink: #39372f;
   --surface-rule: color-mix(in srgb, var(--surface-ink) 28%, transparent);
   --surface-grain-opacity: 0.46;
-  --surface-blend: multiply;
+  --surface-tint-opacity: calc(100% - var(--surface-grain-opacity) * 100%);
+  --surface-ground-tint: color-mix(
+    in srgb,
+    var(--surface-ground) var(--surface-tint-opacity),
+    transparent
+  );
+  --surface-dot-tint: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--surface-ink) 28%, var(--surface-ground)) var(--surface-tint-opacity),
+    transparent
+  );
   --site-header-height: calc(52px + env(safe-area-inset-top));
   position: relative;
   isolation: isolate;
   background-color: var(--surface-ground);
-  background-image: radial-gradient(circle, var(--surface-rule) 0.6px, transparent 0.85px);
-  background-size: 14px 14px;
-
-  &::before {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    inset: 0;
-    pointer-events: none;
-    background: var(--paper-stock) repeat;
-    background-size: var(--paper-stock-size);
-    filter: grayscale(1);
-    mix-blend-mode: var(--surface-blend);
-    opacity: var(--surface-grain-opacity);
-  }
+  /* Both layers must propagate to the document canvas, including overscroll.
+     Tint the grayscale stock to preserve the previous translucent grain. */
+  background-image:
+    radial-gradient(circle, var(--surface-dot-tint) 0.6px, var(--surface-ground-tint) 0.85px),
+    var(--paper-stock);
+  background-size:
+    14px 14px,
+    var(--paper-stock-size);
   &::after {
     content: "";
     position: absolute;
@@ -53,7 +56,6 @@ const blogThemeStyles = css`
     --surface-sheet: #30312a;
     --surface-ink: #e0ddcf;
     --surface-grain-opacity: 0.055;
-    --surface-blend: screen;
     --muted: #b5b2a5;
     --red: #cbb1a6;
     --link: #d8bab0;
@@ -124,7 +126,6 @@ const blogThemeStyles = css`
       --surface-sheet: Canvas;
       --surface-rule: CanvasText;
     }
-    &::before,
     &::after {
       display: none;
     }

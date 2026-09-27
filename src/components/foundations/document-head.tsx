@@ -20,7 +20,8 @@ export const BlogDocumentHead = component$(() => {
       <meta charset="utf-8" />
       <meta name="viewport" content={viewport} />
       <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-      <meta name="theme-color" content="#f2ead5" />
+      {/* Match the rendered dot-grid paper after its grain layer is composited. */}
+      <meta name="theme-color" content="#e7e5de" />
       <DocumentHeadTags {...resolvePageHead(head, url)} />
     </>
   );

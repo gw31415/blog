@@ -37,6 +37,7 @@ export const BlogTopbar = component$<{
 ));
 
 const blogTopbarStyles = css`
+  --topbar-site-size: 16px;
   --topbar-inset: var(--site-chrome-inset);
   --topbar-action-inset: var(--site-chrome-inset);
   --topbar-action-border: 1px;
@@ -56,15 +57,17 @@ const blogTopbarStyles = css`
     margin-inline-end: -0.5em;
   }
   & .site-breadcrumbs {
+    display: flex;
+    align-items: center;
     flex: 1 1 0;
     min-width: 0;
     padding-inline: var(--topbar-inset);
   }
   & .site-breadcrumbs ol {
     display: flex;
-    align-items: stretch;
+    align-items: baseline;
     gap: 8px;
-    height: 100%;
+    width: 100%;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -78,7 +81,7 @@ const blogTopbarStyles = css`
     align-items: center;
     color: var(--ink);
     -webkit-text-fill-color: var(--ink);
-    font-size: 16px;
+    font-size: var(--topbar-site-size);
     letter-spacing: 0.02em;
     text-decoration: none;
   }
@@ -88,7 +91,7 @@ const blogTopbarStyles = css`
   }
   & .site-breadcrumb-current {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     gap: 8px;
     min-width: 0;
   }

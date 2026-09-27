@@ -26,15 +26,28 @@ for (const width of [390, 1280]) {
         .poll(async () => Math.abs((await header.boundingBox())!.y))
         .toBeLessThanOrEqual(1);
     }
-    const gaps = await breadcrumbs.evaluate((nav) => {
+    const alignment = await breadcrumbs.evaluate((nav) => {
       const range = document.createRange();
       range.selectNodeContents(nav.querySelector(".site-link")!);
       const site = range.getBoundingClientRect();
       const separator = nav.querySelector(".article-sticky-separator")!.getBoundingClientRect();
       const title = nav.querySelector(".article-sticky-title")!.getBoundingClientRect();
-      return [separator.left - site.right, title.left - separator.right];
+      const row = nav.querySelector("ol")!.getBoundingClientRect();
+      const bar = nav.closest(".site-topbar")!.getBoundingClientRect();
+      const textBottoms = [".article-sticky-separator", ".article-sticky-title"].map((selector) => {
+        range.selectNodeContents(nav.querySelector(selector)!);
+        return range.getBoundingClientRect().bottom - site.bottom;
+      });
+      return {
+        gaps: [separator.left - site.right, title.left - separator.right],
+        textBottoms,
+        centerOffset: row.y + row.height / 2 - (bar.y + bar.height / 2),
+      };
     });
-    for (const gap of gaps) expect(gap).toBeCloseTo(8, 1);
+    for (const gap of alignment.gaps) expect(gap).toBeCloseTo(8, 1);
+    for (const offset of [...alignment.textBottoms, alignment.centerOffset]) {
+      expect(Math.abs(offset)).toBeLessThanOrEqual(1);
+    }
     await page.evaluate(() => window.scrollTo(0, 0));
     await expect(header).toHaveCSS("visibility", "hidden");
     await page.evaluate(() => window.scrollTo(0, 400));
