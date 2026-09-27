@@ -97,12 +97,16 @@ export const VirtualKeyboardViewport = component$((props: { internalScroll: bool
       const bottom = root.querySelector<HTMLElement>('[data-virtual-keyboard-region="bottom"]');
       const scrollHeader = top?.querySelector<HTMLElement>("[data-scroll-header]");
       const syncBarSizes = () => {
-        root.style.setProperty("--scroll-header-height", `${scrollHeader?.offsetHeight ?? 0}px`);
-        root.style.setProperty("--virtual-keyboard-top-height", `${top?.offsetHeight ?? 0}px`);
-        root.style.setProperty(
-          "--virtual-keyboard-bottom-height",
-          `${bottom?.offsetHeight ?? 0}px`,
-        );
+        // Read every geometry value before invalidating styles. In particular,
+        // reading scrollY after setting the bar sizes also forces layout.
+        const scrolled = (internalScroll ? root.scrollTop : window.scrollY) > 0;
+        const headerHeight = scrollHeader?.offsetHeight ?? 0;
+        const topHeight = top?.offsetHeight ?? 0;
+        const bottomHeight = bottom?.offsetHeight ?? 0;
+        root.style.setProperty("--scroll-header-height", `${headerHeight}px`);
+        root.style.setProperty("--virtual-keyboard-top-height", `${topHeight}px`);
+        root.style.setProperty("--virtual-keyboard-bottom-height", `${bottomHeight}px`);
+        root.toggleAttribute("data-scrolled", scrolled);
       };
       const resizeObserver = new ResizeObserver(syncBarSizes);
       if (top) resizeObserver.observe(top);
@@ -118,7 +122,6 @@ export const VirtualKeyboardViewport = component$((props: { internalScroll: bool
       };
       const scroller = internalScroll ? root : window;
       scroller.addEventListener("scroll", syncScroll, { passive: true });
-      syncScroll();
       cleanup(() => {
         resizeObserver.disconnect();
         scroller.removeEventListener("scroll", syncScroll);
