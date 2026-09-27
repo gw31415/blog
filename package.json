@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "icons:generate": "node scripts/generate-site-icons.mjs",
     "build": "qwik build",
     "build.client": "vp build",
     "build.server": "qwik check-client src dist && vp build -c adapters/cloudflare-workers/vite.config.ts",
