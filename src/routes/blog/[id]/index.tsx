@@ -1,5 +1,4 @@
 import { postImageIds, removeUnusedVariants } from "~/server/images";
-import { BlogTopbar } from "~/components/molecules/topbar";
 import { sendMarkdown } from "~/server/markdown-response";
 import { $, component$ } from "@qwik.dev/core";
 import {
@@ -129,9 +128,7 @@ export default component$(() => {
         if (window.location.pathname !== savedPath || window.location.search)
           await navigate(savedPath, { replaceState: true, scroll: false });
       })}
-    >
-      <BlogTopbar class="article-topbar" />
-    </ArticleShell>
+    />
   );
 });
 

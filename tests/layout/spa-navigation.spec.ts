@@ -12,7 +12,7 @@ test("site links and draft creation use SPA navigation", async ({ page }) => {
   page.on("request", (request) => {
     if (request.resourceType() === "document") documents.push(request.url());
   });
-  await page.locator(".article-topbar .site-link").click();
+  await page.locator(".article-sticky-header .site-link").click();
   await expect(page).toHaveURL(/\/$/);
   const first = page.locator(".letter-link").first();
   const href = await first.getAttribute("href");
@@ -21,7 +21,7 @@ test("site links and draft creation use SPA navigation", async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`${href}$`));
   await expect(page.locator("[data-article-field=title]")).toHaveText(title!);
   await expect(page.locator(".paper")).toHaveCSS("position", "relative");
-  await page.locator(".article-topbar .site-link").click();
+  await page.locator(".article-sticky-header .site-link").click();
   await expect(page).toHaveURL(/\/$/);
   await page.getByRole("button", { name: "新規記事", exact: true }).click();
   await expect(page).toHaveURL(/\/blog\/[0-9A-HJKMNP-TV-Z]{26}\?edit=1$/);
@@ -32,7 +32,7 @@ test("site links and draft creation use SPA navigation", async ({ page }) => {
     expect(documents).toEqual([]);
     expect(warnings).toEqual([]);
   } finally {
-    await page.locator(".article-topbar .site-link").click();
+    await page.locator(".article-sticky-header .site-link").click();
     const card = page
       .locator(".dated-letter")
       .filter({ has: page.locator(`a[href="${draftPath}"]`) });

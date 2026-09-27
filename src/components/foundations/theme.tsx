@@ -12,30 +12,152 @@ const blogThemeStyles = css`
   font-kerning: normal;
   font-synthesis: none;
   text-autospace: normal;
-  background-color: var(--page-background);
+  /* Decorate the existing body without adding a viewport-sized scroll ancestor. */
+  --surface-ground: #e5e0d4;
+  --surface-sheet: #f0eadc;
+  --surface-ink: #39372f;
+  --surface-rule: color-mix(in srgb, var(--surface-ink) 28%, transparent);
+  --surface-grain-opacity: 0.46;
+  --surface-blend: multiply;
+  --site-header-height: calc(52px + env(safe-area-inset-top));
+  position: relative;
+  isolation: isolate;
+  background-color: var(--surface-ground);
+  background-image: radial-gradient(circle, var(--surface-rule) 0.6px, transparent 0.85px);
+  background-size: 14px 14px;
+
+  &::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    pointer-events: none;
+    background: var(--paper-stock) repeat;
+    background-size: var(--paper-stock-size);
+    filter: grayscale(1);
+    mix-blend-mode: var(--surface-blend);
+    opacity: var(--surface-grain-opacity);
+  }
+  &::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    inset: 0;
+    z-index: -1;
+    width: min(calc(100% - 20px), calc(48rem + 44px));
+    border-inline: 1px solid var(--surface-rule);
+    margin-inline: auto;
+  }
+  &.blog-theme[data-dark="true"] {
+    --surface-ground: #22231f;
+    --surface-sheet: #30312a;
+    --surface-ink: #e0ddcf;
+    --surface-grain-opacity: 0.055;
+    --surface-blend: screen;
+    --muted: #b5b2a5;
+    --red: #cbb1a6;
+    --link: #d8bab0;
+    --link-hover: #f0d0c4;
+    --link-underline: rgb(216 186 176 / 65%);
+    --link-hover-bg: rgb(216 186 176 / 8%);
+    --line-strong: rgb(224 221 207 / 45%);
+    --rule: var(--surface-rule);
+    --faint: var(--muted);
+  }
+  &.blog-theme[data-dark="true"] .paper {
+    background-color: var(--surface-sheet);
+    box-shadow: 0 8px 32px rgb(0 0 0 / 18%);
+  }
+  &.blog-theme[data-dark="true"] .paper > .article-stock {
+    mix-blend-mode: screen;
+    filter: grayscale(1);
+    opacity: 0.035;
+  }
+  &.blog-theme[data-dark="true"] .grid-layer {
+    opacity: 0.3;
+  }
+  &.blog-theme[data-dark="true"] .grid-layer path {
+    stroke: var(--surface-rule);
+  }
+  &.blog-theme[data-dark="true"] .paper-texture {
+    opacity: 0.12;
+  }
+  &.blog-theme[data-dark="true"] .ink-quote {
+    --ink-color: var(--muted);
+  }
+  &.blog-theme[data-dark="true"] .article-content {
+    --syn-text: #e0ddcf;
+    --syn-comment: #b5b2a5;
+    --syn-red: #dda59d;
+    --syn-purple: #c4b2d9;
+    --syn-blue: #a8c3d7;
+    --syn-green: #bbcca9;
+    --syn-orange: #d6b591;
+    --syn-gold: #d3c099;
+    --syn-pink: #d4a9ba;
+    --syn-teal: #a7cac5;
+    --syn-punctuation: #b5b2a5;
+  }
+  &.blog-theme[data-dark="true"] .post-stream {
+    --desk: #35362f;
+    --desk-dot: rgb(0 0 0 / 19%);
+    --desk-glint: rgb(238 236 215 / 5%);
+    --edge: rgb(220 216 197 / 15%);
+  }
+  &.blog-theme[data-dark="true"] .dated-letter {
+    --ink: #302d25;
+    --muted: #51493e;
+    --red: #75473c;
+  }
+  &.blog-theme[data-dark="true"] .dated-letter .paper-material {
+    filter: brightness(0.86) sepia(0.12);
+  }
+  @media (max-width: 600px) {
+    &::after {
+      display: none;
+    }
+  }
+  @media (forced-colors: active) {
+    &.blog-theme {
+      background: Canvas;
+      --surface-ink: CanvasText;
+      --surface-sheet: Canvas;
+      --surface-rule: CanvasText;
+    }
+    &::before,
+    &::after {
+      display: none;
+    }
+  }
+
+  & main.paper,
+  & main.archive > #articles {
+    view-transition-name: paper-content;
+  }
+
   &::selection,
   & ::selection {
     color: var(--ink);
     background: rgb(135 89 79 / 28%);
   }
 
-  --page-background: #f2ead5;
-  --paper: #f2ead5;
+  --page-background: var(--surface-sheet);
+  --paper: var(--surface-sheet);
   --paper-deep: #e9dfc7;
   --paper-stock: url("/assets/materials/fiber-paper-9142573283.avif");
   --paper-stock-size: 32px 32px;
   --desk-texture:
     linear-gradient(rgb(243 234 210 / 84%), rgb(243 234 210 / 84%)), var(--paper-stock);
 
-  --ink: #352f25;
-  --muted: #655c4e;
+  --ink: var(--surface-ink);
+  --muted: #656155;
   --faint: #655c4e;
 
   --red: #87594f;
   --rule: rgb(80 51 39 / 60%);
 
-  --line-soft: rgb(80 51 39 / 44%);
-  --line: rgb(80 51 39 / 60%);
+  --line-soft: var(--surface-rule);
+  --line: var(--surface-rule);
   --line-strong: rgb(80 51 39 / 72%);
   --highlight: rgb(166 124 83 / 15%);
 

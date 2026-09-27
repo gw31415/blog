@@ -5,8 +5,6 @@ import { BlogTopbar } from "./topbar";
 /** Shared site chrome; only reveal behavior and surface treatment vary by page. */
 export const StickyHeader = component$<{
   title?: string;
-  date?: string;
-  dateLabel?: string;
   class?: string;
   mode?: "scroll-reveal" | "persistent";
   surface?: "paper" | "glass";
@@ -19,25 +17,26 @@ export const StickyHeader = component$<{
     data-header-mode={props.mode ?? "scroll-reveal"}
     data-header-surface={props.surface ?? "paper"}
   >
-    <BlogTopbar title={props.title} date={props.date} dateLabel={props.dateLabel}>
+    <BlogTopbar title={props.title}>
       <Slot />
     </BlogTopbar>
   </header>
 ));
 
 const stickyHeaderStyles = css`
-  --sticky-header-height: calc(1.5lh + env(safe-area-inset-top) + 1px);
+  --sticky-header-height: var(--site-header-height, calc(52px + env(safe-area-inset-top)));
   position: sticky;
-  z-index: 2;
+  z-index: 4;
   box-sizing: border-box;
   top: 0;
   height: var(--sticky-header-height);
   margin-inline: auto;
   margin-bottom: calc(-1 * var(--sticky-header-height));
   width: min(100%, 48rem);
-  padding: calc(env(safe-area-inset-top) + 0.25lh) var(--site-chrome-inset) 0.25lh;
+  padding: env(safe-area-inset-top) 0 0;
   color: var(--ink);
-  border-bottom: 1px solid var(--line-soft);
+  border-top: 1px solid var(--surface-rule, var(--line-soft));
+  border-bottom: 2px solid var(--surface-rule, var(--line-soft));
   white-space: nowrap;
   transform: translateY(0);
   transition:
@@ -50,7 +49,10 @@ const stickyHeaderStyles = css`
     margin-bottom: 0;
   }
   &[data-header-surface="paper"] {
-    background: var(--page-background);
+    background-color: var(--page-background);
+    background-image: var(--paper-stock);
+    background-size: var(--paper-stock-size);
+    background-blend-mode: multiply;
   }
   &[data-header-surface="glass"] {
     background: rgb(242 234 213 / 62%);

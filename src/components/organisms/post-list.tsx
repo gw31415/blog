@@ -118,7 +118,7 @@ const postListStyles = css`
   flex-direction: column;
   flex: 1 1 auto;
   overflow-x: clip;
-  --archive-header-height: calc(1.6875rem + 1px + env(safe-area-inset-top));
+  --archive-header-height: var(--site-header-height, 52px);
   --archive-month-top: calc(var(--archive-header-height) + 8px);
   --archive-day-offset: 38px;
   --desk: #dfdbcd;

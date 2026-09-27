@@ -1,11 +1,11 @@
 import { ArticleEditButton } from "~/components/atoms/edit-button";
 import { StickyHeader } from "~/components/molecules/sticky-header";
+import { BlogTopbar } from "~/components/molecules/topbar";
 import {
   $,
   component$,
   noSerialize,
   RenderOnce,
-  Slot,
   useConstant,
   useSignal,
   useStore,
@@ -348,13 +348,7 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
   return (
     <ArticleStyleBoundary>
       <VirtualKeyboardViewport internalScroll={ui.mode === "edit"}>
-        <StickyHeader
-          q:slot="top"
-          class="article-sticky-header"
-          title={ui.title || "無題"}
-          date={ui.publishedAt}
-          dateLabel={presentation.shortDate}
-        >
+        <StickyHeader q:slot="top" class="article-sticky-header" title={ui.title || "無題"}>
           {props.canEdit !== false && (
             <ArticleEditButton
               placement="sticky"
@@ -367,7 +361,23 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
           )}
         </StickyHeader>
         <BlogPaper>
-          <Slot />
+          <BlogTopbar
+            class="article-topbar"
+            title={ui.title || "無題"}
+            showTitle={false}
+            variant="inline"
+          >
+            {props.canEdit !== false && (
+              <ArticleEditButton
+                placement="header"
+                editable={ui.mode === "edit"}
+                busy={ui.mode === "loading" || ui.saving}
+                onEditIntent$={preloadEditor$}
+                onEditRequest$={enterEdit$}
+                onDoneRequest$={enterView$}
+              />
+            )}
+          </BlogTopbar>
           <BlogHeader
             tags={ui.tags}
             dateTime={ui.publishedAt}
@@ -379,12 +389,6 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
             initialTags={initialHeader.tags}
             subtitle={ui.subtitle}
             editable={ui.mode === "edit"}
-            canEdit={props.canEdit !== false}
-            editLoading={ui.mode === "loading"}
-            saving={ui.saving}
-            onEditIntent$={preloadEditor$}
-            onEditRequest$={enterEdit$}
-            onDoneRequest$={enterView$}
             onPublicationToggle$={$(() => {
               ui.status = ui.status === "published" ? "draft" : "published";
             })}

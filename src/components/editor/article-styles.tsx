@@ -119,6 +119,7 @@ const articleShellStyles = css`
     align-items: center;
     gap: 0.5em;
     flex-wrap: nowrap;
+    min-height: 2em;
     margin-block-start: 1lh;
 
     letter-spacing: normal;

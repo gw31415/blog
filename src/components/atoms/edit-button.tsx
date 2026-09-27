@@ -41,11 +41,11 @@ const editButtonStyles = css`
   &.article-header-edit {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
     min-width: 2.5em;
     min-height: 2em;
     margin: 0;
-    padding-inline: 0.25em;
+    padding: 0;
   }
   &.article-sticky-edit {
     min-width: 3em;

@@ -1,5 +1,4 @@
 import { RenderOnce, sync$, type QRL } from "@qwik.dev/core";
-import { ArticleEditButton } from "../atoms/edit-button";
 import { BlogTags } from "../molecules/tags";
 import { singleLineInput, singleLinePaste, singleLineKey } from "../foundations/single-line-input";
 
@@ -16,12 +15,6 @@ interface BlogHeaderProps {
   initialDescription: string;
   subtitle?: string;
   editable?: boolean;
-  canEdit?: boolean;
-  editLoading?: boolean;
-  saving?: boolean;
-  onEditIntent$?: QRL<() => void>;
-  onEditRequest$?: QRL<() => void>;
-  onDoneRequest$?: QRL<() => void>;
   onTagsChange$?: QRL<(tags: string[]) => void>;
   onDateInput$?: QRL<(value: string) => void>;
   onPublicationToggle$?: QRL<() => void>;
@@ -156,16 +149,6 @@ export function BlogHeader(props: BlogHeaderProps) {
                 {props.publicationStatus === "published" ? "（公開）" : "（非公開）"}
               </button>
             </span>
-          )}
-          {props.canEdit !== false && (
-            <ArticleEditButton
-              placement="header"
-              editable={props.editable}
-              busy={props.editLoading || props.saving}
-              onEditIntent$={props.onEditIntent$}
-              onEditRequest$={props.onEditRequest$}
-              onDoneRequest$={props.onDoneRequest$}
-            />
           )}
         </span>
       </div>

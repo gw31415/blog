@@ -4,51 +4,110 @@ import { SiteLink } from "../atoms/site-link";
 
 export const BlogTopbar = component$<{
   title?: string;
-  date?: string;
-  dateLabel?: string;
+  showTitle?: boolean;
+  variant?: "bar" | "inline";
   class?: string;
 }>((props) => (
-  <nav
+  <div
     css={blogTopbarStyles}
     class={`site-topbar type-meta ${props.class ?? ""}`}
-    aria-label="記事の現在位置"
+    data-topbar-variant={props.variant ?? "bar"}
   >
-    <SiteLink />
-    {props.title && (
-      <>
-        <span class="article-sticky-separator" aria-hidden="true">
-          &gt;
-        </span>
-        <span class="article-sticky-title">{props.title}</span>
-      </>
-    )}
-    {props.dateLabel && (
-      <time class="article-sticky-date" dateTime={props.date}>
-        （{props.dateLabel}）
-      </time>
-    )}
-    <Slot />
-  </nav>
+    <nav class="site-breadcrumbs" aria-label="パンくずリスト">
+      <ol>
+        <li class="site-breadcrumb-home">
+          <SiteLink current={!props.title} />
+        </li>
+        {props.title && props.showTitle !== false && (
+          <li class="site-breadcrumb-current">
+            <span class="article-sticky-separator" aria-hidden="true">
+              ›
+            </span>
+            <span class="article-sticky-title" aria-current="page" title={props.title}>
+              {props.title}
+            </span>
+          </li>
+        )}
+      </ol>
+    </nav>
+    <div class="site-topbar-actions">
+      <Slot />
+    </div>
+  </div>
 ));
 
 const blogTopbarStyles = css`
-  & .article-sticky-site,
-  & .article-sticky-separator,
-  & .article-sticky-date {
+  --topbar-inset: var(--site-chrome-inset);
+  --topbar-action-border: 1px;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  color: var(--ink);
+
+  &[data-topbar-variant="inline"] {
+    --topbar-inset: 0px;
+    --topbar-action-border: 0px;
+  }
+  & .site-breadcrumbs {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: var(--topbar-inset);
+  }
+  & .site-breadcrumbs ol {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    height: 100%;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  & .site-breadcrumb-home {
+    display: flex;
     flex: none;
+  }
+  & .site-breadcrumb-home .site-link {
+    display: flex;
+    align-items: center;
+    color: var(--ink);
+    -webkit-text-fill-color: var(--ink);
+    font-size: 16px;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+  }
+  & .site-breadcrumb-home .site-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+  & .site-breadcrumb-current {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  & .article-sticky-separator {
+    flex: none;
+    color: var(--muted);
   }
   & .article-sticky-title {
     min-width: 0;
-    flex: 1 1 0;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  & .article-sticky-date {
-    color: var(--muted);
+  & .site-topbar-actions {
+    display: flex;
+    flex: none;
+    align-items: center;
   }
-  display: flex;
-  align-items: center;
-  gap: 0.55em;
-  color: var(--ink);
+  & .site-topbar-actions:empty {
+    display: none;
+  }
+  & .site-topbar-actions > :is(form, button, a) {
+    border-left: var(--topbar-action-border) solid var(--surface-rule, var(--line-soft));
+    padding-inline: var(--topbar-inset);
+    height: 100%;
+  }
 `;

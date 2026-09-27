@@ -21,12 +21,10 @@ for (const width of [927, 390]) {
     await expect(page.locator(".more p").last()).toHaveText("一先ずここまで");
     await page.goto(article);
     expect(await measure(page)).toEqual(home);
-    for (const box of Object.values(home)) {
-      expect(box.left).toBe(16);
-      expect(box.right).toBe(16);
-    }
+    expect(home[".site-topbar"]).toEqual({ left: 0, right: 0 });
+    expect(home[".page-footer"]).toEqual({ left: 16, right: 16 });
     await page.locator(".page-footer").scrollIntoViewIfNeeded();
-    await expect(page.locator("[data-scroll-header]")).toBeVisible();
+    await expect(page.locator("[data-site-header]")).toBeVisible();
     await page.screenshot({ path: `.cache/site-chrome-${width}.png` });
   });
 
@@ -36,12 +34,38 @@ for (const width of [927, 390]) {
     await page.setViewportSize({ width, height: 717 });
     await page.context().addCookies([{ name: "blog_dev_manager", value: "1", url: baseURL! }]);
     await page.goto(article);
+    const controls = await page.evaluate(() => {
+      const content = document.querySelector(".article-content")!.getBoundingClientRect();
+      const bar = document.querySelector(".article-topbar")!.getBoundingClientRect();
+      const link = document.querySelector(".article-topbar .site-link")!;
+      const button = document.querySelector(".article-topbar .article-header-edit")!;
+      const range = document.createRange();
+      range.selectNodeContents(link);
+      const linkText = range.getBoundingClientRect();
+      range.selectNodeContents(button);
+      const buttonText = range.getBoundingClientRect();
+      const buttonBox = button.getBoundingClientRect();
+      return {
+        left: linkText.left - content.left,
+        right: content.right - buttonText.right,
+        centerY: buttonBox.y + buttonBox.height / 2 - (bar.y + bar.height / 2),
+      };
+    });
+    for (const gap of Object.values(controls)) expect(Math.abs(gap)).toBeLessThanOrEqual(1);
+    await expect(page.locator(".meta .article-header-edit")).toHaveCount(0);
     const capture = () =>
       page.evaluate(() => {
         const root = document.querySelector<HTMLElement>("[data-virtual-keyboard-viewport]")!;
         return {
           scroll: root.hasAttribute("data-internal-scroll") ? root.scrollTop : window.scrollY,
-          rects: [".content", ".article-content", ".page-footer"].map((selector) => {
+          rects: [
+            ".content",
+            ".article-topbar",
+            ".article-header-edit",
+            "[data-layout-key='header']",
+            ".article-content",
+            ".page-footer",
+          ].map((selector) => {
             const r = document.querySelector(selector)!.getBoundingClientRect();
             return [r.x, r.y, r.width, r.height];
           }),
@@ -54,6 +78,18 @@ for (const width of [927, 390]) {
         const before = await capture();
         const button = page.locator(scroll ? ".article-sticky-edit" : ".article-header-edit");
         const clickButton = async () => {
+          // Mode changes transfer the scroll owner and update the reveal header.
+          // Wait for the visible control, rather than clicking through its fade.
+          await expect
+            .poll(() =>
+              button.evaluate((element) => {
+                const r = element.getBoundingClientRect();
+                return element.contains(
+                  document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2),
+                );
+              }),
+            )
+            .toBe(true);
           const box = (await button.boundingBox())!;
           await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
         };
