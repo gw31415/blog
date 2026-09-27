@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 import type { JSONContent } from "@tiptap/core";
 import { exportArticle, type ExportTarget } from "./export-article";
 import { documentMarkdown } from "../components/editor/document-markdown";
+import { marked } from "marked";
 
 const text = (value: string): JSONContent => ({ type: "text", text: value });
 const paragraph = (...content: JSONContent[]): JSONContent => ({ type: "paragraph", content });
@@ -36,6 +37,29 @@ const diagram: JSONContent = {
 };
 
 describe("article Markdown exports", () => {
+  it.each(["canonical", "github"] as const)(
+    "adds one escaped title to %s output without changing the body",
+    (target) => {
+      const input = { ...article(paragraph(text("本文"))), title: "A *title* <tag> &amp;\n# Next" };
+      const before = structuredClone(input);
+      const result = exportArticle(input, target, "https://example.com");
+      const headings = marked.lexer(result.markdown).filter((token) => token.type === "heading");
+      expect(headings).toHaveLength(1);
+      expect(headings[0]).toMatchObject({ type: "heading", depth: 1 });
+      expect(marked.parse(result.markdown)).toContain(
+        "A *title* &lt;tag&gt; &amp;amp; # Next</h1>",
+      );
+      expect(result.markdown.endsWith(documentMarkdown(input.body))).toBe(true);
+      expect(input).toEqual(before);
+    },
+  );
+
+  it("uses an untitled heading even when the body is empty", () => {
+    expect(
+      exportArticle({ ...article(), title: " " }, "canonical", "https://example.com").markdown,
+    ).toBe("# 無題");
+  });
+
   it.each(["github", "qiita"] as const)(
     "writes %s math without replacing matching code, links or text",
     (target) => {
@@ -104,7 +128,9 @@ describe("article Markdown exports", () => {
       expect(result.markdown).toContain(">   ```mermaid");
       expect(result.markdown).toContain(">   表 \\*題\\*");
       expect(input).toEqual(before);
-      expect(exportArticle(input, "canonical", "https://example.com").markdown).toBe(original);
+      expect(exportArticle(input, "canonical", "https://example.com").markdown).toBe(
+        `# Title\n\n${original}`,
+      );
       expect(original).toContain(":::{table}");
       expect(original).toContain(":::{figure}");
     },

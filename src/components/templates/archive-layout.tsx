@@ -4,17 +4,17 @@ import { PaperContainer } from "~/components/atoms/paper-container";
 import { StickyHeader } from "~/components/molecules/sticky-header";
 
 /** The archive stays in document flow; the page owns its scrolling. */
-export const ArchiveLayout = component$(() => (
+export const ArchiveLayout = component$<{ title?: string }>((props) => (
   <div css={archiveStyles}>
     <a
       class="skip-link"
       href="#journal"
       onClick$={() => document.getElementById("journal")?.focus({ preventScroll: true })}
     >
-      記事一覧へ移動
+      {props.title ? `${props.title}へ移動` : "記事一覧へ移動"}
     </a>
     <PaperContainer class="archive">
-      <StickyHeader class="archive-header" mode="persistent" surface="paper">
+      <StickyHeader class="archive-header" mode="persistent" surface="paper" title={props.title}>
         <Slot name="header-actions" />
       </StickyHeader>
       <Slot />
@@ -28,7 +28,25 @@ const archiveStyles = css`
     display: flex;
     flex-direction: column;
     min-height: 100svh;
-    background: var(--paper);
+  }
+  & .archive,
+  & .post-stream {
+    --desk: #dfdbcd;
+    --desk-dot: rgb(80 68 45 / 12%);
+    --desk-glint: rgb(255 255 255 / 48%);
+    --edge: rgb(90 71 44 / 21%);
+    --desk-pattern:
+      radial-gradient(circle, var(--desk-dot) 0.55px, transparent 0.8px),
+      radial-gradient(circle, var(--desk-glint) 0.55px, transparent 0.8px);
+    --desk-edge-shadow: inset 1px 0 var(--edge), inset -1px 0 var(--edge);
+    background-color: var(--desk);
+    background-image: var(--desk-pattern);
+    background-attachment: scroll, scroll;
+    background-position:
+      0 0,
+      1px 1px;
+    background-size: 5px 5px;
+    box-shadow: var(--desk-edge-shadow);
   }
   & .archive-header[data-header-mode="persistent"] {
     flex: none;

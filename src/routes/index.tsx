@@ -312,7 +312,7 @@ export default component$(() => {
                   続きを読み込む
                 </a>
               ) : (
-                <p>{state.posts.length > 0 ? "一先ずここまで" : "まだ記事はありません"}</p>
+                <p>{state.posts.length > 0 ? "記事は以上です" : "まだ記事はありません"}</p>
               ))}
           </StreamStatus>
           <div q:slot="stream-after" class="stream-footer">
@@ -328,7 +328,10 @@ export default component$(() => {
     </ArchiveLayout>
   );
 });
-export const head: DocumentHead = { title: `記事一覧 — ${BLOG_NAME}` };
+export const head: DocumentHead = {
+  title: "記事一覧",
+  meta: [{ name: "description", content: "amas.devに公開された記事の一覧です。" }],
+};
 
 const CreatePostAction = component$<{ action: ReturnType<typeof useCreateDraft> }>(({ action }) => (
   <Form action={action} css={managementActionsStyles}>

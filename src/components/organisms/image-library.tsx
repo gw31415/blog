@@ -2,13 +2,13 @@ import { component$, Slot } from "@qwik.dev/core";
 import { css } from "@qstyle/qwik";
 
 export const ImageLibrary = component$(() => (
-  <main css={styles} id="journal" tabIndex={-1}>
+  <section css={styles} id="journal" tabIndex={-1} aria-label="画像の管理">
     <h1>画像</h1>
     <p>
       オリジナルは保持されます。記事を削除すると、その記事だけで使っている配信用画像を削除します。
     </p>
     <Slot />
-  </main>
+  </section>
 ));
 const styles = css`
   padding: 20px clamp(20px, 5vw, 68px) 60px;

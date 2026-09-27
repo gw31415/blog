@@ -1,10 +1,12 @@
 import { component$ } from "@qwik.dev/core";
 import { isServer } from "@qwik.dev/core/build";
-import { DocumentHeadTags, getRequestEvent, useLocation } from "@qwik.dev/router";
+import { DocumentHeadTags, getRequestEvent, useDocumentHead, useLocation } from "@qwik.dev/router";
+import { resolvePageHead } from "~/content/page-metadata";
 
 /** Keep reactive metadata inside its own boundary so head-level build assets survive navigation. */
 export const BlogDocumentHead = component$(() => {
   const { url } = useLocation();
+  const head = useDocumentHead();
   const userAgent = isServer
     ? (getRequestEvent()?.request.headers.get("user-agent") ?? "")
     : navigator.userAgent;
@@ -19,8 +21,7 @@ export const BlogDocumentHead = component$(() => {
       <meta name="viewport" content={viewport} />
       <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       <meta name="theme-color" content="#f2ead5" />
-      <DocumentHeadTags />
-      <link rel="canonical" href={`${url.origin}${url.pathname}`} />
+      <DocumentHeadTags {...resolvePageHead(head, url)} />
     </>
   );
 });

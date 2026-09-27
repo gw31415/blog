@@ -17,6 +17,7 @@ export default createRenderer((opts) => {
       // Use container attributes to set attributes on the html tag.
       containerAttributes: {
         lang: "ja",
+        prefix: "og: https://ogp.me/ns# article: https://ogp.me/ns/article#",
         ...opts.containerAttributes,
       },
       serverData: {

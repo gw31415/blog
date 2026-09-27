@@ -38,6 +38,7 @@ export const BlogTopbar = component$<{
 
 const blogTopbarStyles = css`
   --topbar-inset: var(--site-chrome-inset);
+  --topbar-action-inset: var(--site-chrome-inset);
   --topbar-action-border: 1px;
   display: flex;
   align-items: stretch;
@@ -48,7 +49,11 @@ const blogTopbarStyles = css`
 
   &[data-topbar-variant="inline"] {
     --topbar-inset: 0px;
+    --topbar-action-inset: 0.5em;
     --topbar-action-border: 0px;
+  }
+  &[data-topbar-variant="inline"] .site-topbar-actions {
+    margin-inline-end: -0.5em;
   }
   & .site-breadcrumbs {
     flex: 1 1 0;
@@ -107,7 +112,7 @@ const blogTopbarStyles = css`
   }
   & .site-topbar-actions > :is(form, button, a) {
     border-left: var(--topbar-action-border) solid var(--surface-rule, var(--line-soft));
-    padding-inline: var(--topbar-inset);
+    padding-inline: var(--topbar-action-inset);
     height: 100%;
   }
 `;

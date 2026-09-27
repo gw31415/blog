@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <pattern id="grain" width="7" height="7" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="0.6" fill="#39372f" opacity=".12"/>
+      <circle cx="2" cy="2" r="0.6" fill="#fff" opacity=".5"/>
+    </pattern>
+  </defs>
+  <path fill="#e5e0d4" d="M0 0h1200v630H0z"/>
+  <path fill="url(#grain)" d="M0 0h1200v630H0z"/>
+  <path fill="#f0eadc" stroke="#aaa497" d="M90 58h1020v514H90z"/>
+  <path fill="url(#grain)" d="M91 59h1018v512H91z"/>
+  <g fill="none" stroke="#b9ad99">
+    <path d="M130 164h940M130 450h940M130 494h940"/>
+    <path d="M178 118v416" stroke="#b08f80"/>
+  </g>
+  <text x="227" y="349" fill="#39372f" font-family="Georgia, 'Times New Roman', serif" font-size="112" font-weight="bold">amas.dev</text>
+  <path fill="none" stroke="#87594f" stroke-width="2" d="M939 484h96v37h-96zM944 489h86v27h-86z"/>
+  <text x="987" y="509" fill="#87594f" font-family="Georgia, serif" font-size="18" text-anchor="middle">amas.dev</text>
+</svg>

@@ -14,6 +14,7 @@ import { ArticleShell } from "~/components/templates/article-shell";
 import { CONTENT_SCHEMA_VERSION } from "~/content/document";
 import { canManagePosts, requireManager } from "~/server/access";
 import { canonicalPath } from "~/content/post-url";
+import { SITE_DESCRIPTION } from "~/content/page-metadata";
 import { database, findPost, redirectCanonical, savePostContent } from "~/server/posts";
 import { renderDocument } from "~/server/render-document";
 import { renderPost } from "~/server/render-post";
@@ -56,22 +57,28 @@ export const usePost = routeLoader$(async (event) => {
   };
 });
 
-export const useSavePost = routeAction$(async (values, event) => {
-  await requireManager(event);
-  const post = await findRequestPost(event);
-  if (!post) throw event.error(404, "記事が見つかりません。");
-  try {
-    const imageIds = await postImageIds(database(event), post.id);
-    await savePostContent(database(event), post.id, values);
-    await removeUnusedVariants(database(event), event.platform.env.IMAGES, imageIds);
-    event.sharedMap.delete("blog.post");
-    return { ok: true };
-  } catch (error) {
-    return event.fail(400, {
-      message: error instanceof Error ? error.message : "保存できませんでした。",
-    });
-  }
-});
+export const useSavePost = routeAction$(
+  async (values, event) => {
+    await requireManager(event);
+    const post = await findRequestPost(event);
+    if (!post) throw event.error(404, "記事が見つかりません。");
+    try {
+      const imageIds = await postImageIds(database(event), post.id);
+      await savePostContent(database(event), post.id, values);
+      await removeUnusedVariants(database(event), event.platform.env.IMAGES, imageIds);
+      event.sharedMap.delete("blog.post");
+      return { ok: true };
+    } catch (error) {
+      return event.fail(400, {
+        message: error instanceof Error ? error.message : "保存できませんでした。",
+      });
+    }
+  },
+  {
+    // strictLoaders defaults to true: refresh saved metadata without replacing the editor DOM.
+    invalidate: [usePost],
+  },
+);
 
 export default component$(() => {
   const data = usePost();
@@ -135,7 +142,20 @@ export default component$(() => {
 export const head: DocumentHead = ({ resolveValue }) => {
   const post = resolveValue(usePost).post;
   return {
-    title: post.title,
-    meta: [{ name: "description", content: post.description ?? post.subtitle ?? "" }],
+    title: post.title.trim() || "無題",
+    links: [{ rel: "canonical", href: canonicalPath(post) }],
+    meta: [
+      {
+        name: "description",
+        content: post.description?.trim() || post.subtitle?.trim() || SITE_DESCRIPTION,
+      },
+      { property: "og:type", content: "article" },
+      ...(post.status === "draft" ? [{ name: "robots", content: "noindex, nofollow" }] : []),
+      ...(post.status === "published" && post.published_at
+        ? [{ property: "article:published_time", content: post.published_at }]
+        : []),
+      { property: "article:modified_time", content: post.updated_at },
+      ...post.tags.map((tag) => ({ property: "article:tag", content: tag })),
+    ],
   };
 };

@@ -121,26 +121,10 @@ const postListStyles = css`
   --archive-header-height: var(--site-header-height, 52px);
   --archive-month-top: calc(var(--archive-header-height) + 8px);
   --archive-day-offset: 38px;
-  --desk: #dfdbcd;
-  --desk-dot: rgb(80 68 45 / 12%);
-  --desk-glint: rgb(255 255 255 / 48%);
   --envelope: #f8f6f0;
   --fold: #eee6d2;
-  --edge: rgb(90 71 44 / 21%);
   --date-ink: var(--muted);
-  background-color: var(--desk);
-  --desk-pattern:
-    radial-gradient(circle, var(--desk-dot) 0.55px, transparent 0.8px),
-    radial-gradient(circle, var(--desk-glint) 0.55px, transparent 0.8px);
-  --desk-edge-shadow: inset 1px 0 var(--edge), inset -1px 0 var(--edge);
   position: relative;
-  background-image: var(--desk-pattern);
-  background-attachment: scroll, scroll;
-  background-position:
-    0 0,
-    1px 1px;
-  background-size: 5px 5px;
-  box-shadow: var(--desk-edge-shadow);
 
   & .post-desk {
     position: relative;

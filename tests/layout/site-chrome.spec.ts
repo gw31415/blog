@@ -18,7 +18,7 @@ for (const width of [927, 390]) {
     await page.goto("/");
     const home = await measure(page);
     await expect(page.locator("#articles-title")).toHaveCSS("background-image", "none");
-    await expect(page.locator(".more p").last()).toHaveText("一先ずここまで");
+    await expect(page.locator(".more p").last()).toHaveText("記事は以上です");
     await page.goto(article);
     expect(await measure(page)).toEqual(home);
     expect(home[".site-topbar"]).toEqual({ left: 0, right: 0 });
@@ -52,6 +52,10 @@ for (const width of [927, 390]) {
       };
     });
     for (const gap of Object.values(controls)) expect(Math.abs(gap)).toBeLessThanOrEqual(1);
+    const edit = page.locator(".article-header-edit");
+    await edit.hover();
+    await expect(edit).toHaveCSS("padding-right", "6px");
+    await page.screenshot({ path: `.cache/edit-highlight-${width}.png` });
     await expect(page.locator(".meta .article-header-edit")).toHaveCount(0);
     const capture = () =>
       page.evaluate(() => {
@@ -124,5 +128,44 @@ for (const width of [927, 390]) {
         );
       }
     }
+  });
+
+  test(`image management shares archive texture and breadcrumbs at ${width}px`, async ({
+    page,
+    baseURL,
+  }) => {
+    test.skip(
+      !process.env.BLOG_EDIT_PARITY,
+      "Requires development manager access to local test data",
+    );
+    await page.context().addCookies([{ name: "blog_dev_manager", value: "1", url: baseURL! }]);
+    await page.setViewportSize({ width, height: 717 });
+    const texture = (selector: string) =>
+      page.locator(selector).evaluate((element) => {
+        const style = getComputedStyle(element);
+        return [
+          style.backgroundColor,
+          style.backgroundImage,
+          style.backgroundSize,
+          style.backgroundPosition,
+        ];
+      });
+    await page.goto("/");
+    const homeTexture = await texture(".post-stream");
+    await page.getByRole("link", { name: "画像", exact: true }).click();
+    await expect(page).toHaveURL("/manage/images");
+    const breadcrumb = page.getByRole("navigation", { name: "パンくずリスト" });
+    await expect(breadcrumb.locator("li")).toHaveCount(2);
+    await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText("画像の管理");
+    await expect(page.locator(".site-topbar-actions")).toBeHidden();
+    expect(await texture("main.archive")).toEqual(homeTexture);
+    await expect(page.locator("main")).toHaveCount(1);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+      "content",
+      "noindex, nofollow",
+    );
+    await expect(page).toHaveTitle("画像の管理 - amas.dev");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+    await page.screenshot({ path: `.cache/image-management-${width}.png` });
   });
 }

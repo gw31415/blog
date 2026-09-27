@@ -24,8 +24,7 @@ export default component$(() => {
   const data = useImages(),
     collect = useCollect();
   return (
-    <ArchiveLayout>
-      <span q:slot="header-actions">画像の管理</span>
+    <ArchiveLayout title="画像の管理">
       <ImageLibrary>
         <nav aria-label="画像の絞り込み">
           <a href="/manage/images" aria-current={!data.value.unused ? "page" : undefined}>
@@ -79,4 +78,10 @@ export default component$(() => {
     </ArchiveLayout>
   );
 });
-export const head = { title: "画像の管理" };
+export const head = {
+  title: "画像の管理",
+  meta: [
+    { name: "description", content: "アップロードした画像と記事への関連を管理します。" },
+    { name: "robots", content: "noindex, nofollow" },
+  ],
+};

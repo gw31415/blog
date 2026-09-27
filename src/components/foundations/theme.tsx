@@ -98,7 +98,7 @@ const blogThemeStyles = css`
     --syn-teal: #a7cac5;
     --syn-punctuation: #b5b2a5;
   }
-  &.blog-theme[data-dark="true"] .post-stream {
+  &.blog-theme[data-dark="true"] :is(.archive, .post-stream) {
     --desk: #35362f;
     --desk-dot: rgb(0 0 0 / 19%);
     --desk-glint: rgb(238 236 215 / 5%);

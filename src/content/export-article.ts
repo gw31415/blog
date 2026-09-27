@@ -1,6 +1,7 @@
 import { inlineTags } from "../components/editor/inline-format-contract";
 import type { JSONContent } from "@tiptap/core";
 import { documentMarkdown, documentMarkdownWithMath } from "../components/editor/document-markdown";
+import { normalizeSingleLine } from "./article";
 export type ExportTarget = "canonical" | "github" | "zenn" | "qiita";
 export interface ExportArticle {
   title: string;
@@ -10,7 +11,21 @@ export interface ExportArticle {
 }
 export function exportArticle(article: ExportArticle, target: ExportTarget, origin: string) {
   const diagnostics: string[] = [];
-  if (target === "canonical") return { markdown: documentMarkdown(article.body), diagnostics };
+  const heading = documentMarkdown({
+    type: "doc",
+    content: [
+      {
+        type: "heading",
+        attrs: { level: 1 },
+        content: [{ type: "text", text: normalizeSingleLine(article.title).trim() || "無題" }],
+      },
+    ],
+  });
+  if (target === "canonical")
+    return {
+      markdown: [heading, documentMarkdown(article.body)].filter(Boolean).join("\n\n"),
+      diagnostics,
+    };
   const canonical = (node: JSONContent) =>
     documentMarkdownWithMath({ type: "doc", content: [node] }, (latex) => {
       if (target === "zenn") return `$${latex}$`;
@@ -195,7 +210,7 @@ export function exportArticle(article: ExportArticle, target: ExportTarget, orig
   urls(body);
   let markdown = (body.content ?? []).map((n) => convert(n)).join("\n\n");
   if (target === "github")
-    markdown = `# ${article.title.replace(/[\\#*_[\]]/g, "\\$&")}\n\n${article.subtitle ? article.subtitle + "\n\n" : ""}${markdown}`;
+    markdown = `${heading}\n\n${article.subtitle ? paragraph(article.subtitle) + "\n\n" : ""}${markdown}`;
   if (target === "zenn")
     markdown = `---\ntitle: ${JSON.stringify(article.title)}\nemoji: "📝"\ntype: "tech"\ntopics: ${JSON.stringify(article.tags)}\npublished: false\n---\n\n${article.subtitle ? article.subtitle + "\n\n" : ""}${markdown}`;
   if (target === "qiita" && article.subtitle) markdown = article.subtitle + "\n\n" + markdown;
