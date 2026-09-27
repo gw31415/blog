@@ -315,9 +315,19 @@ export async function mountArticleEditor(
     getWorkingState() {
       return {
         document: editor.getJSON(),
+        selection: { from: editor.state.selection.from, to: editor.state.selection.to },
         uploading: palette?.isUploading() ?? false,
         pending: palette?.getState() ?? null,
       };
+    },
+    replaceDocument(content) {
+      const normalized = normalizeDocument(content);
+      const next = editor.schema.nodeFromJSON(normalized);
+      next.check();
+      editor.view.dispatch(
+        editor.state.tr.replaceWith(0, editor.state.doc.content.size, next.content),
+      );
+      return true;
     },
     getJSON() {
       return finalizeWorkingDocument(palette?.documentForSave() ?? editor.getJSON());

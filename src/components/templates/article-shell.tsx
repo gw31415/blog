@@ -93,6 +93,7 @@ interface EditorUiState {
 
 interface ArticleShellProps {
   postId?: string;
+  version?: string;
   article: ArticleDraft;
   initialHtml: string;
   initialContent: JSONContent;
@@ -327,6 +328,7 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
           status: ui.status,
           alias: ui.alias.trim(),
         });
+        document.dispatchEvent(new Event("blog:article-saved"));
         if (props.autoEditFromQuery && new URLSearchParams(window.location.search).has("edit")) {
           window.history.replaceState(window.history.state, "", window.location.pathname);
         }
@@ -341,6 +343,35 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
     ui.insertDialog = null;
     ui.mode = "view";
   });
+
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(
+    async ({ cleanup }) => {
+      if (
+        !props.postId ||
+        !props.canEdit ||
+        (!("modelContext" in document) && !("modelContext" in navigator))
+      )
+        return;
+      let disposed = false,
+        unregister: (() => void) | undefined;
+      cleanup(() => {
+        disposed = true;
+        unregister?.();
+      });
+      const { registerEditorTools } = await import("~/webmcp/editor");
+      if (!disposed)
+        unregister = registerEditorTools({
+          id: props.postId,
+          ui,
+          controller: () => controller.value,
+          enter: enterEdit$,
+          save: enterView$,
+          version: () => props.version ?? "",
+        });
+    },
+    { strategy: "document-ready" },
+  );
 
   const applyInsert$ = $(() => {
     const dialog = ui.insertDialog;

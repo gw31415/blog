@@ -1,6 +1,6 @@
 import { postImageIds, removeUnusedVariants } from "~/server/images";
 import { sendMarkdown } from "~/server/markdown-response";
-import { $, component$ } from "@qwik.dev/core";
+import { $, component$, useSignal } from "@qwik.dev/core";
 import {
   useNavigate,
   routeAction$,
@@ -73,7 +73,7 @@ export const useSavePost = routeAction$(
       await savePostContent(database(event), post.id, values);
       await removeUnusedVariants(database(event), event.platform.env.IMAGES, imageIds);
       event.sharedMap.delete("blog.post");
-      return { ok: true };
+      return { ok: true, version: (await findPost(database(event), post.id))!.updated_at };
     } catch (error) {
       return event.fail(400, {
         message: error instanceof Error ? error.message : "保存できませんでした。",
@@ -91,10 +91,12 @@ export default component$(() => {
   const save = useSavePost();
   const navigate = useNavigate();
   const post = data.value.post;
+  const version = useSignal(post.updated_at);
   return (
     <ArticleShell
       key={post.id}
       postId={post.id}
+      version={version.value}
       article={{
         publishedAt: post.published_at?.slice(0, 10) ?? "",
         title: post.title,
@@ -117,6 +119,7 @@ export default component$(() => {
           await validateMermaidDocument(draft.body);
         }
         const result = await save.submit({
+          expectedVersion: version.value,
           publishedAt: draft.publishedAt,
           title: draft.title,
           subtitle: draft.subtitle === (post.subtitle ?? "") ? post.subtitle : draft.subtitle,
@@ -136,6 +139,8 @@ export default component$(() => {
           throw new Error(
             "message" in result.value ? String(result.value.message) : "保存できませんでした。",
           );
+        if ("version" in result.value && typeof result.value.version === "string")
+          version.value = result.value.version;
         const savedPath = `/blog/${draft.alias || post.id}`;
         // Saving a new draft must also remove ?edit=1 from the router's URL state.
         if (window.location.pathname !== savedPath || window.location.search)

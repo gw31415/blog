@@ -168,6 +168,8 @@ export async function savePostContent(
 ): Promise<void> {
   const old = await findPost(db, id);
   if (!old) throw new Error("記事が見つかりません");
+  if (values.expectedVersion != null && values.expectedVersion !== old.updated_at)
+    throw new Error("CONFLICT: 記事が変更されています。入力を保持したまま再読込してください");
   const input = parsePostInput(values);
   if (
     values.editingState &&
@@ -178,7 +180,7 @@ export async function savePostContent(
     throw new Error("入力中のフォームを適用するかキャンセルしてください");
   if (input.status === "published") await validatePublication(input.body);
   const alias = normalizeAlias(values.alias);
-  const now = new Date().toISOString();
+  const now = new Date(Math.max(Date.now(), Date.parse(old.updated_at) + 1)).toISOString();
   const previous = {
     title: old.title,
     subtitle: old.subtitle,
@@ -202,7 +204,7 @@ export async function savePostContent(
   statements.push(
     db
       .prepare(
-        `UPDATE posts SET title=?,subtitle=?,description=?,tags=?,body_json=?,status=?,canonical_alias=?,published_at=?,updated_at=?,editing_state=? WHERE id=? AND (? IS NULL OR NOT EXISTS(SELECT 1 FROM posts WHERE canonical_alias=? AND id<>?))`,
+        `UPDATE posts SET title=?,subtitle=?,description=?,tags=?,body_json=?,status=?,canonical_alias=?,published_at=?,updated_at=?,editing_state=? WHERE id=? AND updated_at=? AND (? IS NULL OR NOT EXISTS(SELECT 1 FROM posts WHERE canonical_alias=? AND id<>?))`,
       )
       .bind(
         input.title,
@@ -216,6 +218,7 @@ export async function savePostContent(
         changed ? now : old.updated_at,
         null,
         id,
+        old.updated_at,
         alias,
         alias,
         id,
@@ -233,11 +236,18 @@ export async function savePostContent(
   );
   const result = await db.batch(statements);
   if (!result[postStatementIndex]?.meta.changes)
-    throw new Error("エイリアスが他の記事で使用されています");
+    throw new Error("CONFLICT: 記事の変更またはエイリアスの重複があります。再取得してください");
 }
 
-export async function deletePost(db: D1Database, id: string): Promise<boolean> {
-  const result = await db.prepare("DELETE FROM posts WHERE id=?").bind(id).run();
+export async function deletePost(
+  db: D1Database,
+  id: string,
+  expectedVersion?: string,
+): Promise<boolean> {
+  const result = await db
+    .prepare("DELETE FROM posts WHERE id=? AND (? IS NULL OR updated_at=?)")
+    .bind(id, expectedVersion ?? null, expectedVersion ?? null)
+    .run();
   return (result.meta.changes ?? 0) > 0;
 }
 

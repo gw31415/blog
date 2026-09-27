@@ -84,7 +84,8 @@ try {
   const article = await get(`/blog/${published}?edit=1`);
   const articleHtml = await article.text();
   assert.equal(article.status, 200);
-  assert(!articleHtml.includes("article-header-edit"));
+  // Inline styles may contain the class name even when the control is absent.
+  assert(!/<button\b[^>]*class="[^"]*\barticle-header-edit\b/.test(articleHtml));
   assert.equal((await get("/manage/images")).status, 403);
   assert.equal((await get("/manage/images", auth)).status, 200);
   assert.equal((await get("/api/images/originals/01ARZ3NDEKTSV4RRFFQ69G5FAV.jpg")).status, 403);
@@ -138,6 +139,57 @@ try {
     });
     assert.equal(result.status, 403);
   }
+  assert.equal((await db.prepare("SELECT count(*) AS n FROM posts").first()).n, 2);
+  // WebMCP uses the same signed Access session and Origin boundary as the UI.
+  const tool = (name, input = {}, headers = auth) =>
+    mf.dispatchFetch("https://blog.example/api/webmcp", {
+      method: "POST",
+      headers: { ...headers, Origin: "https://blog.example", "Content-Type": "application/json" },
+      body: JSON.stringify({ name, input }),
+    });
+  const anonymousSearch = await tool("search_posts", {}, {});
+  assert.match(anonymousSearch.headers.get("cache-control"), /no-store/);
+  assert.deepEqual(
+    (await anonymousSearch.json()).data.items.map((post) => post.id),
+    [published],
+  );
+  assert.equal((await tool("get_post", { identifier: draft }, {})).status, 400);
+  assert.equal((await tool("create_draft", { requestId: "denied" }, {})).status, 403);
+  assert.equal((await tool("list_images", {}, {})).status, 403);
+  assert.equal(
+    (
+      await mf.dispatchFetch("https://blog.example/api/webmcp", {
+        method: "POST",
+        headers: { ...auth, Origin: "https://evil.example" },
+        body: JSON.stringify({ name: "create_draft", input: { requestId: "denied" } }),
+      })
+    ).status,
+    403,
+  );
+  const firstCreation = await (await tool("create_draft", { requestId: "replay" })).json();
+  assert(firstCreation.ok, JSON.stringify(firstCreation));
+  assert.equal((await db.prepare("SELECT count(*) AS n FROM webmcp_requests").first()).n, 0);
+  const createdId = firstCreation.data.id;
+  const current = (await (await tool("get_post", { identifier: createdId })).json()).data;
+  assert.equal(
+    (await (await tool("delete_post", { identifier: createdId, expectedVersion: "stale" })).json())
+      .error.code,
+    "CONFLICT",
+  );
+  assert.equal(
+    (
+      await (
+        await tool("delete_post", { identifier: createdId, expectedVersion: current.version })
+      ).json()
+    ).ok,
+    true,
+  );
+  const retry = await (await tool("create_draft", { requestId: "replay" })).json();
+  assert(retry.ok, JSON.stringify(retry));
+  assert.notEqual(retry.data.id, createdId);
+  assert.equal((await db.prepare("SELECT count(*) AS n FROM webmcp_requests").first()).n, 0);
+  const retried = (await (await tool("get_post", { identifier: retry.data.id })).json()).data;
+  await tool("delete_post", { identifier: retry.data.id, expectedVersion: retried.version });
   assert.equal((await db.prepare("SELECT count(*) AS n FROM posts").first()).n, 2);
   const create = await mf.dispatchFetch(new URL(actions[0], "https://blog.example/"), {
     method: "POST",

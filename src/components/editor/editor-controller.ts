@@ -38,6 +38,7 @@ export interface EditorHandle {
   setEditable(editable: boolean): void;
   run(command: EditorCommand): boolean;
   getWorkingState?(): Record<string, unknown>;
+  replaceDocument?(content: JSONContent): boolean;
   getJSON(): JSONContent;
   getMarkdown(): string;
   destroy(): void;
@@ -66,6 +67,7 @@ export interface EditorController {
   ): Promise<EditorHandle>;
   enterView(): void;
   getWorkingState(): Record<string, unknown> | undefined;
+  replaceDocument(content: JSONContent): boolean;
   getJSON(): JSONContent | undefined;
   getMarkdown(): string | undefined;
   run(command: EditorCommand): boolean;
@@ -116,6 +118,9 @@ export function createEditorController(loadRuntime: EditorRuntimeLoader): Editor
 
     getWorkingState() {
       return handle?.getWorkingState?.();
+    },
+    replaceDocument(content) {
+      return handle?.replaceDocument?.(content) ?? false;
     },
     getJSON() {
       return handle?.getJSON();

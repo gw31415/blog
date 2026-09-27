@@ -41,11 +41,16 @@ export function renderPost(
   const content = normalizeDocument(document);
   let diagramIndex = 0;
   let mathIndex = 0;
+  let sectionIndex = 0;
   const body = renderToHTMLString({
     content,
     extensions: createEditorExtensions(),
     options: {
       nodeMapping: {
+        heading: ({ node, parent, children }) => {
+          const section = parent?.type.name === "doc" ? sectionIndex++ : null;
+          return `<h${node.attrs.level}${section == null ? "" : ` id="webmcp-section-${section}"`}>${Array.isArray(children) ? children.join("") : (children ?? "")}</h${node.attrs.level}>`;
+        },
         inlineMath: ({ node }) => mathHtml(node, false, math[mathIndex], mathIndex++),
         blockMath: ({ node }) => mathHtml(node, true, math[mathIndex], mathIndex++),
         codeBlock: ({ node }) => {
