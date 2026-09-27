@@ -1,6 +1,7 @@
 # qstyle CSS-in-JS Migration Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> 履歴資料（2026-09-17）。当時の設計・手順を保存したもので、現在の仕様や未完了タスクの一覧ではありません。現在の実装・仕様は [開発ドキュメント](../../README.md)、変更点は [履歴資料の案内](../README.md) を参照してください。
+
 
 **Goal:** Move all application-owned CSS into qstyle-authored CSS-in-JS while preserving the blog and editor's rendered appearance.
 
@@ -8,7 +9,7 @@
 
 **Tech Stack:** Qwik 2, qstyle 0.2, Vite Plus, Vitest, Playwright
 
-**Spec:** `docs/superpowers/specs/2026-09-17-qstyle-css-in-js-migration-design.md`
+**Spec:** [2026-09-17-qstyle-css-in-js-migration-design](../designs/2026-09-17-qstyle-css-in-js-migration-design.md)
 
 ## Global Constraints
 

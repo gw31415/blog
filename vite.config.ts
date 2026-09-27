@@ -1,6 +1,5 @@
 import { qwikVite } from "@qwik.dev/core/optimizer";
 import { qwikRouter } from "@qwik.dev/router/vite";
-// import UnoCSS from "@qstyle/unocss"; // 未導入: 有効化時は `@qstyle/unocss` + `unocss` を deps に追加し下のコメントアウトを外す
 import { qstyle } from "@qstyle/vite";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -56,7 +55,6 @@ export default defineConfig(async ({ command, mode }) => {
     ...(command === "serve" ? { cacheDir: `node_modules/.vite/dev-${process.pid}` } : {}),
     // qstyle は qwik optimizer より先に css prop を変換する。
     plugins: [
-      // UnoCSS(), // 未導入: qstyle() より前に置く（class ユーティリティを css prop へ翻訳するため）
       mermaidBrowserAsset(),
       qstyle(),
       qwikRouter({ trailingSlash: false, platform: proxy ? { env: proxy.env } : undefined }),
@@ -121,12 +119,10 @@ export default defineConfig(async ({ command, mode }) => {
         "worker-configuration.d.ts",
         // vite-plus test がテスト実行時に作る ESM 判定用ディレクトリ
         "dummy-non-existing-folder",
-        // Markdown から生成した初期記事の JSON / HTML
-        "src/content/initial-article.generated.ts",
         // 正本仕様は文意に無関係な表・フェンスの全面整形を避ける
-        "tiptap-document-spec-v1.md",
-        // 移植元のソースアーティファクト
-        "sample.html",
+        "docs/tiptap-document-spec-v1.md",
+        // 当時の記録は移動時に全面整形しない
+        "docs/archive/**",
       ],
     },
     test: {

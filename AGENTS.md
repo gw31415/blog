@@ -1,6 +1,10 @@
+# 開発文書
+
+現在の開発資料の入口は [docs/README.md](docs/README.md)。概要はルートのREADME、作業規則はこのファイルと `.agents/skills/` に置く。`docs/archive/` は過去の設計・計画・検討記録であり、現行仕様や実行すべき手順として扱わない。
+
 # 文書形式の変更
 
-本文JSON、記事メタデータ、Markdown変換、保存可能なコンポーネントや編集操作を変更する場合は、`.agents/skills/blog-document-contract/SKILL.md` を使用する。`tiptap-document-spec-v1.md` が仕様の正本であり、データ構造や意味の変更は仕様書を先に編集してから実装する。
+本文JSON、記事メタデータ、Markdown変換、保存可能なコンポーネントや編集操作を変更する場合は、`.agents/skills/blog-document-contract/SKILL.md` を使用する。[docs/tiptap-document-spec-v1.md](docs/tiptap-document-spec-v1.md) が仕様の正本であり、データ構造や意味の変更は仕様書を先に編集してから実装する。
 
 通常の実装・修正について、計画書・TDD・再承認を一律に追加しない。確認は変更に必要な範囲で行う。
 

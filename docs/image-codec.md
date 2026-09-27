@@ -1,13 +1,15 @@
-# Shared browser AVIF encoder
+# ブラウザー用AVIF変換器
 
-Both still images and GIF sequences use `encoder.c` and the same libavif / libaom
+アプリの画像保存・寿命管理は [アーキテクチャ](architecture.md)、入力形式・上限・編集操作は [文書仕様](tiptap-document-spec-v1.md) 第13.1節を参照してください。以下は同梱変換器のソースと再ビルド手順です。
+
+Both still images and GIF sequences use [encoder.c](../scripts/image-codec/encoder.c) and the same libavif / libaom
 WebAssembly module. Still images use `AVIF_ADD_IMAGE_FLAG_SINGLE`. The wrapper
 accepts RGBA pixels only; source EXIF, XMP and other metadata never enter it.
 GIF decoding and disposal composition happen in the worker with gifuct-js.
 
 Checked-in outputs are `public/codecs/avif-encoder.{js,wasm}`. Ordinary application
 builds need no native compiler. To rebuild, activate Emscripten 6.0.10 and run
-`scripts/build-image-codec.sh` from the repository. CMake and Git are required;
+[scripts/build-image-codec.sh](../scripts/build-image-codec.sh) from the repository root. CMake and Git are required;
 dependencies and intermediate outputs are confined to `.cache/avif-build`.
 
 Sources used for these outputs:

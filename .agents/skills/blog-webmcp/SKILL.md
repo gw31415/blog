@@ -20,7 +20,7 @@ description: このblogの記事閲覧・検索・編集・公開・画像管理
 
 通常のdevはremoteBindingsを使うため、本番データで書込みテストをしない。`BLOG_LOCAL_TEST=1` のdevと `.cache/webmcp-test` のローカルD1/R2を利用する。初期化は全データ削除ではなくマイグレーションを適用する。テストは自分で作成した記事だけを削除する。
 
-本文や編集の意味が変わる場合は [blog-document-contract](../blog-document-contract/SKILL.md) に従い `tiptap-document-spec-v1.md` を先に更新する。UIを変える場合は既存のqstyle・editor-parityスキルも適用する。未検証のブラウザや本番デプロイを成功扱いしない。
+本文や編集の意味が変わる場合は [blog-document-contract](../blog-document-contract/SKILL.md) に従い [docs/tiptap-document-spec-v1.md](../../../docs/tiptap-document-spec-v1.md) を先に更新する。UIを変える場合は既存のqstyle・editor-parityスキルも適用する。未検証のブラウザや本番デプロイを成功扱いしない。
 
 ローカル検証の起動例（別ターミナルでdevを維持）:
 

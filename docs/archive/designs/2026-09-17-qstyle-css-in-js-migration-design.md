@@ -1,5 +1,7 @@
 # qstyle CSS-in-JS Migration Design
 
+> 履歴資料（2026-09-17）。当時の設計・手順を保存したもので、現在の仕様や未完了タスクの一覧ではありません。現在の実装・仕様は [開発ドキュメント](../../README.md)、変更点は [履歴資料の案内](../README.md) を参照してください。
+
 ## Goal
 
 Move the application-owned stylesheet into qstyle-authored CSS-in-JS without changing the rendered blog or editor layout. The migration must preserve the current generated article HTML, TipTap class contract, responsive rules, pseudo-elements, and edit-mode overlays.

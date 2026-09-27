@@ -13,7 +13,6 @@ export default extendConfig(baseConfig, () => ({
   // NOTE: sharedPlugins: true は SSG の誤警告回避のため。
   // builder モードでは設定が環境ごとに再評価され plugin 実体が分岐するが、
   // Qwik アダプタの buildApp 実行フラグはクロージャ保持のため実体間で見えない。
-  // patches/ の修正と併せてこの問題を解消する。
   builder: {
     sharedPlugins: true,
   },

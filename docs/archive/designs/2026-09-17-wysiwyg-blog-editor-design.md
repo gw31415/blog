@@ -1,5 +1,7 @@
 # WYSIWYG Blog Editor Design
 
+> 履歴資料（2026-09-17）。当時の設計・手順を保存したもので、現在の仕様や未完了タスクの一覧ではありません。現在の実装・仕様は [開発ドキュメント](../../README.md)、変更点は [履歴資料の案内](../README.md) を参照してください。
+
 ## Context
 
 The top page is a statically rendered Qwik blog article with a custom Japanese print layout. Its article body is currently assembled from Qwik components, while MathJax and highlight.js output are generated ahead of time. The demo needs an in-place editor without a database or any persistence across reloads.
