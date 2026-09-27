@@ -50,10 +50,16 @@ export const usePost = routeLoader$(async (event) => {
   if (!post) throw event.error(404, "記事が見つかりません。");
   const rendered = await renderDocument(post.body, event, post.id);
   const canManage = await canManagePosts(event);
+  const presentation = renderPost(post.body, rendered.diagrams, rendered.math);
   return {
-    post: canManage ? post : { ...post, editing_state: null },
+    // Share the normalized tree with the editor input so Qwik serializes it once.
+    post: {
+      ...post,
+      body: presentation.content,
+      editing_state: canManage ? post.editing_state : null,
+    },
     canManage,
-    ...renderPost(post.body, rendered.diagrams, rendered.math),
+    ...presentation,
   };
 });
 

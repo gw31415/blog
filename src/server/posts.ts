@@ -48,12 +48,15 @@ function decodePost(row: PostRow): Post {
     row.body_format !== "tiptap-json"
   )
     throw new Error("未対応の文書形式です。元データを保持しています。");
+  // The database string is not part of Post. Keeping it here would also ship
+  // a second copy of the document in route-loader responses and SSR state.
+  const { body_json, ...metadata } = row;
   return {
-    ...row,
+    ...metadata,
     title: normalizeSingleLine(row.title),
     subtitle: row.subtitle === null ? null : normalizeSingleLine(row.subtitle),
     tags: normalizeTags(JSON.parse(row.tags)),
-    body: normalizeDocument(JSON.parse(row.body_json)),
+    body: normalizeDocument(JSON.parse(body_json)),
     editing_state: row.editing_state ? JSON.parse(row.editing_state) : null,
   };
 }

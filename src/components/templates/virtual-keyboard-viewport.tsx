@@ -96,23 +96,27 @@ export const VirtualKeyboardViewport = component$((props: { internalScroll: bool
       const top = root.querySelector<HTMLElement>('[data-virtual-keyboard-region="top"]');
       const bottom = root.querySelector<HTMLElement>('[data-virtual-keyboard-region="bottom"]');
       const scrollHeader = top?.querySelector<HTMLElement>("[data-scroll-header]");
-      const syncBarSizes = () => {
-        // Read every geometry value before invalidating styles. In particular,
-        // reading scrollY after setting the bar sizes also forces layout.
-        const scrolled = (internalScroll ? root.scrollTop : window.scrollY) > 0;
-        const headerHeight = scrollHeader?.offsetHeight ?? 0;
-        const topHeight = top?.offsetHeight ?? 0;
-        const bottomHeight = bottom?.offsetHeight ?? 0;
-        root.style.setProperty("--scroll-header-height", `${headerHeight}px`);
-        root.style.setProperty("--virtual-keyboard-top-height", `${topHeight}px`);
-        root.style.setProperty("--virtual-keyboard-bottom-height", `${bottomHeight}px`);
-        root.toggleAttribute("data-scrolled", scrolled);
-      };
-      const resizeObserver = new ResizeObserver(syncBarSizes);
-      if (top) resizeObserver.observe(top);
-      if (scrollHeader) resizeObserver.observe(scrollHeader);
-      if (bottom) resizeObserver.observe(bottom);
-      syncBarSizes();
+      // ResizeObserver already has post-layout sizes. Reading offsetHeight here
+      // would synchronously lay out the page again after other DOM updates.
+      const resizeObserver = new ResizeObserver((entries) => {
+        const sizes = entries.map((entry) => ({
+          property:
+            entry.target === scrollHeader
+              ? "--scroll-header-height"
+              : entry.target === top
+                ? "--virtual-keyboard-top-height"
+                : "--virtual-keyboard-bottom-height",
+          // Match offsetHeight's integer border-box dimensions.
+          value: `${Math.round(entry.borderBoxSize[0]?.blockSize ?? (entry.target as HTMLElement).offsetHeight)}px`,
+        }));
+        for (const { property, value } of sizes) {
+          if (root.style.getPropertyValue(property) !== value)
+            root.style.setProperty(property, value);
+        }
+      });
+      if (top) resizeObserver.observe(top, { box: "border-box" });
+      if (scrollHeader) resizeObserver.observe(scrollHeader, { box: "border-box" });
+      if (bottom) resizeObserver.observe(bottom, { box: "border-box" });
 
       const syncScroll = () => {
         root.toggleAttribute(
@@ -121,6 +125,7 @@ export const VirtualKeyboardViewport = component$((props: { internalScroll: bool
         );
       };
       const scroller = internalScroll ? root : window;
+      syncScroll();
       scroller.addEventListener("scroll", syncScroll, { passive: true });
       cleanup(() => {
         resizeObserver.disconnect();
@@ -143,6 +148,7 @@ export const VirtualKeyboardViewport = component$((props: { internalScroll: bool
 
         const animationFrame = requestAnimationFrame(() => {
           animationFrames.delete(animationFrame);
+          const keyboardOpen = height + 10 < document.documentElement.clientHeight;
           if (previousHeight !== height) {
             previousHeight = height;
             root.style.setProperty("--virtual-keyboard-svh", `${height * 0.01}px`);
@@ -157,7 +163,7 @@ export const VirtualKeyboardViewport = component$((props: { internalScroll: bool
           }
           root.style.setProperty("--visual-viewport-offset-top", `${offsetTop}px`);
 
-          if (height + 10 < document.documentElement.clientHeight) {
+          if (keyboardOpen) {
             root.setAttribute("data-virtual-keyboard-open", "");
           } else {
             root.removeAttribute("data-virtual-keyboard-open");
