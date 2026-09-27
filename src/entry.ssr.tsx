@@ -14,6 +14,9 @@ export default createRenderer((opts) => {
     jsx: <Root />,
     options: {
       ...opts,
+      // Keep speculative JS from competing with the initial stylesheet on slow
+      // connections. Qwik still preloads required imports and navigation intent.
+      preloader: { maxIdlePreloads: 2 },
       // Use container attributes to set attributes on the html tag.
       containerAttributes: {
         lang: "ja",

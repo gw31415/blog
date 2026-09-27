@@ -53,7 +53,9 @@ export default defineConfig(async ({ command, mode }) => {
       mermaidBrowserAsset(),
       qstyle(),
       qwikRouter({ trailingSlash: false, platform: proxy ? { env: proxy.env } : undefined }),
-      qwikVite(),
+      // The shared stylesheet is ~18 KiB compressed. Shipping it with the SSR
+      // document avoids an extra render-blocking round trip on mobile networks.
+      qwikVite({ optimizerOptions: { inlineStylesUpToBytes: 100_000 } }),
       ...(proxy
         ? [
             {

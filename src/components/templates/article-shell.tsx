@@ -105,6 +105,99 @@ interface ArticleShellProps {
   >;
 }
 
+// Mount editor effects only for managers, so readers do not resume editor state
+// or fetch its event-handler graph just to discover that editing is disabled.
+const ArticleEditorLifecycle = component$(
+  (props: {
+    ui: EditorUiState;
+    controller: Signal<NoSerialize<EditorController> | undefined>;
+    formattingToolbar: Signal<HTMLElement | undefined>;
+    editorMount: Signal<HTMLElement | undefined>;
+    autoEditFromQuery?: boolean;
+    enterEdit$: QRL<() => Promise<void>>;
+  }) => {
+    const { ui, controller, formattingToolbar, editorMount } = props;
+    useTask$(({ cleanup, track }) => {
+      const ready = track(() => ui.editorReady);
+      if (ready) cleanup(() => controller.value?.destroy());
+    });
+
+    // Native listeners must run in the same trusted gesture as an iOS toolbar tap;
+    // a resumable handler can refocus too late after Safari starts hiding the keyboard.
+    // eslint-disable-next-line qwik/no-use-visible-task
+    useVisibleTask$(
+      ({ cleanup, track }) => {
+        const mode = track(() => ui.mode);
+        const toolbar = formattingToolbar.value;
+        if (mode !== "edit" || !toolbar) return;
+
+        let touchStart: { identifier: number; x: number; y: number } | undefined;
+        const onTouchStart = (event: TouchEvent) => {
+          const touch = event.touches[0];
+          touchStart = touch
+            ? { identifier: touch.identifier, x: touch.clientX, y: touch.clientY }
+            : undefined;
+        };
+        const onTouchEnd = (event: TouchEvent) => {
+          const start = touchStart;
+          touchStart = undefined;
+          const touch = start
+            ? [...event.changedTouches].find(
+                (candidate) => candidate.identifier === start.identifier,
+              )
+            : undefined;
+          const target =
+            event.target instanceof Element
+              ? event.target.closest<HTMLButtonElement>("button")
+              : null;
+          if (
+            !start ||
+            !touch ||
+            !target ||
+            Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > 8
+          ) {
+            return;
+          }
+
+          event.preventDefault();
+          editorMount.value
+            ?.querySelector<HTMLElement>(".ProseMirror")
+            ?.focus({ preventScroll: true });
+          target.click();
+        };
+        const onTouchCancel = () => {
+          touchStart = undefined;
+        };
+
+        toolbar.addEventListener("touchstart", onTouchStart, { passive: true });
+        toolbar.addEventListener("touchend", onTouchEnd, { passive: false });
+        toolbar.addEventListener("touchcancel", onTouchCancel);
+        cleanup(() => {
+          toolbar.removeEventListener("touchstart", onTouchStart);
+          toolbar.removeEventListener("touchend", onTouchEnd);
+          toolbar.removeEventListener("touchcancel", onTouchCancel);
+        });
+      },
+      { strategy: "document-ready" },
+    );
+
+    // eslint-disable-next-line qwik/no-use-visible-task
+    useVisibleTask$(
+      () => {
+        // Readers cannot open the editor. Keep its large dynamic chunk off their
+        // initial network path, while preserving prompt editing for managers.
+        void loadEditorRuntime();
+        if (props.autoEditFromQuery && new URLSearchParams(window.location.search).has("edit")) {
+          void props.enterEdit$();
+        }
+      },
+      { strategy: "document-ready" },
+    );
+
+    return null;
+  },
+);
+
 const ArticleBody = component$(
   (props: { html: string; elementRef: Signal<HTMLElement | undefined> }) => {
     const html = useConstant(() => props.html);
@@ -165,68 +258,6 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
   });
   const presentation = createArticlePresentation(ui);
 
-  useTask$(({ cleanup, track }) => {
-    const ready = track(() => ui.editorReady);
-    if (ready) cleanup(() => controller.value?.destroy());
-  });
-
-  // Native listeners must run in the same trusted gesture as an iOS toolbar tap;
-  // a resumable handler can refocus too late after Safari starts hiding the keyboard.
-  // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(
-    ({ cleanup, track }) => {
-      const mode = track(() => ui.mode);
-      const toolbar = formattingToolbar.value;
-      if (mode !== "edit" || !toolbar) return;
-
-      let touchStart: { identifier: number; x: number; y: number } | undefined;
-      const onTouchStart = (event: TouchEvent) => {
-        const touch = event.touches[0];
-        touchStart = touch
-          ? { identifier: touch.identifier, x: touch.clientX, y: touch.clientY }
-          : undefined;
-      };
-      const onTouchEnd = (event: TouchEvent) => {
-        const start = touchStart;
-        touchStart = undefined;
-        const touch = start
-          ? [...event.changedTouches].find((candidate) => candidate.identifier === start.identifier)
-          : undefined;
-        const target =
-          event.target instanceof Element
-            ? event.target.closest<HTMLButtonElement>("button")
-            : null;
-        if (
-          !start ||
-          !touch ||
-          !target ||
-          Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > 8
-        ) {
-          return;
-        }
-
-        event.preventDefault();
-        editorMount.value
-          ?.querySelector<HTMLElement>(".ProseMirror")
-          ?.focus({ preventScroll: true });
-        target.click();
-      };
-      const onTouchCancel = () => {
-        touchStart = undefined;
-      };
-
-      toolbar.addEventListener("touchstart", onTouchStart, { passive: true });
-      toolbar.addEventListener("touchend", onTouchEnd, { passive: false });
-      toolbar.addEventListener("touchcancel", onTouchCancel);
-      cleanup(() => {
-        toolbar.removeEventListener("touchstart", onTouchStart);
-        toolbar.removeEventListener("touchend", onTouchEnd);
-        toolbar.removeEventListener("touchcancel", onTouchCancel);
-      });
-    },
-    { strategy: "document-ready" },
-  );
-
   const command$ = $((command: EditorCommand) => controller.value?.run(command));
   const preloadEditor$ = $(() => {
     void loadEditorRuntime();
@@ -274,19 +305,6 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
       }
     }
   });
-
-  // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(
-    () => {
-      // The editor is a large dynamic chunk. Start it as soon as an article is
-      // interactive so a mobile tap does not have to wait for the whole chunk.
-      void loadEditorRuntime();
-      if (props.autoEditFromQuery && new URLSearchParams(window.location.search).has("edit")) {
-        void enterEdit$();
-      }
-    },
-    { strategy: "document-ready" },
-  );
 
   const enterView$ = $(async () => {
     if (!canSwitchToView(ui.mode) || ui.saving) return;
@@ -347,6 +365,16 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
 
   return (
     <ArticleStyleBoundary>
+      {props.canEdit !== false && (
+        <ArticleEditorLifecycle
+          ui={ui}
+          controller={controller}
+          formattingToolbar={formattingToolbar}
+          editorMount={editorMount}
+          autoEditFromQuery={props.autoEditFromQuery}
+          enterEdit$={enterEdit$}
+        />
+      )}
       <VirtualKeyboardViewport internalScroll={ui.mode === "edit"}>
         <StickyHeader q:slot="top" class="article-sticky-header" title={ui.title || "無題"}>
           {props.canEdit !== false && (

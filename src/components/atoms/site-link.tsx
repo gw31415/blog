@@ -7,6 +7,8 @@ export const SiteLink = component$<{ current?: boolean }>((props) => (
     css={{ fontWeight: 600 }}
     class="site-link article-sticky-site article-site-title"
     href="/"
+    prefetchBundles="intent"
+    prefetchData="intent"
     aria-current={props.current ? "page" : undefined}
   >
     {BLOG_NAME}
