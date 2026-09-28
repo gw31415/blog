@@ -118,6 +118,7 @@ export default defineConfig(async ({ command, mode }) => {
         "**/node_modules/**",
         "**/dist/**",
         "**/.git/**",
+        ".cache/**",
         ".worktrees/**",
         "tests/layout/**",
       ],

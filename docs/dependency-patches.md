@@ -21,7 +21,7 @@ unpatched renderer.
 
 `@qstyle__vite@0.2.0.patch` reads Vite's exported `version` for its compatibility
 check. Vite+ publishes `@voidzero-dev/vite-plus-core` under its own version
-(`1.0.0-rc.0` in the current override), independently of its Vite 8 API version. Package metadata therefore produces
+(`1.0.0` in the current override), independently of its Vite 8 API version. Package metadata therefore produces
 a false unsupported-version warning. Qwik's package check and all diagnostics
 remain enabled. Remove the patch when qstyle checks the runtime API version.
 
