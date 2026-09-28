@@ -20,6 +20,7 @@ description: このblogの記事閲覧・検索・編集・公開・画像管理
 
 - `/llms.txt`、`/.well-known/ai-catalog.json`、`/webmcp.json` は `src/webmcp/discovery.ts` を使うSSRエンドポイント。公開ツール名・説明・スキーマはcatalog、サイト名・説明は既存メタデータから生成する。静的ファイルに複製しない。記事一覧は現在の公開ページへ誘導し、下書きや認証依存の内容を公開マニフェストへ混ぜない。
 - `/webmcp.json` は独自の説明文書であり、標準MCPサーバーカードでも実行エンドポイントでもない。WebMCPは対応ブラウザ内で登録・実行する。マニフェスト生成はブラウザ登録の代替にならない。
+- AI Catalogは `/webmcp/SKILL.md` の利用手順を `text/markdown; profile="urn:air:agent-skills"` として案内し、公開機能に対応する `representativeQueries` を2〜5件含める。独自JSONへ標準カードのメディアタイプを付けない。利用手順も `src/webmcp/discovery.ts` から生成する。
 - Qwikは `/.well-known/` をルーティング前に除外するため、Worker入口とViteのpre middlewareで `/.well-known/ai-catalog.json` を `/ai-catalog.json` のSSRへ内部転送する。両環境でHTTPテストを行い、この経路を維持する。
 - LighthouseのWebMCP「該当なし」は監査環境のAPI/CDP非対応でも発生する。登録失敗・ツール0件・対象フォームなしと区別する。公開ページに不要なフォームやダミーツールを追加して監査を通さない。
 - Chrome Origin Trialが必要な期間は、対象origin用の有効なトークンをWorkerの `WEBMCP_ORIGIN_TRIAL_TOKEN` に設定すると `plugin@access.ts` がレスポンスヘッダーへ渡す。トークンの取得・期限更新が別途必要。トークン未設定、ローカル実験フラグでの成功、本番PageSpeedでの成功を区別する。

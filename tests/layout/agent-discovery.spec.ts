@@ -11,7 +11,15 @@ test("SSR discovery serves the current public tool contract without JavaScript",
   expect(manifestResponse.headers().link).toContain('rel="ai-catalog"');
   const manifest = await manifestResponse.json();
   expect(manifest.specVersion).toBe("1.0");
-  const descriptor = await request.get(manifest.entries[0].url);
+  expect(manifest.entries[0].type).toBe('text/markdown; profile="urn:air:agent-skills"');
+  expect(manifest.entries[0].representativeQueries).toHaveLength(3);
+  const skill = await request.get(manifest.entries[0].url);
+  expect(skill.status()).toBe(200);
+  expect(skill.headers()["content-type"]).toContain(manifest.entries[0].type);
+  const skillText = await skill.text();
+  expect(skillText).toContain("---\nname: amas-blog-webmcp\n");
+  expect(skillText).toContain(new URL("/webmcp.json", baseURL).href);
+  const descriptor = await request.get("/webmcp.json");
   expect(descriptor.status()).toBe(200);
   const data = await descriptor.json();
   expect(data.page).toBe(new URL("/", baseURL).href);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { catalog } from "./catalog";
-import { aiCatalog, llmsText, publicTools, webMcpDiscovery } from "./discovery";
+import { aiCatalog, llmsText, publicTools, webMcpDiscovery, webMcpSkill } from "./discovery";
 
 describe("public AI discovery", () => {
   it("tracks the registered public contract without exposing privileged tools", () => {
@@ -16,12 +16,20 @@ describe("public AI discovery", () => {
     for (const tool of catalog.filter((entry) => entry.scope !== "public")) {
       expect(names).not.toContain(tool.name);
       expect(text).not.toContain(`- [${tool.name}]`);
+      expect(webMcpSkill("https://example.org")).not.toContain(`- ${tool.name}:`);
     }
   });
 
   it("generates links for the serving origin and capabilities from the same definitions", () => {
     const manifest = aiCatalog("https://example.org");
-    expect(manifest.entries[0].url).toBe("https://example.org/webmcp.json");
+    expect(manifest.entries[0].url).toBe("https://example.org/webmcp/SKILL.md");
+    expect(manifest.entries[0].type).toBe('text/markdown; profile="urn:air:agent-skills"');
+    expect(manifest.entries[0].representativeQueries.length).toBeGreaterThanOrEqual(2);
+    expect(manifest.entries[0].representativeQueries.length).toBeLessThanOrEqual(5);
+    expect(
+      manifest.entries[0].representativeQueries.every((query) => query.trim().length > 0),
+    ).toBe(true);
+    expect(webMcpSkill("https://example.org")).toContain("https://example.org/webmcp.json");
     expect(manifest.entries[0].capabilities).toEqual(publicTools().map((tool) => tool.name));
     expect(webMcpDiscovery("https://example.org").page).toBe("https://example.org/");
     expect(llmsText("https://example.org")).toContain(
