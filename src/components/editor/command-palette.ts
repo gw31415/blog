@@ -643,7 +643,10 @@ export function createCommandPalette(editor: Editor, postId?: string) {
                 { from: selected.pos, to: selected.pos + selected.node.nodeSize },
                 {
                   type: "codeBlock",
-                  attrs: { language: language === "mermaid" ? "mermaid" : v.language || null },
+                  attrs: {
+                    ...selected.node.attrs,
+                    language: language === "mermaid" ? "mermaid" : v.language || null,
+                  },
                   content: v.source ? [{ type: "text", text: v.source }] : [],
                 },
               )

@@ -1,6 +1,10 @@
 import { test, expect, type Locator } from "@playwright/test";
 import { deleteCreatedPost } from "./delete-created-post";
 
+test.beforeEach(async ({ context, baseURL }) => {
+  await context.addCookies([{ name: "blog_dev_manager", value: "1", url: baseURL! }]);
+});
+
 async function imageText(image: Locator) {
   return image.evaluate((element) => {
     const url = element.getAttribute("src") ?? "";
@@ -80,6 +84,10 @@ for (const width of [1280, 390])
     ).toBeLessThanOrEqual(1);
     expect(after!.width).toBeCloseTo(before!.width, 0);
     expect(after!.height).toBeCloseTo(before!.height, 0);
+    const caption = diagram.locator("figcaption");
+    const description = "ソースを変更しても残る図の説明";
+    await caption.fill(description);
+    await caption.press("Tab");
     await diagram.locator("img.mermaid-image").click();
     const dialog = page.getByRole("dialog", { name: "Mermaid", exact: true });
     await expect(dialog).toBeVisible();
@@ -88,14 +96,16 @@ for (const width of [1280, 390])
     await expect
       .poll(async () => imageText(dialog.locator(".mermaid-preview img")))
       .toContain("Live preview");
-    await dialog.getByRole("button", { name: "キャンセル", exact: true }).click();
+    await dialog.getByRole("button", { name: "キャンセル", exact: true }).press("Enter");
     await expect(diagram).toHaveAttribute("data-mermaid-source", source!);
+    await expect(caption).toHaveText(description);
     await diagram.locator("img.mermaid-image").click();
     await dialog.locator("textarea").fill("flowchart LR\nA[Applied preview] --> B[Updated]");
     await expect
       .poll(async () => imageText(dialog.locator(".mermaid-preview img")))
       .toContain("Applied preview");
-    await dialog.getByRole("button", { name: "適用", exact: true }).click();
+    await dialog.getByRole("button", { name: "適用", exact: true }).press("Enter");
+    await expect(caption).toHaveText(description);
     await expect
       .poll(async () => imageText(diagram.locator("img.mermaid-image")))
       .toContain("Applied preview");
@@ -103,8 +113,9 @@ for (const width of [1280, 390])
     // Restore the original source without writing to the fixture database.
     await diagram.locator("img.mermaid-image").click();
     await dialog.locator("textarea").fill(source!);
-    await dialog.getByRole("button", { name: "適用", exact: true }).click();
+    await dialog.getByRole("button", { name: "適用", exact: true }).press("Enter");
     await expect(diagram).toHaveAttribute("data-mermaid-source", source!);
+    await expect(caption).toHaveText(description);
   });
 
 test("a saved Mermaid is server rendered after reload", async ({ page, browser }) => {
@@ -122,20 +133,32 @@ test("a saved Mermaid is server rendered after reload", async ({ page, browser }
     await expect
       .poll(async () => imageText(dialog.locator(".mermaid-preview img")))
       .toContain("Saved on server");
-    await dialog.getByRole("button", { name: "適用", exact: true }).click();
+    await dialog.getByRole("button", { name: "適用", exact: true }).press("Enter");
+    const diagram = page.locator("article .mermaid-diagram");
+    const description = "保存後も残る図の説明";
+    await diagram.locator("figcaption").fill(description);
+    await diagram.locator("figcaption").press("Tab");
+    await diagram.locator("img.mermaid-image").click();
+    await dialog.locator("textarea").fill("sequenceDiagram\nAlice->>Bob: Updated and saved");
+    await dialog.getByRole("button", { name: "適用", exact: true }).press("Enter");
+    await expect(diagram.locator("figcaption")).toHaveText(description);
     await page.locator(".article-header-edit").click();
     await expect(page.locator("[data-article-field=title]")).not.toHaveAttribute(
       "contenteditable",
       "true",
       { timeout: 45000 },
     );
-    const context = await browser.newContext({ javaScriptEnabled: false });
+    const context = await browser.newContext({
+      javaScriptEnabled: false,
+      storageState: await page.context().storageState(),
+    });
     try {
       const reader = await context.newPage();
       await reader.goto(new URL(pathname, page.url()).href);
       await expect
         .poll(async () => imageText(reader.locator(".mermaid-diagram img.mermaid-image")))
-        .toContain("Saved on server");
+        .toContain("Updated and saved");
+      await expect(reader.locator(".mermaid-diagram figcaption")).toHaveText(description);
     } finally {
       await context.close();
     }
