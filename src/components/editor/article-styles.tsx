@@ -449,10 +449,87 @@ const articleShellStyles = css`
 
   & em {
     font-style: normal;
-    /* .ink paints glyphs through background-clip and has transparent currentColor.
-       Paint emphasis independently; the existing 1.5 line-height has room for dots. */
+    /* Native fallback until the non-layout painter is ready. */
     text-emphasis: filled dot var(--ink-color, var(--ink));
     text-emphasis-position: over right;
+  }
+
+  & ruby,
+  & ruby *,
+  & rt {
+    text-emphasis: none;
+  }
+
+  & .article-emphasis-layer {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    /* Chromium does not paint an SVG with a zero-sized viewport, even when
+       overflowing circles have valid geometry. Absolute positioning keeps
+       this nonzero viewport out of the article's line layout. */
+    height: 1px;
+    overflow: visible;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  & ruby:has(> [data-ruby-base]) > rt {
+    font-size: 0.5em;
+    color: var(--ink-color, var(--ink));
+    -webkit-text-fill-color: var(--ink-color, var(--ink));
+  }
+
+  /* Keep media branches exclusive: qstyle may emit them before base rules. */
+  @media screen and (forced-colors: none) {
+    & .article-content[data-annotations-ready] em {
+      text-emphasis: none;
+    }
+    /* Future ruby DOM: retain real ruby/rt and reserve annotation width.
+       Transform moves the reading without moving the base or the line box. */
+    & ruby:has(> [data-ruby-base]):not([data-ruby-natural]) {
+      display: inline-grid;
+      grid-template-areas: "annotation";
+      vertical-align: baseline;
+      text-align: center;
+      text-indent: 0;
+      white-space: nowrap;
+    }
+    & ruby:not([data-ruby-natural]) > [data-ruby-base] {
+      grid-area: annotation;
+      justify-self: center;
+      text-align: center;
+    }
+    & ruby:has(> [data-ruby-base]):not([data-ruby-natural]) > rt {
+      grid-area: annotation;
+      display: flex;
+      justify-content: space-evenly;
+      align-self: start;
+      justify-self: stretch;
+      block-size: 0;
+      line-height: 1;
+      text-align: center;
+      font-size: 0.4375em;
+      transform: translateY(var(--ruby-offset, -0.4em));
+    }
+    & ruby:has(> [data-ruby-base]):not([data-ruby-natural]) > rt > span {
+      flex: none;
+    }
+  }
+
+  @media print, (forced-colors: active) {
+    & .article-emphasis-layer {
+      display: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    & .article-content[data-annotations-ready] em {
+      text-emphasis-color: CanvasText;
+    }
+    & .article-content ruby:has(> [data-ruby-base]) > rt {
+      color: CanvasText;
+      -webkit-text-fill-color: CanvasText;
+    }
   }
 
   & mark {

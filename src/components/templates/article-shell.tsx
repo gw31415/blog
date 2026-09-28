@@ -1,4 +1,5 @@
 import { observeArticleImages } from "../editor/article-image";
+import { observeArticleAnnotations } from "../editor/article-annotations";
 import { ArticleEditButton } from "~/components/atoms/edit-button";
 import { StickyHeader } from "~/components/molecules/sticky-header";
 import { BlogTopbar } from "~/components/molecules/topbar";
@@ -205,7 +206,10 @@ const ArticleBody = component$(
     const html = useConstant(() => props.html);
     useVisibleTask$(
       ({ cleanup }) => {
-        if (props.elementRef.value) cleanup(observeArticleImages(props.elementRef.value));
+        if (props.elementRef.value) {
+          cleanup(observeArticleImages(props.elementRef.value));
+          cleanup(observeArticleAnnotations(props.elementRef.value));
+        }
       },
       { strategy: "document-ready" },
     );
