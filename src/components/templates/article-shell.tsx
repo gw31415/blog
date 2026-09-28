@@ -1,3 +1,4 @@
+import { observeArticleImages } from "../editor/article-image";
 import { ArticleEditButton } from "~/components/atoms/edit-button";
 import { StickyHeader } from "~/components/molecules/sticky-header";
 import { BlogTopbar } from "~/components/molecules/topbar";
@@ -202,6 +203,12 @@ const ArticleEditorLifecycle = component$(
 const ArticleBody = component$(
   (props: { html: string; elementRef: Signal<HTMLElement | undefined> }) => {
     const html = useConstant(() => props.html);
+    useVisibleTask$(
+      ({ cleanup }) => {
+        if (props.elementRef.value) cleanup(observeArticleImages(props.elementRef.value));
+      },
+      { strategy: "document-ready" },
+    );
     return (
       <RenderOnce>
         <article

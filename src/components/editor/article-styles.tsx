@@ -1131,6 +1131,37 @@ const articleShellStyles = css`
   /*
      * 写真は紙面に馴染むよう彩度を落とし、わずかに暖色へ寄せる。
      */
+  & .article-content img[data-article-image] {
+    object-fit: contain;
+    /* Leave room for surrounding text; svh stays stable as browser chrome moves. */
+    max-height: 80svh;
+    max-width: min(100%, calc(80svh * (var(--article-image-ratio, 960 / 540))));
+  }
+  & .article-content img[data-image-state="pending"] {
+    background: linear-gradient(
+      100deg,
+      rgb(110 95 75 / 7%) 20%,
+      rgb(110 95 75 / 16%) 50%,
+      rgb(110 95 75 / 7%) 80%
+    );
+    background-size: 200% 100%;
+    animation: article-image-shimmer 1.6s ease-in-out infinite;
+    color: transparent;
+  }
+  @keyframes article-image-shimmer {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: -100% 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    & .article-content img[data-article-image][data-image-state] {
+      animation: none;
+    }
+  }
+
   & .article-content p img {
     max-width: 100%;
     height: auto;

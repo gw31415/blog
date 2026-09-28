@@ -51,6 +51,28 @@ export const usePost = routeLoader$(async (event) => {
   const rendered = await renderDocument(post.body, event, post.id);
   const canManage = await canManagePosts(event);
   const presentation = renderPost(post.body, rendered.diagrams, rendered.math);
+  const { results: images } = await database(event)
+    .prepare(
+      "SELECT v.id, v.width, v.height FROM image_variants v JOIN post_images p ON p.variant_id=v.id WHERE p.post_id=?",
+    )
+    .bind(post.id)
+    .all<{ id: string; width: number; height: number }>();
+  const dimensions = new Map(images.map((image) => [image.id, image]));
+  presentation.html = presentation.html.replace(/<img\b[^>]*>/g, (tag) => {
+    const source = /\ssrc="([^"]+)"/.exec(tag)?.[1];
+    const id = source && /^(?:https?:\/\/[^/]+)?\/images\/variants\/([^/?#]+)$/.exec(source)?.[1];
+    const image = id ? dimensions.get(id) : undefined;
+    return image
+      ? tag
+          .replace('width="960"', `width="${image.width}"`)
+          .replace('height="540"', `height="${image.height}"`)
+          .replace("aspect-ratio: 960 / 540", `aspect-ratio: ${image.width} / ${image.height}`)
+          .replace(
+            "--article-image-ratio: 960 / 540",
+            `--article-image-ratio: ${image.width} / ${image.height}`,
+          )
+      : tag;
+  });
   return {
     // Share the normalized tree with the editor input so Qwik serializes it once.
     post: {

@@ -1,3 +1,4 @@
+import { articleImageAttributes } from "./article-image";
 import { Node, Extension, type MarkdownToken } from "@tiptap/core";
 import Code from "@tiptap/extension-code";
 import Link from "@tiptap/extension-link";
@@ -102,7 +103,7 @@ function directive(name: "callout" | "details" | "figure") {
       return [
         "figure",
         { "data-article-node": name },
-        figureFieldDOMSpec(["img", { src: node.attrs.src, alt: node.attrs.alt, loading: "lazy" }]),
+        figureFieldDOMSpec(["img", articleImageAttributes(node.attrs.src, node.attrs.alt)]),
         ["figcaption", {}, 0],
       ];
     },
@@ -115,11 +116,17 @@ function directive(name: "callout" | "details" | "figure") {
           dom.dataset.articleNode = "figure";
           const field = createFigureField(document);
           const image = document.createElement("img");
-          image.loading = "lazy";
+
           field.appendChild(image);
           const contentDOM = document.createElement("figcaption");
           const render = () => {
-            image.src = String(currentNode.attrs.src ?? "");
+            const src = String(currentNode.attrs.src ?? "");
+            if (image.getAttribute("src") !== src) {
+              for (const [key, value] of Object.entries(
+                articleImageAttributes(src, currentNode.attrs.alt),
+              ))
+                image.setAttribute(key, String(value));
+            }
             image.alt = String(currentNode.attrs.alt ?? "");
           };
           dom.appendChild(field);
@@ -128,6 +135,7 @@ function directive(name: "callout" | "details" | "figure") {
           return {
             dom,
             contentDOM,
+            ignoreMutation: (mutation) => mutation.target === image,
             update(updated) {
               if (updated.type !== currentNode.type) return false;
               currentNode = updated;

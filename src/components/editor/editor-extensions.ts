@@ -1,3 +1,4 @@
+import { articleImageAttributes } from "./article-image";
 import { semanticMarks, InlineFormatting } from "./inline-marks";
 import { DocumentTable } from "./document-table";
 import { documentMarkdown } from "./document-markdown";
@@ -485,8 +486,46 @@ export function createEditorExtensions(options: EditorExtensionOptions = {}): An
       a11y: { checkboxLabel: (node) => `タスク: ${node.textContent || "空のタスク"}` },
     }),
     Image.extend({
+      addNodeView() {
+        return ({ node, view }) => {
+          const dom = view.dom.ownerDocument.createElement("img");
+          let current = node;
+          const render = () => {
+            if (dom.getAttribute("src") !== current.attrs.src) {
+              for (const [name, value] of Object.entries(
+                articleImageAttributes(current.attrs.src, current.attrs.alt),
+              ))
+                dom.setAttribute(name, String(value));
+            }
+            dom.alt = current.attrs.alt ?? "";
+            if (current.attrs.title != null) dom.title = current.attrs.title;
+            else dom.removeAttribute("title");
+          };
+          render();
+          return {
+            dom,
+            ignoreMutation: () => true,
+            update(updated) {
+              if (updated.type !== current.type) return false;
+              current = updated;
+              render();
+              return true;
+            },
+          };
+        };
+      },
+      renderHTML({ node }) {
+        return [
+          "img",
+          { ...articleImageAttributes(node.attrs.src, node.attrs.alt), title: node.attrs.title },
+        ];
+      },
       addAttributes() {
-        return { src: { default: "" }, alt: { default: null }, title: { default: null } };
+        return {
+          src: { default: "" },
+          alt: { default: null },
+          title: { default: null },
+        };
       },
     }).configure({ inline: true, allowBase64: false }),
     SharedInlineMath.configure({
