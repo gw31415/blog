@@ -1,6 +1,6 @@
 ---
 name: blog-webmcp
-description: このblogの記事閲覧・検索・編集・公開・画像管理・権限・画面遷移を追加変更するとき、WebMCPツールと通常UIの操作契約を保つ。
+description: このblogの記事閲覧・検索・編集・公開・画像管理・権限・画面遷移やAI向け発見情報を追加変更するとき、WebMCPツールと通常UI、llms.txtとAI Catalogの契約を保つ。
 ---
 
 # WebMCPと通常操作を一緒に保守する
@@ -15,6 +15,16 @@ description: このblogの記事閲覧・検索・編集・公開・画像管理
 - API自体を変更するときは [最新仕様](https://webmachinelearning.github.io/webmcp/) と [Chrome公式資料](https://developer.chrome.com/docs/ai/webmcp) を確認する。2026-09-28時点の最新ドラフトはdocument.modelContext、旧実装はnavigator.modelContext。プロトコルの変更をアダプター内に閉じ込める。
 
 ## 検証
+
+### AI向け発見情報とPageSpeed
+
+- `/llms.txt`、`/.well-known/ai-catalog.json`、`/webmcp.json` は `src/webmcp/discovery.ts` を使うSSRエンドポイント。公開ツール名・説明・スキーマはcatalog、サイト名・説明は既存メタデータから生成する。静的ファイルに複製しない。記事一覧は現在の公開ページへ誘導し、下書きや認証依存の内容を公開マニフェストへ混ぜない。
+- `/webmcp.json` は独自の説明文書であり、標準MCPサーバーカードでも実行エンドポイントでもない。WebMCPは対応ブラウザ内で登録・実行する。マニフェスト生成はブラウザ登録の代替にならない。
+- Qwikは `/.well-known/` をルーティング前に除外するため、Worker入口とViteのpre middlewareで `/.well-known/ai-catalog.json` を `/ai-catalog.json` のSSRへ内部転送する。両環境でHTTPテストを行い、この経路を維持する。
+- LighthouseのWebMCP「該当なし」は監査環境のAPI/CDP非対応でも発生する。登録失敗・ツール0件・対象フォームなしと区別する。公開ページに不要なフォームやダミーツールを追加して監査を通さない。
+- Chrome Origin Trialが必要な期間は、対象origin用の有効なトークンをWorkerの `WEBMCP_ORIGIN_TRIAL_TOKEN` に設定すると `plugin@access.ts` がレスポンスヘッダーへ渡す。トークンの取得・期限更新が別途必要。トークン未設定、ローカル実験フラグでの成功、本番PageSpeedでの成功を区別する。
+- 発見情報を変更したら `src/webmcp/discovery.test.ts` と `tests/layout/agent-discovery.spec.ts` で公開範囲・スキーマ追従・HTTP到達性を確認する。AI Catalog/ARDは発展中なので監査対象の仕様と最新仕様を確認する。現在の互換形式は `specVersion: "1.0"` のAI Catalog。
+
 
 変更に応じて `src/webmcp/*.test.ts`、`src/server/webmcp.test.ts`、`tests/layout/webmcp.spec.ts` を実行する。認可・作成の再試行・削除の条件を変えたら `tests/security/access-runtime.mjs` の実際の署名付きAccessセッション検証も使う。ブラウザテストの登録アダプターと実際のブラウザエージェント経由の実行は区別して報告する。型・ビルド・`check:editor-chunk`でSSR/遅延ロードも確認する。
 

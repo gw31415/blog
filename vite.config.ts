@@ -2,6 +2,7 @@ import { qwikVite } from "@qwik.dev/core/optimizer";
 import { qwikRouter } from "@qwik.dev/router/vite";
 import { qstyle } from "@qstyle/vite";
 import { defineConfig, type ViteUserConfig } from "vite-plus";
+import { discoveryPaths } from "./src/webmcp/discovery";
 
 export default defineConfig(async ({ command, mode }) => {
   const proxy =
@@ -27,6 +28,20 @@ export default defineConfig(async ({ command, mode }) => {
     ...(command === "serve" ? { cacheDir: `node_modules/.vite/dev-${process.pid}` } : {}),
     // qstyle は qwik optimizer より先に css prop を変換する。
     plugins: [
+      {
+        name: "ai-catalog-well-known",
+        enforce: "pre",
+        configureServer(server) {
+          // Match the Worker entry rewrite before Qwik skips /.well-known.
+          server.middlewares.use((req, _res, next) => {
+            if (req.url?.split("?")[0] === discoveryPaths.catalog) {
+              req.url = req.url.replace(discoveryPaths.catalog, "/ai-catalog.json");
+              req.originalUrl = req.url;
+            }
+            next();
+          });
+        },
+      },
       qstyle(),
       qwikRouter({ trailingSlash: false, platform: proxy ? { env: proxy.env } : undefined }),
       // The shared stylesheet is ~18 KiB compressed. Shipping it with the SSR
