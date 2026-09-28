@@ -5,7 +5,7 @@
 | パス                                   | 責務                                                          |
 | -------------------------------------- | ------------------------------------------------------------- |
 | `src/routes/`                          | ページ、loader/action、HTTPエンドポイント                     |
-| `src/server/`                          | Access認可、記事保存、D1/R2、描画キャッシュ、WebMCPの永続操作 |
+| `src/server/`                          | Access認可、記事保存、D1/R2、メディア配信台帳、WebMCPの永続操作 |
 | `src/content/`                         | 文書正規化、記事メタデータ、Markdown出力、描画契約、サンプル  |
 | `src/components/foundations/`          | テーマ、文字組み、入力・メタ情報の基盤                        |
 | `src/components/atoms/` / `molecules/` | 小さな部品と、その組み合わせ                                  |

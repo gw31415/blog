@@ -39,11 +39,11 @@ node scripts/seed-document.mjs
 pnpm exec wrangler d1 execute blog-posts --local --persist-to .cache/webmcp-test --file scripts/seed-document.sql
 ```
 
-サンプルは `/blog/document-showcase` です。固定ID・別名を使うため、同じDBへの重複投入には対応しません。生成元は [src/content/sample-document.ts](../src/content/sample-document.ts)、SQL生成処理は [scripts/seed-document.mjs](../scripts/seed-document.mjs) です。
+サンプルは下書きの `/blog/document-showcase` です。管理者目線で開き、編集して保存すると数式・MermaidのSVGを管理クライアントが生成します。SQL投入だけではSVGを生成せず、生成前は欠落の診断を表示します。固定ID・別名を使うため、同じDBへの重複投入には対応しません。生成元は [src/content/sample-document.ts](../src/content/sample-document.ts)、SQL生成処理は [scripts/seed-document.mjs](../scripts/seed-document.mjs) です。
 
 `pnpm db:migrate:local` / `pnpm db:seed:local` はWrangler既定の `.wrangler/state` を使い、上記の `.cache/webmcp-test` とは別です。
 
-`pnpm db:reset:local` は旧テストDB向けの破棄スクリプトです。既定のローカルD1の記事・画像台帳等を削除しますが、R2オブジェクトは削除しません。また、削除対象に `webmcp_requests` がないため、0002以降を適用済みのDBでは再マイグレーションに失敗する構成です。通常の環境構築では実行せず、データを分離したい場合は新しい `--persist-to` 保存先にマイグレーションを適用します。
+`pnpm db:reset:local` は既定のローカルD1の記事・メディア台帳・WebMCPリクエストを破棄し、全マイグレーションと下書きサンプルの投入をやり直します。R2オブジェクトは削除しません。本番には接続しません。分離した検証用DBでは `node scripts/reset-local-db.mjs --discard-test-data --persist-to .cache/webmcp-test` を使います。既存データを保持したい場合は、新しい保存先にマイグレーションを適用してください。
 
 ## コマンド
 
