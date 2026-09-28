@@ -107,7 +107,7 @@ export const VirtualKeyboardViewport = component$((props: { internalScroll: bool
                 ? "--virtual-keyboard-top-height"
                 : "--virtual-keyboard-bottom-height",
           // Match offsetHeight's integer border-box dimensions.
-          value: `${Math.round(entry.borderBoxSize[0]?.blockSize ?? (entry.target as HTMLElement).offsetHeight)}px`,
+          value: `${Math.round(entry.borderBoxSize[0]?.blockSize ?? (entry.target instanceof HTMLElement ? entry.target.offsetHeight : entry.contentRect.height))}px`,
         }));
         for (const { property, value } of sizes) {
           if (root.style.getPropertyValue(property) !== value)

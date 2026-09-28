@@ -1,3 +1,4 @@
+import { isRecord } from "./record";
 import { DOMParser, XMLSerializer } from "@xmldom/xmldom";
 import type { RenderKind } from "./render-contract";
 export interface ArtifactLayout {
@@ -6,6 +7,28 @@ export interface ArtifactLayout {
   verticalAlignEm?: number;
   mathml?: string;
 }
+export function parseArtifactLayout(json: string): ArtifactLayout {
+  const value: unknown = JSON.parse(json);
+  if (!isRecord(value)) throw new Error("描画寸法が不正です");
+  const layout: ArtifactLayout = {};
+  for (const key of ["widthEm", "heightEm", "verticalAlignEm"] as const) {
+    const number = value[key];
+    if (number === undefined) continue;
+    if (
+      typeof number !== "number" ||
+      !Number.isFinite(number) ||
+      (key !== "verticalAlignEm" && number <= 0)
+    )
+      throw new Error("描画寸法が不正です");
+    layout[key] = number;
+  }
+  if (value.mathml !== undefined) {
+    if (typeof value.mathml !== "string") throw new Error("MathMLが不正です");
+    layout.mathml = new XMLSerializer().serializeToString(parseSafe(value.mathml, true));
+  }
+  return layout;
+}
+
 export interface SvgArtifact {
   svg: string;
   width: number;
@@ -75,6 +98,11 @@ function parseSafe(text: string, math = false) {
   }
   return root;
 }
+const em = (s: string | null) => {
+  const m = /^(-?[\d.]+)ex$/.exec(s ?? "");
+  return m ? Number(m[1]) * 0.5 : NaN;
+};
+
 export function parseSvgArtifact(
   svg: string,
   kind: RenderKind,
@@ -91,17 +119,13 @@ export function parseSvgArtifact(
     throw new Error("SVG寸法が不正です");
   const layout: ArtifactLayout = {};
   if (kind !== "mermaid") {
-    const em = (s: string | null) => {
-      const m = /^(-?[\d.]+)ex$/.exec(s ?? "");
-      return m ? Number(m[1]) * 0.5 : NaN;
-    };
     layout.widthEm = metrics?.widthEm ?? em(root.getAttribute("width"));
     layout.heightEm = metrics?.heightEm ?? em(root.getAttribute("height"));
     layout.verticalAlignEm =
       metrics?.verticalAlignEm ??
       em(/vertical-align:\s*([^;]+)/.exec(root.getAttribute("style") ?? "")?.[1] ?? "0ex");
     if (
-      ![layout.widthEm, layout.heightEm].every((n) => Number.isFinite(n) && Number(n) > 0) ||
+      ![layout.widthEm, layout.heightEm].every((n) => Number.isFinite(n) && n > 0) ||
       !Number.isFinite(layout.verticalAlignEm)
     )
       throw new Error("数式寸法が不正です");

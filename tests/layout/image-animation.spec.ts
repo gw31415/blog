@@ -1,3 +1,15 @@
+declare global {
+  interface Window {
+    ImageDecoder: new (options: { data: ArrayBuffer; type: string }) => {
+      tracks: {
+        ready: Promise<void>;
+        selectedTrack: { frameCount: number; repetitionCount: number } | null;
+      };
+      decode(options: { frameIndex: number }): Promise<{ image: VideoFrame }>;
+      close(): void;
+    };
+  }
+}
 import { test, expect } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 
@@ -111,15 +123,14 @@ test("GIF becomes animated AVIF with timing, loops, transparency and disposal pr
   await writeFile(".cache/animation-source.gif", source);
   if (browserName === "chromium") {
     const decoded = await page.evaluate(async (url) => {
-      // WebCodecs ImageDecoder is currently missing from TypeScript's DOM declarations.
-      // eslint-disable-next-line typescript/no-explicit-any, typescript/no-unsafe-type-assertion
-      const Decoder = (globalThis as any).ImageDecoder;
+      const Decoder = window.ImageDecoder;
       const decoder = new Decoder({
         data: await (await fetch(url)).arrayBuffer(),
         type: "image/avif",
       });
       await decoder.tracks.ready;
       const track = decoder.tracks.selectedTrack;
+      if (!track) throw new Error("AVIF track missing");
       const frames = [];
       for (let index = 0; index < track.frameCount; index++) {
         const { image: frame } = await decoder.decode({ frameIndex: index });
@@ -139,9 +150,7 @@ test("GIF becomes animated AVIF with timing, loops, transparency and disposal pr
     }, uploaded.url);
     expect(decoded.count).toBe(4);
     expect(decoded.repeat).toBe(2);
-    expect(decoded.frames.map((frame: { duration: number }) => frame.duration)).toEqual([
-      100000, 200000, 300000, 400000,
-    ]);
+    expect(decoded.frames.map((frame) => frame.duration)).toEqual([100000, 200000, 300000, 400000]);
     const [a, b, c, d] = decoded.frames;
     expect(a.left[0]).toBeGreaterThan(220);
     expect(a.right[3]).toBe(0);

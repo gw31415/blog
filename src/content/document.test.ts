@@ -2,7 +2,7 @@ import { describe, it, expect } from "vite-plus/test";
 import { normalizeDocument, finalizeWorkingDocument } from "./document";
 import { sampleDocument } from "./sample-document";
 import { parseArticleMarkdown, serializeArticleMarkdown } from "../components/editor/markdown";
-import { getSchema } from "@tiptap/core";
+import { getSchema, type JSONContent } from "@tiptap/core";
 import { createEditorExtensions } from "../components/editor/editor-extensions";
 describe("document contract", () => {
   it("preserves sample JSON through the editor schema and normalization", () => {
@@ -25,9 +25,13 @@ describe("document contract", () => {
   });
 });
 
-const p = (...content: any[]) => ({ type: "paragraph", content });
-const t = (text: string, marks?: any[]) => ({ type: "text", text, ...(marks ? { marks } : {}) });
-const round = (content: any[]) => {
+const p = (...content: JSONContent[]) => ({ type: "paragraph", content });
+const t = (text: string, marks?: JSONContent["marks"]) => ({
+  type: "text",
+  text,
+  ...(marks ? { marks } : {}),
+});
+const round = (content: JSONContent[]) => {
   const doc = normalizeDocument({ type: "doc", content });
   const encoded = serializeArticleMarkdown(doc);
   expect(normalizeDocument(parseArticleMarkdown(encoded))).toEqual(doc);
@@ -176,3 +180,15 @@ it("separates temporary empty paragraphs without mutating the recovery snapshot"
   expect(finalizeWorkingDocument(working).content).toHaveLength(1);
   expect(working.content).toHaveLength(3);
 });
+
+it.each([null, [], 1, "bold", { type: "bold", attrs: "invalid" }])(
+  "rejects malformed marks %j",
+  (mark) => {
+    expect(() =>
+      normalizeDocument({
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "hello", marks: [mark] }] }],
+      }),
+    ).toThrow("マーク");
+  },
+);

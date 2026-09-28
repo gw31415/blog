@@ -1,13 +1,13 @@
 import type { JSONContent } from "@tiptap/core";
-import type { RequestEventLoader } from "@qwik.dev/router";
+import type { MediaStore } from "./media";
 import { renderEntries, type RenderResult } from "../content/render-contract";
 import { mediaOccurrences, FOLD_POLICY } from "../content/media-fold";
-import { mediaImageHTML, type ArtifactLayout } from "../content/media-artifact";
+import { mediaImageHTML, parseArtifactLayout } from "../content/media-artifact";
 import { readMedia, mediaHash } from "./media";
 import { MERMAID_ERROR } from "../components/editor/mermaid-contract";
 export async function renderDocument(
   document: JSONContent,
-  event: RequestEventLoader,
+  event: { platform: { env: { DB: D1Database; IMAGES: Pick<MediaStore, "get"> } } },
   postId?: string,
 ) {
   const entries = await renderEntries(document);
@@ -77,7 +77,7 @@ export async function renderDocument(
           src,
           row.width,
           row.height,
-          JSON.parse(row.layout_json) as ArtifactLayout,
+          parseArtifactLayout(row.layout_json),
           row.id,
           embed,
         );

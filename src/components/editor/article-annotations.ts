@@ -36,7 +36,10 @@ export function observeArticleAnnotations(root: HTMLElement) {
         const transform = getComputedStyle(rt).transform;
         const appliedOffset = transform === "none" ? 0 : new DOMMatrixReadOnly(transform).m42;
         const offset = appliedOffset + targetCenter - (reading.top + reading.height / 2);
-        if (reading.width && (!Number.isFinite(currentOffset) || Math.abs(offset - currentOffset) > 0.02))
+        if (
+          reading.width &&
+          (!Number.isFinite(currentOffset) || Math.abs(offset - currentOffset) > 0.02)
+        )
           rubyPositions.push({ rt, offset });
       }
       // Honor expanded user text spacing instead of forcing our compact layout.

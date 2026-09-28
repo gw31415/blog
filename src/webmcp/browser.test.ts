@@ -1,5 +1,11 @@
-import { expect, it } from "vite-plus/test";
-import { registerTools, type ModelContext, type RegisteredTool } from "./browser";
+import { afterEach, expect, it, vi } from "vite-plus/test";
+import {
+  registerTools,
+  remote,
+  responseText,
+  type ModelContext,
+  type RegisteredTool,
+} from "./browser";
 import { catalog } from "./catalog";
 it("unregisters both signal-based and legacy tools and rejects stale callbacks", async () => {
   for (const legacy of [true, false]) {
@@ -57,4 +63,38 @@ it("rejects concurrent operations and propagates lifecycle cancellation", async 
   expect(signal?.aborted).toBe(true);
   release?.();
   await pending;
+});
+
+afterEach(() => vi.unstubAllGlobals());
+it.each([null, [], { ok: "true", data: {} }, { ok: true, data: [] }, { ok: true }])(
+  "rejects malformed remote responses %j",
+  async (value) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json(value)),
+    );
+    await expect(remote("get_post", { identifier: "post" })).rejects.toThrow("応答");
+  },
+);
+it("validates remote data and preserves server error codes", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => Response.json({ ok: true, data: { url: "/blog/post" } })),
+  );
+  const data = await remote("get_post", { identifier: "post" });
+  expect(responseText(data, "url")).toBe("/blog/post");
+  expect(() => responseText(data, "version")).toThrow("version");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json(
+        { ok: false, error: { code: "CONFLICT", message: "changed" } },
+        { status: 409 },
+      ),
+    ),
+  );
+  await expect(remote("save_post", {})).rejects.toMatchObject({
+    code: "CONFLICT",
+    message: "changed",
+  });
 });

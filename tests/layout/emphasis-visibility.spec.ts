@@ -110,10 +110,13 @@ test("annotation geometry, ruby priority, and user text spacing", async ({ page 
   await expect.poll(() => layer.locator("circle").count()).toBe(expectedDots);
   // Geometry alone is insufficient: Chromium can report circles for an SVG
   // with a zero-height viewport without painting any of them.
-  const dotBox = await layer.locator("circle").first().evaluate((circle) => {
-    const { x, y, width, height } = circle.getBoundingClientRect();
-    return { x, y, width, height };
-  });
+  const dotBox = await layer
+    .locator("circle")
+    .first()
+    .evaluate((circle) => {
+      const { x, y, width, height } = circle.getBoundingClientRect();
+      return { x, y, width, height };
+    });
   const clip = {
     x: Math.floor(dotBox.x) - 2,
     y: Math.floor(dotBox.y) - 2,
@@ -121,7 +124,9 @@ test("annotation geometry, ruby priority, and user text spacing", async ({ page 
     height: Math.ceil(dotBox.height) + 4,
   };
   const paintedDot = await page.screenshot({ clip, animations: "disabled" });
-  const hideDots = await page.addStyleTag({ content: ".article-emphasis-layer {visibility:hidden!important}" });
+  const hideDots = await page.addStyleTag({
+    content: ".article-emphasis-layer {visibility:hidden!important}",
+  });
   const hiddenDot = await page.screenshot({ clip, animations: "disabled" });
   await hideDots.evaluate((style) => style.parentNode?.removeChild(style));
   expect(paintedDot.equals(hiddenDot)).toBe(false);
@@ -132,46 +137,57 @@ test("annotation geometry, ruby priority, and user text spacing", async ({ page 
       await article.evaluate((root, fontSize) => {
         root.style.fontSize = fontSize + "px";
       }, size);
-      await expect.poll(() => article.evaluate((root) => {
-        const ruby = root.querySelector("ruby")!;
-        const rt = ruby.querySelector("rt")!;
-        const range = root.ownerDocument.createRange();
-        range.selectNodeContents(ruby.querySelector("[data-ruby-base]")!);
-        const baseRect = range.getBoundingClientRect();
-        const style = getComputedStyle(ruby.querySelector("[data-ruby-base]")!);
-        const fontSize = parseFloat(style.fontSize);
-        const emTop = baseRect.top + (baseRect.height - fontSize) / 2;
-        const gap = parseFloat(style.lineHeight) - fontSize;
-        range.selectNodeContents(rt);
-        const reading = range.getBoundingClientRect();
-        const center = reading.top + reading.height / 2;
-        return Math.abs((center - (emTop - gap)) / gap - 0.6);
-      })).toBeLessThan(0.01);
+      await expect
+        .poll(() =>
+          article.evaluate((root) => {
+            const ruby = root.querySelector("ruby")!;
+            const rt = ruby.querySelector("rt")!;
+            const range = root.ownerDocument.createRange();
+            range.selectNodeContents(ruby.querySelector("[data-ruby-base]")!);
+            const baseRect = range.getBoundingClientRect();
+            const style = getComputedStyle(ruby.querySelector("[data-ruby-base]")!);
+            const fontSize = parseFloat(style.fontSize);
+            const emTop = baseRect.top + (baseRect.height - fontSize) / 2;
+            const gap = parseFloat(style.lineHeight) - fontSize;
+            range.selectNodeContents(rt);
+            const reading = range.getBoundingClientRect();
+            const center = reading.top + reading.height / 2;
+            return Math.abs((center - (emTop - gap)) / gap - 0.6);
+          }),
+        )
+        .toBeLessThan(0.01);
       await expect(article.locator("rt").first()).toHaveCSS("font-size", `${size * 0.4375}px`);
       await expect
-        .poll(() => article.evaluate((root) => {
-          const rt = root.querySelectorAll("rt")[1];
-          const box = rt.getBoundingClientRect();
-          const letters = [...rt.children].map((letter) => letter.getBoundingClientRect());
-          const gaps = [letters[0].left - box.left, box.right - letters.at(-1)!.right,
-            ...letters.slice(1).map((letter, i) => letter.left - letters[i].right)];
-          return Math.max(...gaps) - Math.min(...gaps);
-        }))
+        .poll(() =>
+          article.evaluate((root) => {
+            const rt = root.querySelectorAll("rt")[1];
+            const box = rt.getBoundingClientRect();
+            const letters = [...rt.children].map((letter) => letter.getBoundingClientRect());
+            const gaps = [
+              letters[0].left - box.left,
+              box.right - letters.at(-1)!.right,
+              ...letters.slice(1).map((letter, i) => letter.left - letters[i].right),
+            ];
+            return Math.max(...gaps) - Math.min(...gaps);
+          }),
+        )
         .toBeLessThan(0.1);
       await expect
         .poll(() =>
-          article.evaluate((root) =>
-            Math.max(...[...root.querySelectorAll("ruby")].map((ruby) => {
-              const textRect = (element: Element) => {
-                const range = root.ownerDocument.createRange();
-                range.selectNodeContents(element);
-                return range.getBoundingClientRect();
-              };
-              const base = textRect(ruby.querySelector("[data-ruby-base]")!);
-              const reading = textRect(ruby.querySelector("rt")!);
-              return Math.abs(base.x + base.width / 2 - reading.x - reading.width / 2);
-            })),
-          ),
+          article.evaluate((root) => {
+            const textRect = (element: Element) => {
+              const range = root.ownerDocument.createRange();
+              range.selectNodeContents(element);
+              return range.getBoundingClientRect();
+            };
+            return Math.max(
+              ...[...root.querySelectorAll("ruby")].map((ruby) => {
+                const base = textRect(ruby.querySelector("[data-ruby-base]")!);
+                const reading = textRect(ruby.querySelector("rt")!);
+                return Math.abs(base.x + base.width / 2 - reading.x - reading.width / 2);
+              }),
+            );
+          }),
         )
         .toBeLessThan(0.1);
       await expect

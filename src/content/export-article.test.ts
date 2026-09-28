@@ -11,7 +11,7 @@ const article = (...content: JSONContent[]) => ({
   title: "Title",
   subtitle: null,
   tags: [],
-  body: { type: "doc", content } as JSONContent,
+  body: { type: "doc", content } satisfies JSONContent,
 });
 const exportTo = (target: ExportTarget, ...content: JSONContent[]) =>
   exportArticle(article(...content), target, "https://example.com");

@@ -4,12 +4,12 @@
 
 ## 台帳と寿命
 
-| 表 | 役割 |
-| --- | --- |
-| image_originals | R2原本の永久台帳。未参照でも削除しない |
-| media_variants | AVIF/SVGの世代別key、描画契約、寸法、数式layout、状態 |
-| post_media_refs | 本文版・出現パス・生成物・上部判定・診断 |
-| media_upload_leases | 保存前の一時保護。1時間で失効 |
+| 表                    | 役割                                                   |
+| --------------------- | ------------------------------------------------------ |
+| image_originals       | R2原本の永久台帳。未参照でも削除しない                 |
+| media_variants        | AVIF/SVGの世代別key、描画契約、寸法、数式layout、状態  |
+| post_media_refs       | 本文版・出現パス・生成物・上部判定・診断               |
+| media_upload_leases   | 保存前の一時保護。1時間で失効                          |
 | image_article_history | 原本と記事の関連履歴。記事単位UPSERT、記事削除後も保持 |
 
 参照中の生成物にTTLはない。参照も有効leaseもなくなって24時間後にGC対象となる。毎時17分のscheduled handlerと画像管理の整理操作が同じGCを使う。DBでdeletingをclaimして新参照を拒否し、R2削除後に台帳を削除する。失敗は次回再試行する。原本prefixは回収しない。24時間を超えて放置した古いタブの未取得画像は再読み込みが必要になる場合がある。

@@ -7,7 +7,6 @@ async function geometry(page: Page) {
     const description = document.querySelector("[data-article-field=description]")!;
     const range = document.createRange();
     range.selectNodeContents(description);
-    const rect = (r: DOMRect) => [r.x, r.y, r.width, r.height];
     return {
       scroll: root.hasAttribute("data-internal-scroll") ? root.scrollTop : window.scrollY,
       boxes: [
@@ -18,8 +17,11 @@ async function geometry(page: Page) {
         "header .meta",
         "article",
         "article .ProseMirror > :first-child",
-      ].map((selector) => rect(document.querySelector(selector)!.getBoundingClientRect())),
-      lines: [...range.getClientRects()].map(rect),
+      ].map((selector) => {
+        const { x, y, width, height } = document.querySelector(selector)!.getBoundingClientRect();
+        return [x, y, width, height];
+      }),
+      lines: [...range.getClientRects()].map(({ x, y, width, height }) => [x, y, width, height]),
     };
   });
 }

@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-unsafe-type-assertion */
 import { describe, expect, it } from "vite-plus/test";
 
 import type { EditorHandle, EditorRuntimeModule } from "./editor-controller";
@@ -26,16 +25,16 @@ describe("editor controller", () => {
   it("keeps one editor handle across edit and view toggles", async () => {
     const editableStates: boolean[] = [];
     let loadCount = 0;
-    const runtime: EditorRuntimeModule = {
+    const runtime: EditorRuntimeModule<{ innerHTML: string }> = {
       mountArticleEditor() {
         return fakeHandle(editableStates);
       },
     };
-    const controller = createEditorController(async () => {
+    const controller = createEditorController<{ innerHTML: string }>(async () => {
       loadCount += 1;
       return runtime;
     });
-    const element = { innerHTML: "<p>静的本文</p>" } as HTMLElement;
+    const element = { innerHTML: "<p>静的本文</p>" };
 
     await controller.enterEdit(element);
     controller.enterView();
@@ -46,10 +45,10 @@ describe("editor controller", () => {
   });
 
   it("leaves static content intact when runtime loading fails", async () => {
-    const controller = createEditorController(async () => {
+    const controller = createEditorController<{ innerHTML: string }>(async () => {
       throw new Error("offline");
     });
-    const element = { innerHTML: "<p>静的本文</p>" } as HTMLElement;
+    const element = { innerHTML: "<p>静的本文</p>" };
 
     await expect(controller.enterEdit(element)).rejects.toThrow("offline");
 
@@ -64,11 +63,11 @@ describe("editor controller", () => {
       commands.push(command);
       return true;
     };
-    const controller = createEditorController(async () => ({
+    const controller = createEditorController<{ innerHTML: string }>(async () => ({
       mountArticleEditor: () => handle,
     }));
 
-    await controller.enterEdit({ innerHTML: "" } as HTMLElement);
+    await controller.enterEdit({ innerHTML: "" });
     controller.run({ type: "updateMath", kind: "block", position: 12, latex: "x^2" });
 
     expect(commands).toEqual([{ type: "updateMath", kind: "block", position: 12, latex: "x^2" }]);
@@ -81,9 +80,11 @@ describe("editor controller", () => {
       commands.push(command);
       return true;
     };
-    const controller = createEditorController(async () => ({ mountArticleEditor: () => handle }));
+    const controller = createEditorController<{ innerHTML: string }>(async () => ({
+      mountArticleEditor: () => handle,
+    }));
 
-    await controller.enterEdit({ innerHTML: "" } as HTMLElement);
+    await controller.enterEdit({ innerHTML: "" });
     controller.run({ type: "setCodeLanguage", position: 8, language: "typescript" });
 
     expect(commands).toEqual([{ type: "setCodeLanguage", position: 8, language: "typescript" }]);

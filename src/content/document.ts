@@ -1,3 +1,4 @@
+import { isRecord } from "./record";
 import type { JSONContent } from "@tiptap/core";
 
 export const FORMAT_VERSION = 1;
@@ -83,14 +84,14 @@ export function normalizeDocument(
       fail(path, "NUL・不正なUnicode・CRは保存できません");
   }
   function visit(value: unknown, path: string, parent?: string): JSONContent {
-    if (!value || typeof value !== "object" || Array.isArray(value))
-      fail(path, "ノードオブジェクトが必要です");
-    const n = value as JSONContent;
+    if (!isRecord(value)) fail(path, "ノードオブジェクトが必要です");
+    const n = value;
     for (const key of Object.keys(n))
       if (!["type", "attrs", "content", "marks", "text"].includes(key))
         fail(path, `未知のフィールド ${key}`);
     const type = n.type;
     if (
+      typeof type !== "string" ||
       !type ||
       ![
         "doc",
@@ -103,7 +104,7 @@ export function normalizeDocument(
         "tableHeader",
       ].includes(type)
     )
-      fail(path, `未知のノード ${type}`);
+      fail(path, `未知のノード ${String(type)}`);
     if (type === "doc" && parent) fail(path, "docは根のみです");
     if (type === "text") {
       if (typeof n.text !== "string" || !n.text) fail(path, "空でない文字列が必要です");
@@ -201,10 +202,13 @@ export function normalizeDocument(
       fail(path, "セル結合・幅・不正な配置は保存できません");
     const result: JSONContent = { type };
     if (Object.keys(attrs).length) result.attrs = attrs;
-    if (type === "text") result.text = n.text;
+    if (typeof n.text === "string") result.text = n.text;
     if (n.marks !== undefined && !Array.isArray(n.marks)) fail(path, "marksは配列です");
     const marks: NonNullable<JSONContent["marks"]> = [];
-    for (const mark of n.marks ?? []) {
+    const inputMarks: unknown[] = n.marks ?? [];
+    for (const mark of inputMarks) {
+      if (!isRecord(mark) || typeof mark.type !== "string") fail(path, "マークが不正です");
+      if (mark.attrs !== undefined && !isRecord(mark.attrs)) fail(path, "マーク属性が不正です");
       if (
         !markOrder.includes(mark.type) ||
         !["text", "image", "hardBreak", "softBreak"].includes(type)
@@ -235,7 +239,10 @@ export function normalizeDocument(
     if (marks.some((m) => m.type === "subscript") && marks.some((m) => m.type === "superscript"))
       fail(path, "下付きと上付きは同時に指定できません");
     marks.sort((a, b) => markOrder.indexOf(a.type) - markOrder.indexOf(b.type));
-    if (marks.some((m) => m.type === "code") && (type !== "text" || /[\n]/.test(n.text ?? "")))
+    if (
+      marks.some((m) => m.type === "code") &&
+      (type !== "text" || /[\n]/.test(typeof n.text === "string" ? n.text : ""))
+    )
       fail(path, "インラインコードの書式・改行が不正です");
     if (marks.length) result.marks = marks;
     if (n.content !== undefined && !Array.isArray(n.content)) fail(path, "contentは配列です");

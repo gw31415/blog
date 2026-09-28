@@ -7,7 +7,7 @@ for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 720 });
     await page.addInitScript(() => {
       let transitions = 0;
-      const start = document.startViewTransition;
+      const start = document.startViewTransition?.bind(document);
       if (start) {
         Object.defineProperty(document, "startViewTransition", {
           value: (...args: unknown[]) => {
@@ -51,7 +51,7 @@ for (const width of [1280, 390]) {
     const articleScroll = await page.evaluate(() => window.scrollY);
     expect(articleScroll).toBeGreaterThan(100);
     await expect
-      .poll(() => page.evaluate(() => history.state?._qRouterScroll?.y))
+      .poll(() => page.evaluate(() => history.state?.["_qRouterScroll"]?.y))
       .toBe(articleScroll);
     await page.goBack();
     await expect(page.locator("main.archive")).toBeVisible();

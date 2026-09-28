@@ -37,10 +37,23 @@ export interface HighlightSpan {
   text: string;
 }
 
-function flatten(nodes: any[], inheritedClasses: string[] = []): HighlightSpan[] {
+function flatten(
+  nodes: ReturnType<typeof lowlight.highlight>["children"],
+  inheritedClasses: string[] = [],
+): HighlightSpan[] {
   return nodes.flatMap((node) => {
-    const classes = [...inheritedClasses, ...(node.properties?.className ?? [])];
-    return node.children ? flatten(node.children, classes) : [{ classes, text: node.value }];
+    if (node.type === "text") return [{ classes: inheritedClasses, text: node.value }];
+    if (node.type !== "element") return [];
+    const className = node.properties.className;
+    const classes = [
+      ...inheritedClasses,
+      ...(Array.isArray(className)
+        ? className.map(String)
+        : typeof className === "string"
+          ? [className]
+          : []),
+    ];
+    return flatten(node.children, classes);
   });
 }
 

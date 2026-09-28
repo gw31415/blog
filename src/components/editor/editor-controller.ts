@@ -44,9 +44,11 @@ export interface EditorHandle {
   destroy(): void;
 }
 
-export interface MountArticleEditorOptions {
+export interface MountArticleEditorOptions<
+  Element extends Pick<HTMLElement, "innerHTML"> = HTMLElement,
+> {
   postId?: string;
-  element: HTMLElement;
+  element: Element;
   content: JSONContent;
   workingState?: Record<string, unknown> | null;
   onUpdate(content: JSONContent): void;
@@ -54,16 +56,19 @@ export interface MountArticleEditorOptions {
   onMathEdit(request: MathEditRequest): void;
 }
 
-export interface EditorRuntimeModule {
-  mountArticleEditor(options: MountArticleEditorOptions): EditorHandle | Promise<EditorHandle>;
+export interface EditorRuntimeModule<Element extends Pick<HTMLElement, "innerHTML"> = HTMLElement> {
+  mountArticleEditor(
+    options: MountArticleEditorOptions<Element>,
+  ): EditorHandle | Promise<EditorHandle>;
 }
 
-export type EditorRuntimeLoader = () => Promise<EditorRuntimeModule>;
+export type EditorRuntimeLoader<Element extends Pick<HTMLElement, "innerHTML"> = HTMLElement> =
+  () => Promise<EditorRuntimeModule<Element>>;
 
-export interface EditorController {
+export interface EditorController<Element extends Pick<HTMLElement, "innerHTML"> = HTMLElement> {
   enterEdit(
-    element: HTMLElement,
-    options?: Omit<MountArticleEditorOptions, "element">,
+    element: Element,
+    options?: Omit<MountArticleEditorOptions<Element>, "element">,
   ): Promise<EditorHandle>;
   enterView(): void;
   getWorkingState(): Record<string, unknown> | undefined;
@@ -82,7 +87,9 @@ const EMPTY_DOCUMENT: JSONContent = {
 
 const NOOP = () => {};
 
-export function createEditorController(loadRuntime: EditorRuntimeLoader): EditorController {
+export function createEditorController<
+  Element extends Pick<HTMLElement, "innerHTML"> = HTMLElement,
+>(loadRuntime: EditorRuntimeLoader<Element>): EditorController<Element> {
   let handle: EditorHandle | undefined;
 
   return {

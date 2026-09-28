@@ -37,7 +37,7 @@ const mf = new Miniflare(
 );
 try {
   const db = await mf.getD1Database("DB");
-  for (const file of (await readdir("migrations")).filter((f) => f.endsWith(".sql")).sort()) {
+  for (const file of (await readdir("migrations")).filter((f) => f.endsWith(".sql")).toSorted()) {
     const sql = (await readFile(`migrations/${file}`, "utf8"))
       .replace(/^--.*$/gm, "")
       .replace(/\n/g, " ");

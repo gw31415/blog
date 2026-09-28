@@ -15,7 +15,7 @@
     "deploy": "pnpm run build && pnpm run deploy:built",
     "dev": "vp dev -c adapters/cloudflare-workers/vite.config.ts --mode ssr --host 0.0.0.0",
     "fmt": "vp fmt",
-    "lint": "vp lint",
+    "lint": "vp lint --max-warnings=0",
     "preview": "pnpm run build && wrangler dev",
     "test": "vp test run",
     "db:seed:local": "node scripts/seed-document.mjs && wrangler d1 execute blog-posts --local --file scripts/seed-document.sql",

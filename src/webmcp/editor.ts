@@ -3,7 +3,7 @@ import type { EditorController } from "../components/editor/editor-controller";
 import { normalizeDocument } from "../content/document";
 import { formatShortDate, normalizeSingleLine } from "../content/article";
 import { catalog, ToolError, inputText, type Input } from "./catalog";
-import { confirmAction, registerTools, remote, setEditorBridge } from "./browser";
+import { confirmAction, registerTools, remote, responseText, setEditorBridge } from "./browser";
 export interface EditorState {
   mode: "view" | "loading" | "edit";
   saving: boolean;
@@ -182,14 +182,14 @@ export function registerEditorTools(binding: EditorBinding) {
               "INVALID_INPUT",
               "部分置換にはstartBlock/deleteCount/blocksが必要です",
             );
-          const content = [...(data.body.content ?? [])],
+          const content: unknown[] = [...(data.body.content ?? [])],
             start = Number(input.startBlock),
             count = Number(input.deleteCount);
           if (start > content.length || start + count > content.length)
             throw new ToolError("INVALID_INPUT", "ブロック範囲が不正です");
-          // The catalog validates objects; normalizeDocument below validates every node.
-          // eslint-disable-next-line typescript/no-unsafe-type-assertion
-          content.splice(start, count, ...(input.blocks as JSONContent[]));
+          if (!Array.isArray(input.blocks))
+            throw new ToolError("INVALID_INPUT", "blocksは配列です");
+          content.splice(start, count, ...input.blocks);
           data.body = normalizeDocument({ type: "doc", content });
         }
         await validate(data, false);
@@ -223,7 +223,7 @@ export function registerEditorTools(binding: EditorBinding) {
           ui.mode !== "edit" ||
           !binding.controller()?.run({
             type: "image",
-            src: image.url,
+            src: responseText(image, "url"),
             alt: inputText(input, "alt"),
             caption: inputText(input, "caption"),
           })

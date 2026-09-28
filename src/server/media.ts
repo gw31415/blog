@@ -7,7 +7,7 @@ import {
   mediaOccurrences,
   type MediaSize,
 } from "../content/media-fold";
-import { parseSvgArtifact, type ArtifactLayout } from "../content/media-artifact";
+import { parseSvgArtifact, parseArtifactLayout } from "../content/media-artifact";
 export interface MediaStore {
   put(
     key: string,
@@ -171,7 +171,7 @@ export async function mediaReferenceStatements(
       sizes.set(o.path, {
         width: v.width,
         height: v.height,
-        heightEm: (JSON.parse(v.layout_json) as ArtifactLayout).heightEm,
+        heightEm: parseArtifactLayout(v.layout_json).heightEm,
       });
   });
   const classified = classifyMedia(normalized, sizes);

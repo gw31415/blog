@@ -204,6 +204,8 @@ const ArticleEditorLifecycle = component$(
 const ArticleBody = component$(
   (props: { html: string; elementRef: Signal<HTMLElement | undefined> }) => {
     const html = useConstant(() => props.html);
+    // Browser-owned article DOM needs observers installed once after resume, with cleanup.
+    // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(
       ({ cleanup }) => {
         if (props.elementRef.value) {

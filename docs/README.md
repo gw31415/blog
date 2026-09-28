@@ -10,7 +10,7 @@
 | 記事形式、許可ノード、Markdown変換、編集操作        | [Tiptap文書仕様](tiptap-document-spec-v1.md) |
 | AVIF変換器の再ビルドと配布元                        | [画像変換器](image-codec.md)                 |
 | ライブラリ更新時に維持・解除するパッチ              | [依存パッチ](dependency-patches.md)          |
-| AVIF・SVGの保存・寿命・上部判定・移行 | [メディア配信](media-delivery.md) |
+| AVIF・SVGの保存・寿命・上部判定・移行               | [メディア配信](media-delivery.md)            |
 | 過去の設計・手順・見た目の検討記録                  | [履歴資料](archive/README.md)                |
 
 ## 文書の保守

@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll, beforeEach, vi } from "vite-plus/test";
 import { generateKeyPair, SignJWT, createLocalJWKSet, exportJWK } from "jose";
-import { verifyAccess, requireManager, canManagePosts } from "./access";
+import { verifyAccess, requireManager, canManagePosts, accessIdentity } from "./access";
 import { isDevServer } from "~/dev/manager";
 vi.mock("~/dev/manager", () => ({
   DEV_MANAGER_COOKIE: "blog_dev_manager",
@@ -33,6 +33,13 @@ async function token(overrides: Record<string, unknown> = {}) {
     .setProtectedHeader({ alg: "RS256", kid: "test" })
     .sign(privateKey);
 }
+const cookieRequest = (cookie: string, assertion?: string) =>
+  new Request("https://blog.example/", {
+    headers: {
+      Cookie: cookie,
+      ...(assertion === undefined ? {} : { "Cf-Access-Jwt-Assertion": assertion }),
+    },
+  });
 const config = { ACCESS_TEAM_DOMAIN: issuer, ACCESS_AUD: audience };
 const request = (jwt: string) =>
   new Request("https://blog.example/", { headers: { "Cf-Access-Jwt-Assertion": jwt } });
@@ -70,13 +77,6 @@ describe("Access identity", () => {
   });
   it("verifies the application cookie on public routes", async () => {
     const jwt = await token();
-    const cookieRequest = (cookie: string, assertion?: string) =>
-      new Request("https://blog.example/", {
-        headers: {
-          Cookie: cookie,
-          ...(assertion === undefined ? {} : { "Cf-Access-Jwt-Assertion": assertion }),
-        },
-      });
     expect(
       await verifyAccess(cookieRequest(`other=1; CF_Authorization=${jwt}; last=2`), config, keys),
     ).toEqual({ subject: "person" });
@@ -95,19 +95,19 @@ describe("Access identity", () => {
     ).toBeNull();
   });
   it("rejects cross-origin mutations even after authentication", async () => {
+    vi.mocked(isDevServer).mockReturnValue(true);
     const event = {
+      env: { get: () => undefined },
+      cookie: { get: () => ({ value: "1" }) },
       request: new Request("https://blog.example/", {
         method: "POST",
         headers: { Origin: "https://evil.example" },
       }),
       url: new URL("https://blog.example/"),
-      sharedMap: new Map([["access.identity", Promise.resolve({ subject: "person" })]]),
+      sharedMap: new Map(),
       error: (_status: number, message: string) => new Error(message),
     };
-    // eslint-disable-next-line typescript/no-unsafe-type-assertion
-    await expect(
-      requireManager(event as unknown as Parameters<typeof requireManager>[0]),
-    ).rejects.toThrow("送信元");
+    await expect(requireManager(event)).rejects.toThrow("送信元");
   });
 });
 
@@ -118,17 +118,34 @@ it("does not grant production management from the development cookie", async () 
     env: { get: () => undefined },
     cookie: { get: () => ({ value: "1" }) },
   };
-  expect(await canManagePosts(event as unknown as Parameters<typeof canManagePosts>[0])).toBe(
-    false,
-  );
+  expect(await canManagePosts(event)).toBe(false);
 });
 
 it("uses the development cookie for both granting and removing management", async () => {
   vi.mocked(isDevServer).mockReturnValue(true);
   for (const value of [undefined, "0", "1"]) {
-    const event = { cookie: { get: () => (value === undefined ? undefined : { value }) } };
-    expect(await canManagePosts(event as unknown as Parameters<typeof canManagePosts>[0])).toBe(
-      value === "1",
-    );
+    const event = {
+      request: new Request("https://blog.example/"),
+      sharedMap: new Map(),
+      env: { get: () => undefined },
+      cookie: { get: () => (value === undefined ? undefined : { value }) },
+    };
+    expect(await canManagePosts(event)).toBe(value === "1");
   }
+});
+
+it("shares identity only within the same request context", async () => {
+  const event = {
+    request: new Request("https://blog.example/"),
+    env: { get: vi.fn(() => undefined) },
+    cookie: { get: () => undefined },
+    sharedMap: new Map(),
+  };
+  const first = accessIdentity(event);
+  expect(accessIdentity({ ...event })).toBe(first);
+  expect(event.env.get).toHaveBeenCalledTimes(2);
+  const other = accessIdentity({ ...event, sharedMap: new Map() });
+  expect(other).not.toBe(first);
+  expect(await first).toBeNull();
+  expect(await other).toBeNull();
 });

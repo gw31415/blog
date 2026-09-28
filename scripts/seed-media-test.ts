@@ -1,4 +1,3 @@
-/// <reference path="../worker-configuration.d.ts" />
 import { getPlatformProxy } from "wrangler";
 import { acceptMedia, mediaReferenceStatements } from "../src/server/media";
 import { renderEntries } from "../src/content/render-contract";

@@ -1,6 +1,11 @@
 import { DEV_MANAGER_COOKIE, isDevServer } from "~/dev/manager";
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
-import type { RequestEventBase, RequestEventCommon } from "@qwik.dev/router";
+interface AccessEvent {
+  request: Request;
+  sharedMap: object;
+  env: { get(name: string): string | undefined };
+  cookie: { get(name: string): { value: string } | null | undefined };
+}
 
 export interface AccessConfig {
   ACCESS_TEAM_DOMAIN?: string;
@@ -57,25 +62,27 @@ export async function verifyAccess(
     return null;
   }
 }
-const identityKey = "access.identity";
-export function accessIdentity(event: RequestEventBase): Promise<AccessIdentity | null> {
-  let identity = event.sharedMap.get(identityKey) as Promise<AccessIdentity | null> | undefined;
+const identities = new WeakMap<object, Promise<AccessIdentity | null>>();
+export function accessIdentity(event: AccessEvent): Promise<AccessIdentity | null> {
+  let identity = identities.get(event.sharedMap);
   if (!identity) {
     identity = verifyAccess(event.request, {
       ACCESS_TEAM_DOMAIN: event.env.get("ACCESS_TEAM_DOMAIN"),
       ACCESS_AUD: event.env.get("ACCESS_AUD"),
     });
-    event.sharedMap.set(identityKey, identity);
+    identities.set(event.sharedMap, identity);
   }
   return identity;
 }
-export async function canManagePosts(event: RequestEventBase) {
+export async function canManagePosts(event: AccessEvent) {
   if (isDevServer()) {
     return event.cookie.get(DEV_MANAGER_COOKIE)?.value === "1";
   }
   return !!(await accessIdentity(event));
 }
-export async function requireManager(event: RequestEventCommon) {
+export async function requireManager(
+  event: AccessEvent & { url: URL; error(status: 403, message: string): unknown },
+) {
   if (!(await canManagePosts(event)))
     throw event.error(403, "Cloudflare Accessへのログインが必要です");
   if (

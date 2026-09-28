@@ -1,3 +1,4 @@
+import { isRecord } from "../content/record";
 import { catalog, failure, ToolError, validateInput, type Input } from "./catalog";
 export interface RegisteredTool {
   name: string;
@@ -11,10 +12,7 @@ export interface ModelContext {
   unregisterTool?(name: string): void;
 }
 export function modelContext(): ModelContext | undefined {
-  return (
-    (document as Document & { modelContext?: ModelContext }).modelContext ??
-    (navigator as Navigator & { modelContext?: ModelContext }).modelContext
-  );
+  return document.modelContext ?? navigator.modelContext;
 }
 export async function remote(name: string, input: Input, signal?: AbortSignal) {
   signal?.throwIfAborted();
@@ -27,20 +25,26 @@ export async function remote(name: string, input: Input, signal?: AbortSignal) {
   });
   if (response.status === 403 || response.redirected)
     throw new ToolError("FORBIDDEN", "管理者ログインが必要です");
-  // Response shape is owned by the same-origin WebMCP endpoint.
-  // eslint-disable-next-line typescript/no-unsafe-type-assertion
-  const result = (await response.json()) as {
-    ok: boolean;
-    error?: { code?: string; message?: string };
-    data: { url: string; version: string; title: string; [key: string]: unknown };
-  };
-  if (!result.ok)
+  const result: unknown = await response.json();
+  if (!isRecord(result) || typeof result.ok !== "boolean")
+    throw new ToolError("FAILED", "応答の形式が不正です");
+  if (!result.ok) {
+    const error = isRecord(result.error) ? result.error : {};
     throw new ToolError(
-      result.error?.code ?? "FAILED",
-      result.error?.message ?? "処理できませんでした",
+      typeof error.code === "string" ? error.code : "FAILED",
+      typeof error.message === "string" ? error.message : "処理できませんでした",
     );
+  }
+  if (!response.ok || !isRecord(result.data)) throw new ToolError("FAILED", "応答の形式が不正です");
   return result.data;
 }
+
+export function responseText(data: Record<string, unknown>, key: string): string {
+  const value = data[key];
+  if (typeof value !== "string") throw new ToolError("FAILED", `${key}の応答が不正です`);
+  return value;
+}
+
 export function registerTools(
   definitions: (typeof catalog)[number][],
   execute: (name: string, input: Input, signal?: AbortSignal) => Promise<unknown>,
@@ -140,7 +144,7 @@ export function registerSiteTools(manager: boolean, navigate: (url: string) => P
         signal?.throwIfAborted();
         canLeave();
         const url =
-          post.url +
+          responseText(post, "url") +
           (input.section === undefined ? "" : `#webmcp-section-${Number(input.section)}`);
         await navigate(url);
         return { url };
@@ -149,16 +153,16 @@ export function registerSiteTools(manager: boolean, navigate: (url: string) => P
         canLeave();
         const result = await remote(name, input, signal);
         canLeave();
-        await navigate(result.url);
+        await navigate(responseText(result, "url"));
         return result;
       }
       if (name === "delete_post") {
         canLeave();
         const post = await remote("get_post", { identifier: input.identifier }, signal);
-        if (post.version !== input.expectedVersion)
+        if (responseText(post, "version") !== input.expectedVersion)
           throw new ToolError("CONFLICT", "記事が変更されています。再取得してください");
         confirmAction(
-          `「${post.title}」を削除します。元画像は保持します。よろしいですか？`,
+          `「${responseText(post, "title")}」を削除します。元画像は保持します。よろしいですか？`,
           signal,
         );
         const result = await remote(name, input, signal);

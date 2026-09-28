@@ -94,7 +94,7 @@ export default defineConfig(async ({ command, mode }) => {
         "qwik/use-async-top": "off",
         "qwik/no-async-prevent-default": "warn",
         "qwik/no-await-navigate-in-use-task": "warn",
-        "no-explicit-any": "off",
+        "typescript/no-explicit-any": "error",
       },
       categories: { correctness: "warn", suspicious: "warn" },
     },

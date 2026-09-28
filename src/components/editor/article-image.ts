@@ -1,3 +1,20 @@
+const onSettled = (event: Event) => {
+  if (
+    event.target instanceof HTMLImageElement &&
+    (event.target.hasAttribute("data-article-image") ||
+      event.target.hasAttribute("data-math-image"))
+  )
+    updateState(event.target);
+};
+
+const updateState = (image: HTMLImageElement) => {
+  image.dataset.imageState = image.complete
+    ? image.naturalWidth > 0
+      ? "loaded"
+      : "error"
+    : "pending";
+};
+
 /** Presentation-only attributes; original URLs remain in the document model. */
 export function articleImageAttributes(src: string, alt: string | null = null) {
   return {
@@ -16,21 +33,6 @@ export function articleImageAttributes(src: string, alt: string | null = null) {
 export function observeArticleImages(root: HTMLElement) {
   const dimensions = new Map<string, { width: string; height: string }>();
   const tracked = new Map<HTMLImageElement, string>();
-  const updateState = (image: HTMLImageElement) => {
-    image.dataset.imageState = image.complete
-      ? image.naturalWidth > 0
-        ? "loaded"
-        : "error"
-      : "pending";
-  };
-  const onSettled = (event: Event) => {
-    if (
-      event.target instanceof HTMLImageElement &&
-      (event.target.hasAttribute("data-article-image") ||
-        event.target.hasAttribute("data-math-image"))
-    )
-      updateState(event.target);
-  };
   root.addEventListener("load", onSettled, true);
   root.addEventListener("error", onSettled, true);
   const scan = () => {
@@ -44,8 +46,8 @@ export function observeArticleImages(root: HTMLElement) {
         image.setAttribute("height", known.height);
       } else
         dimensions.set(source, {
-          width: image.getAttribute("width")!,
-          height: image.getAttribute("height")!,
+          width: image.getAttribute("width") ?? "960",
+          height: image.getAttribute("height") ?? "540",
         });
       const ratio = `${image.getAttribute("width") || 960} / ${image.getAttribute("height") || 540}`;
       image.style.aspectRatio = ratio;

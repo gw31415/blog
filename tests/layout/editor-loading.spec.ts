@@ -1,12 +1,19 @@
+import { isRecord } from "../../src/content/record";
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 const article = process.env.BLOG_CHROME_ARTICLE ?? "/blog/document-showcase";
-const manifest = JSON.parse(readFileSync("dist/q-manifest.json", "utf8")) as {
-  bundles: Record<string, { origins?: string[] }>;
-};
+const manifest: unknown = JSON.parse(readFileSync("dist/q-manifest.json", "utf8"));
+if (!isRecord(manifest) || !isRecord(manifest.bundles)) throw new Error("Invalid build manifest");
 const editorBundles = Object.entries(manifest.bundles)
-  .filter(([, bundle]) => bundle.origins?.some((origin) => origin.endsWith("/editor-runtime.ts")))
+  .filter(
+    ([, bundle]) =>
+      isRecord(bundle) &&
+      Array.isArray(bundle.origins) &&
+      bundle.origins.some(
+        (origin: unknown) => typeof origin === "string" && origin.endsWith("/editor-runtime.ts"),
+      ),
+  )
   .map(([name]) => name);
 const isEditorRequest = (url: string) =>
   url.includes("/editor-runtime") || editorBundles.some((name) => url.includes(name));

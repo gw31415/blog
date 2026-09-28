@@ -36,6 +36,7 @@ import {
   textblockTypeInputRule,
 } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
+import type { MarkdownParseHelpers } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 
 import {
@@ -288,8 +289,8 @@ const SharedInlineMath = Node.create<MathNodeOptions>({
   inline: true,
   atom: true,
 
-  addOptions() {
-    return { onClick: undefined, mathHTML: undefined as Map<string, string> | undefined };
+  addOptions(): MathNodeOptions {
+    return {};
   },
 
   addAttributes() {
@@ -323,7 +324,7 @@ const SharedInlineMath = Node.create<MathNodeOptions>({
 
   parseMarkdown: (token) => ({
     type: "inlineMath",
-    attrs: { latex: (token as MarkdownToken & { latex?: string }).latex ?? "" },
+    attrs: { latex: typeof token.latex === "string" ? token.latex : "" },
   }),
 
   renderMarkdown: (node) => `$${String(node.attrs?.latex ?? "")}$`,
@@ -352,8 +353,8 @@ const SharedBlockMath = Node.create<MathNodeOptions>({
   group: "block",
   atom: true,
 
-  addOptions() {
-    return { onClick: undefined, mathHTML: undefined as Map<string, string> | undefined };
+  addOptions(): MathNodeOptions {
+    return {};
   },
 
   addAttributes() {
@@ -387,7 +388,7 @@ const SharedBlockMath = Node.create<MathNodeOptions>({
 
   parseMarkdown: (token) => ({
     type: "blockMath",
-    attrs: { latex: (token as MarkdownToken & { latex?: string }).latex ?? "" },
+    attrs: { latex: typeof token.latex === "string" ? token.latex : "" },
   }),
 
   renderMarkdown: (node) => ["$$", String(node.attrs?.latex ?? ""), "$$"].join("\n"),
@@ -445,8 +446,8 @@ export function createEditorExtensions(options: EditorExtensionOptions = {}): An
                       addKeyboardShortcuts: () => ({}),
                       parseHTML: () => [{ tag: extension.name === "bold" ? "strong" : "em" }],
                     }),
-                parseMarkdown: (token: MarkdownToken, helpers: any) =>
-                  helpers.parseInline(token.tokens ?? []).map((node: any) => ({
+                parseMarkdown: (token: MarkdownToken, helpers: MarkdownParseHelpers) =>
+                  helpers.parseInline(token.tokens ?? []).map((node) => ({
                     ...node,
                     marks: [...(node.marks ?? []), { type: extension.name }],
                   })),

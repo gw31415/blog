@@ -2,23 +2,23 @@
 
 ## 実装の配置
 
-| パス                                   | 責務                                                          |
-| -------------------------------------- | ------------------------------------------------------------- |
-| `src/routes/`                          | ページ、loader/action、HTTPエンドポイント                     |
+| パス                                   | 責務                                                            |
+| -------------------------------------- | --------------------------------------------------------------- |
+| `src/routes/`                          | ページ、loader/action、HTTPエンドポイント                       |
 | `src/server/`                          | Access認可、記事保存、D1/R2、メディア配信台帳、WebMCPの永続操作 |
-| `src/content/`                         | 文書正規化、記事メタデータ、Markdown出力、描画契約、サンプル  |
-| `src/components/foundations/`          | テーマ、文字組み、入力・メタ情報の基盤                        |
-| `src/components/atoms/` / `molecules/` | 小さな部品と、その組み合わせ                                  |
-| `src/components/organisms/`            | 記事ヘッダー、記事一覧、画像管理などのまとまったUI            |
-| `src/components/templates/`            | 記事画面・紙面・一覧・viewportの構造                          |
-| `src/components/editor/`               | Tiptap、変換、SSRとの共有DOM契約、画像・数式・図の編集        |
-| `src/browser/` / `src/api/`            | 一覧復元などのブラウザー処理とサーバー関数                    |
-| `src/dev/`                             | dev専用の管理者目線切替                                       |
-| `src/webmcp/`                          | ツールカタログ、ブラウザー登録、編集中の記事との接続          |
-| `migrations/`                          | D1のスキーマ                                                  |
-| `adapters/`                            | Workerビルド用のQwik設定                                      |
-| `scripts/` / `patches/`                | 開発用スクリプトと依存パッケージ修正                          |
-| `public/`                              | アイコン、同梱AVIF変換器などの配信アセット                    |
+| `src/content/`                         | 文書正規化、記事メタデータ、Markdown出力、描画契約、サンプル    |
+| `src/components/foundations/`          | テーマ、文字組み、入力・メタ情報の基盤                          |
+| `src/components/atoms/` / `molecules/` | 小さな部品と、その組み合わせ                                    |
+| `src/components/organisms/`            | 記事ヘッダー、記事一覧、画像管理などのまとまったUI              |
+| `src/components/templates/`            | 記事画面・紙面・一覧・viewportの構造                            |
+| `src/components/editor/`               | Tiptap、変換、SSRとの共有DOM契約、画像・数式・図の編集          |
+| `src/browser/` / `src/api/`            | 一覧復元などのブラウザー処理とサーバー関数                      |
+| `src/dev/`                             | dev専用の管理者目線切替                                         |
+| `src/webmcp/`                          | ツールカタログ、ブラウザー登録、編集中の記事との接続            |
+| `migrations/`                          | D1のスキーマ                                                    |
+| `adapters/`                            | Workerビルド用のQwik設定                                        |
+| `scripts/` / `patches/`                | 開発用スクリプトと依存パッケージ修正                            |
+| `public/`                              | アイコン、同梱AVIF変換器などの配信アセット                      |
 
 ## 記事と編集
 

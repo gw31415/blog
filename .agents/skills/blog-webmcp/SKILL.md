@@ -26,7 +26,6 @@ description: このblogの記事閲覧・検索・編集・公開・画像管理
 - Chrome Origin Trialが必要な期間は、対象origin用の有効なトークンをWorkerの `WEBMCP_ORIGIN_TRIAL_TOKEN` に設定すると `plugin@access.ts` がレスポンスヘッダーへ渡す。トークンの取得・期限更新が別途必要。トークン未設定、ローカル実験フラグでの成功、本番PageSpeedでの成功を区別する。
 - 発見情報を変更したら `src/webmcp/discovery.test.ts` と `tests/layout/agent-discovery.spec.ts` で公開範囲・スキーマ追従・HTTP到達性を確認する。AI Catalog/ARDは発展中なので監査対象の仕様と最新仕様を確認する。現在の互換形式は `specVersion: "1.0"` のAI Catalog。
 
-
 変更に応じて `src/webmcp/*.test.ts`、`src/server/webmcp.test.ts`、`tests/layout/webmcp.spec.ts` を実行する。認可・作成の再試行・削除の条件を変えたら `tests/security/access-runtime.mjs` の実際の署名付きAccessセッション検証も使う。ブラウザテストの登録アダプターと実際のブラウザエージェント経由の実行は区別して報告する。型・ビルド・`check:editor-chunk`でSSR/遅延ロードも確認する。
 
 通常のdevはremoteBindingsを使うため、本番データで書込みテストをしない。`BLOG_LOCAL_TEST=1` のdevと `.cache/webmcp-test` のローカルD1/R2を利用する。初期化は全データ削除ではなくマイグレーションを適用する。テストは自分で作成した記事だけを削除する。

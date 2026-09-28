@@ -10,8 +10,8 @@ function generateMath(entry: RenderEntry) {
 import { createDraft, findPost, savePostContent } from "./posts";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import { renderEntries, renderKey, RENDERERS, type RenderEntry } from "../content/render-contract";
+import { afterEach, describe, expect, it } from "vite-plus/test";
+import { renderEntries, renderKey, type RenderEntry } from "../content/render-contract";
 import { renderPost } from "./render-post";
 import { renderDocument } from "./render-document";
 
@@ -26,7 +26,12 @@ function database() {
   const queries: string[] = [];
   sqlite.exec(readFileSync("migrations/0001_initial.sql", "utf8"));
   sqlite.exec(readFileSync("migrations/0004_media_delivery.sql", "utf8"));
-  for(const file of ["0005_media_history.sql","0006_media_lease_grace.sql","0007_retire_legacy_media.sql"]) sqlite.exec(readFileSync("migrations/"+file,"utf8"));
+  for (const file of [
+    "0005_media_history.sql",
+    "0006_media_lease_grace.sql",
+    "0007_retire_legacy_media.sql",
+  ])
+    sqlite.exec(readFileSync("migrations/" + file, "utf8"));
   class Statement {
     constructor(
       public sql: string,
@@ -84,16 +89,6 @@ const body = (source = "flowchart LR\nA-->B") => ({
   ],
 });
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 10"><text>cached</text></svg>';
-const output = { output: svg, diagnostic: null };
-const putPost = (
-  sqlite: DatabaseSync,
-  id: string,
-  document: Parameters<typeof renderEntries>[0] = body(),
-) =>
-  sqlite
-    .prepare("INSERT INTO posts(id,created_at,updated_at,body_json) VALUES(?,?,?,?)")
-    .run(id.padEnd(26, "0"), "", "", JSON.stringify(document));
-
 describe("persisted media rendering", () => {
   it("keys exact source, kind and renderer; ignores the rest of the article", async () => {
     const entries = await renderEntries(body());
@@ -131,7 +126,7 @@ describe("persisted media rendering", () => {
     );
     const result = await renderDocument(document, {
       platform: { env: { DB: db, IMAGES: bucket } },
-    } as unknown as Parameters<typeof renderDocument>[1]);
+    });
     expect(result.diagrams[0]).toContain("data:image/svg+xml,");
     expect(result.math).toHaveLength(2);
     expect(result.math.every((item) => item.output?.includes("mjx-container"))).toBe(true);
@@ -175,9 +170,7 @@ describe("persisted media rendering", () => {
     );
     const result = await renderDocument(
       (await findPost(db, id))!.body,
-      { platform: { env: { DB: db, IMAGES: bucket } } } as unknown as Parameters<
-        typeof renderDocument
-      >[1],
+      { platform: { env: { DB: db, IMAGES: bucket } } },
       id,
     );
     expect(result.diagrams[0]).toContain("data:image/svg+xml,");
@@ -266,17 +259,18 @@ it("rejects unfinished saves regardless of publication status and does not persi
   expect((await findPost(db, id))!.body).toEqual(document);
 });
 
+const input = (alias: string) => ({
+  alias,
+  title: "Article",
+  body: JSON.stringify({ type: "doc", content: [{ type: "paragraph" }] }),
+  tags: "[]",
+  formatVersion: 2,
+  bodyFormat: "tiptap-json",
+  contentSchemaVersion: 1,
+  status: "draft",
+});
+
 describe("current article alias", () => {
-  const input = (alias: string) => ({
-    alias,
-    title: "Article",
-    body: JSON.stringify({ type: "doc", content: [{ type: "paragraph" }] }),
-    tags: "[]",
-    formatVersion: 2,
-    bodyFormat: "tiptap-json",
-    contentSchemaVersion: 1,
-    status: "draft",
-  });
   it("resolves only the current alias and permits reuse of released aliases", async () => {
     const { db, sqlite } = database();
     const a = await createDraft(db),

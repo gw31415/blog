@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import { afterEach, it, expect } from "vite-plus/test";
-import { createDraft, savePostContent } from "./posts";
+import { createDraft } from "./posts";
 import { acceptMedia, mediaReferenceStatements, collectMedia } from "./media";
 import { renderEntries } from "../content/render-contract";
 import { classifyMedia } from "../content/media-fold";
@@ -101,8 +101,8 @@ it("shares client artifacts, preserves current references, and collects only aft
   const objects = bucket();
   const entry = (await renderEntries(body))[0];
   const first = await acceptMedia(db, objects, id, body, [{ ...entry, svg }]);
-  const version = sqlite.prepare("SELECT updated_at FROM posts WHERE id=?").get(id)!
-    .updated_at as string;
+  const version = sqlite.prepare("SELECT updated_at FROM posts WHERE id=?").get(id)!.updated_at;
+  if (typeof version !== "string") throw new Error("Missing post version");
   sqlite.prepare("UPDATE posts SET body_json=? WHERE id=?").run(JSON.stringify(body), id);
   await db.batch(await mediaReferenceStatements(db, id, body, version, first.lease));
   await acceptMedia(db, objects, id, body, [{ ...entry, svg }]);

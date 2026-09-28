@@ -803,7 +803,8 @@ for (const width of [1280, 390]) {
     expect(shadows.layers[0].filter).toBe("none");
     expect(shadows.layers[1].filter).toMatch(/^blur\([\d.]+px\)$/);
     const corner = await card.evaluate((element) => {
-      const el = element as HTMLElement;
+      if (!(element instanceof HTMLElement)) throw new Error("Expected HTML card");
+      const el = element;
       const box = el.getBoundingClientRect();
       const matrix = new DOMMatrixReadOnly(getComputedStyle(el).transform);
       const x = el.offsetWidth / 2 - 8;
@@ -819,17 +820,20 @@ for (const width of [1280, 390]) {
     // The fold must not cast a second, rectangular shadow into the exposed
     // lower-right corner. Hiding it leaves the envelope's diffused shadow intact.
     await card.locator(".delete-peel").evaluate((element) => {
-      (element as HTMLElement).style.visibility = "hidden";
+      if (!(element instanceof HTMLElement)) throw new Error("Expected HTML element");
+      element.style.visibility = "hidden";
     });
     expect((await page.screenshot({ clip: corner })).equals(cutShadow)).toBe(true);
     await card.locator(".delete-peel").evaluate((element) => {
-      (element as HTMLElement).style.removeProperty("visibility");
+      if (!(element instanceof HTMLElement)) throw new Error("Expected HTML element");
+      element.style.removeProperty("visibility");
     });
     // Verify rendered pixels, not just computed clip-path: restoring a square
     // shadow source must darken the exposed corner. Diffusion remains allowed.
     await card.locator(".letter-shadow-shape").evaluateAll((elements) => {
       for (const element of elements) {
-        const style = (element as HTMLElement).style;
+        if (!(element instanceof HTMLElement)) throw new Error("Expected HTML element");
+        const style = element.style;
         style.transition = "none";
         style.clipPath = "none";
       }

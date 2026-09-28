@@ -17,7 +17,9 @@ export const PostList = component$<{
   const selected = useSignal<PostSummary>();
   const busy = useSignal(false);
   const error = useSignal("");
-  // Envelope movement stays CSS-driven; this flag only pauses hover during scrolling.
+  // Install passive native listeners once so the first scroll pauses CSS hover immediately.
+  // Qwik event loading would defer that first event; cleanup also cancels the idle timer.
+  // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(
     ({ cleanup }) => {
       const element = stream.value;

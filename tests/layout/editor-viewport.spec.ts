@@ -23,10 +23,10 @@ test("keyboard viewport does not leave an outer document scroller", async ({ pag
     [fullHeight, 0],
   ]) {
     await page.evaluate(
-      ([height, offsetTop]) => {
+      ([viewportHeight, viewportOffsetTop]) => {
         Object.defineProperties(window.visualViewport!, {
-          height: { configurable: true, get: () => height },
-          offsetTop: { configurable: true, get: () => offsetTop },
+          height: { configurable: true, get: () => viewportHeight },
+          offsetTop: { configurable: true, get: () => viewportOffsetTop },
         });
         window.visualViewport!.dispatchEvent(new Event("resize"));
       },

@@ -71,5 +71,5 @@ export function deerLegPath(progress: number, index: number): string {
   return `M${p(left[0])} ${edge(left)}
     L${hoof[0] - 3.5} ${hoof[1] + 5} H${hoof[0] + 7}
     Q${hoof[0] + 6} ${hoof[1] + 2} ${p(right[right.length - 1])}
-    ${edge([...right].reverse())}Z`;
+    ${edge([...right].toReversed())}Z`;
 }

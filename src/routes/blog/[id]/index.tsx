@@ -19,16 +19,15 @@ import { database, findPost, redirectCanonical, savePostContent } from "~/server
 import { renderDocument } from "~/server/render-document";
 import { renderPost } from "~/server/render-post";
 
+const requestPosts = new WeakMap<object, ReturnType<typeof findPost>>();
+
 async function findRequestPost(event: RequestEventCommon) {
-  const cached: unknown = event.sharedMap.get("blog.post");
-  // Only this function writes blog.post; Qwik sharedMap erases its value type.
-  // eslint-disable-next-line typescript/no-unsafe-type-assertion
-  let pending = cached as ReturnType<typeof findPost> | undefined;
+  let pending = requestPosts.get(event.sharedMap);
   if (!pending) {
     pending = findPost(database(event), event.params.id).then(async (post) =>
       post && (post.status === "published" || (await canManagePosts(event))) ? post : null,
     );
-    event.sharedMap.set("blog.post", pending);
+    requestPosts.set(event.sharedMap, pending);
   }
   return pending;
 }

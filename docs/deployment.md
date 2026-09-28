@@ -4,16 +4,16 @@
 
 リポジトリ側の設定の正本は [wrangler.jsonc](../wrangler.jsonc) です。ここでは設定と運用手順を記し、Cloudflare側の現在のデプロイ・データ・ポリシーの状態を保証するものではありません。
 
-| 項目              | 設定                                |
-| ----------------- | ----------------------------------- |
-| Worker            | `blog`                              |
-| 公開ドメイン      | `amas.dev`（Custom Domain）         |
-| Workerエントリー  | `dist/_worker.js`                   |
-| 静的アセット      | `dist/`、binding `ASSETS`           |
-| D1                | `blog-posts`、binding `DB`          |
-| R2                | `blog-images`、binding `IMAGES`     |
-| 定期処理 | 毎時17分、未参照AVIF/SVGの回収 |
-| Access設定        | `ACCESS_TEAM_DOMAIN` / `ACCESS_AUD` |
+| 項目             | 設定                                |
+| ---------------- | ----------------------------------- |
+| Worker           | `blog`                              |
+| 公開ドメイン     | `amas.dev`（Custom Domain）         |
+| Workerエントリー | `dist/_worker.js`                   |
+| 静的アセット     | `dist/`、binding `ASSETS`           |
+| D1               | `blog-posts`、binding `DB`          |
+| R2               | `blog-images`、binding `IMAGES`     |
+| 定期処理         | 毎時17分、未参照AVIF/SVGの回収      |
+| Access設定       | `ACCESS_TEAM_DOMAIN` / `ACCESS_AUD` |
 
 workers.devとpreview URLは無効です。R2の画像はWorker経由で配信し、r2.dev公開やR2カスタムドメインを前提にしません。Qwikのアダプターとエントリーファイル名に `cloudflare-pages` が残っていますが、公開先はWorkersです。
 

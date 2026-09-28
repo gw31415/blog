@@ -46,7 +46,12 @@ function setup() {
   sql.exec("PRAGMA foreign_keys=ON");
   sql.exec(readFileSync("migrations/0001_initial.sql", "utf8"));
   sql.exec(readFileSync("migrations/0004_media_delivery.sql", "utf8"));
-  for(const file of ["0005_media_history.sql","0006_media_lease_grace.sql","0007_retire_legacy_media.sql"]) sql.exec(readFileSync("migrations/"+file,"utf8"));
+  for (const file of [
+    "0005_media_history.sql",
+    "0006_media_lease_grace.sql",
+    "0007_retire_legacy_media.sql",
+  ])
+    sql.exec(readFileSync("migrations/" + file, "utf8"));
   class Statement {
     constructor(
       public query: string,
@@ -199,7 +204,7 @@ describe("unified image lifecycle", () => {
     const { db, objects } = setup();
     const post = await createDraft(db);
     const bucket = buckets.get(db)!;
-    const put = bucket.put;
+    const put = bucket.put.bind(bucket);
     bucket.put = async (key, value) => {
       await put(key, value);
       if (key.startsWith("images/variants/")) await removePost(db, post);
@@ -213,7 +218,7 @@ describe("unified image lifecycle", () => {
     const post = await createDraft(db);
     await storeImage(db, form(post));
     const bucket = buckets.get(db)!;
-    const remove = bucket.delete;
+    const remove = bucket.delete.bind(bucket);
     bucket.delete = async () => {
       throw new Error("offline");
     };
