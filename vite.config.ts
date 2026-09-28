@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { qwikVite } from "@qwik.dev/core/optimizer";
 import { qwikRouter } from "@qwik.dev/router/vite";
 import { qstyle } from "@qstyle/vite";
@@ -64,6 +65,13 @@ export default defineConfig(async ({ command, mode }) => {
     ],
     resolve: {
       tsconfigPaths: true,
+      // SVG imports a default font even when fontData is supplied. Reuse the
+      // renderer's TeX font so the unused NewCM font is not bundled as well.
+      alias: {
+        "#default-font/svg/default.js": fileURLToPath(
+          import.meta.resolve("@mathjax/mathjax-tex-font/js/svg/default.js"),
+        ),
+      },
     },
     lint: {
       ignorePatterns: ["public/codecs/**"],
