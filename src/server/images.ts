@@ -1,4 +1,4 @@
-import { collectMedia } from "./media";
+import { collectMedia, discardUpload } from "./media";
 import { newUlid } from "./posts";
 import {
   DELIVERY_MAX_BYTES,
@@ -89,7 +89,7 @@ export async function storeImage(db: D1Database, data: FormData, objects: ImageO
         .bind(crypto.randomUUID(), id, postId),
     ]);
   } catch {
-    await objects.delete(`images/variants/${id}`).catch(() => {});
+    await discardUpload(db, objects, id);
     throw new Error("配信用画像を保存できませんでした。オリジナルは保持しています");
   }
   return { url: `/images/variants/${id}`, originalId };

@@ -109,9 +109,11 @@ for (const viewport of [
 ]) {
   test(`bottom of article remains fixed through editing at ${viewport.width}×${viewport.height}`, async ({
     page,
+    baseURL,
   }) => {
     test.setTimeout(90_000);
     await page.setViewportSize(viewport);
+    await page.context().addCookies([{ name: "blog_dev_manager", value: "1", url: baseURL! }]);
     await page.goto("/blog/document-showcase");
     await expect(page.locator("article .ProseMirror")).toBeVisible();
     await expect(page.locator("article .mermaid-preview img.mermaid-image").first()).toBeVisible();
@@ -147,6 +149,7 @@ for (const viewport of [
         "existing editor dock scroll space",
       ).toBeLessThanOrEqual(1);
 
+      await expect(page.locator(".article-sticky-edit")).toHaveText("完了");
       await page.mouse.click(button!.x + button!.width / 2, button!.y + button!.height / 2);
       await expect(page.locator(".article-sticky-edit")).toHaveText("編集", { timeout: 30_000 });
       await expect(

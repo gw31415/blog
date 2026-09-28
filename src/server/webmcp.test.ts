@@ -13,6 +13,7 @@ function setup() {
   sql.exec(readFileSync("migrations/0001_initial.sql", "utf8"));
   sql.exec(readFileSync("migrations/0002_webmcp_requests.sql", "utf8"));
   sql.exec(readFileSync("migrations/0003_webmcp_request_lifecycle.sql", "utf8"));
+  sql.exec(readFileSync("migrations/0004_media_delivery.sql", "utf8"));
   class Statement {
     constructor(
       public query: string,

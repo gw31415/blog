@@ -35,25 +35,40 @@ export async function renderDocument(
   const occurrences = mediaOccurrences(document).filter(
     (o) => o.node.type !== "image" && o.node.type !== "figure",
   );
-  const bodies = new Map<string, Promise<string | null>>();
+  const embeds = occurrences.map((o) => {
+    const ref = refMap.get(o.path);
+    return (
+      !ref || ref.body_hash !== hash || ref.policy_version !== FOLD_POLICY || !!ref.embed_initial
+    );
+  });
+  const upper = [
+    ...new Map(
+      entries.flatMap((e, i) => {
+        const row = map.get(e.key);
+        return embeds[i] && row ? [[row.id, row] as const] : [];
+      }),
+    ).values(),
+  ];
+  const bodies = new Map<string, string | null>();
+  // Bound concurrent R2 streams and never fetch below-fold SVG bodies.
+  for (let i = 0; i < upper.length; i += 6)
+    await Promise.all(
+      upper.slice(i, i + 6).map(async (row) => {
+        const object = await event.platform.env.IMAGES.get(row.object_key);
+        bodies.set(row.id, object ? await object.text() : null);
+      }),
+    );
   const diagrams: string[] = [];
   const math: RenderResult[] = [];
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i],
       row = map.get(entry.key);
-    const ref = refMap.get(occurrences[i].path);
-    const embed =
-      !ref || ref.body_hash !== hash || ref.policy_version !== FOLD_POLICY || !!ref.embed_initial;
+    const embed = embeds[i];
     let html: string | null = null;
     if (row) {
       let src = "/media/variants/" + row.id;
       if (embed) {
-        if (!bodies.has(row.id))
-          bodies.set(
-            row.id,
-            event.platform.env.IMAGES.get(row.object_key).then((o) => (o ? o.text() : null)),
-          );
-        const svg = await bodies.get(row.id)!;
+        const svg = bodies.get(row.id);
         src = svg ? "data:image/svg+xml," + encodeURIComponent(svg) : "";
       }
       if (src)

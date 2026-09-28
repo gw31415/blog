@@ -1,3 +1,4 @@
+import { normalizeDocument } from "../content/document";
 import type { JSONContent } from "@tiptap/core";
 import { renderEntries, type RenderKind } from "../content/render-contract";
 import {
@@ -66,20 +67,17 @@ export async function acceptMedia(
   let bytes = 0;
   const seen = new Set<string>();
   for (const value of values) {
-    if (
-      !value ||
-      typeof value !== "object" ||
-      typeof value.key !== "string" ||
-      typeof value.svg !== "string"
-    )
+    if (!value || typeof value !== "object" || typeof value.key !== "string")
       throw new Error("描画データが不正です");
     const entry = allowed.get(value.key);
     if (!entry || seen.has(entry.key) || value.renderer !== entry.renderer)
       throw new Error("本文と描画が一致しません");
     seen.add(entry.key);
+    if (rows.has(entry.key)) continue;
+    if (typeof value.svg !== "string")
+      throw new Error("描画データが不足しています。再生成して保存してください");
     bytes += new TextEncoder().encode(value.svg).length;
     if (bytes > 5_000_000) throw new Error("描画データは5MB以内にしてください");
-    if (rows.has(entry.key)) continue;
     const artifact = parseSvgArtifact(
       value.svg,
       entry.kind,
@@ -116,13 +114,7 @@ export async function acceptMedia(
         .bind(id)
         .run();
     } catch (error) {
-      await objects.delete(key).catch(() => {});
-      await db
-        .prepare(
-          "DELETE FROM media_variants WHERE id=? AND NOT EXISTS(SELECT 1 FROM post_media_refs WHERE variant_id=?)",
-        )
-        .bind(id, id)
-        .run();
+      await discardUpload(db, objects, id);
       const concurrent = await readMedia(db, [entry.key]);
       if (!concurrent.length) throw error;
     }
@@ -153,7 +145,8 @@ export async function mediaReferenceStatements(
   lease = "",
   published = false,
 ) {
-  const occurrences = mediaOccurrences(body);
+  const normalized = normalizeDocument(body);
+  const occurrences = mediaOccurrences(normalized);
   const entries = await renderEntries(body);
   let index = 0;
   const keys = occurrences.map((o) =>
@@ -181,8 +174,8 @@ export async function mediaReferenceStatements(
         heightEm: (JSON.parse(v.layout_json) as ArtifactLayout).heightEm,
       });
   });
-  const classified = classifyMedia(body, sizes);
-  const hash = await mediaHash(JSON.stringify(body));
+  const classified = classifyMedia(normalized, sizes);
+  const hash = await mediaHash(JSON.stringify(normalized));
   const payload = classified
     .map((o, i) => {
       const key = keys[i];
@@ -249,4 +242,26 @@ export async function collectMedia(db: D1Database, objects: Pick<MediaStore, "de
     }
   }
   return removed;
+}
+
+/** Claim before deleting: a lost DB response may already have committed a shared object. */
+export async function discardUpload(
+  db: D1Database,
+  objects: Pick<MediaStore, "delete">,
+  id: string,
+) {
+  const row = await db
+    .prepare(
+      "UPDATE media_variants SET state='deleting' WHERE id=? AND NOT EXISTS(SELECT 1 FROM post_media_refs WHERE variant_id=?) AND NOT EXISTS(SELECT 1 FROM media_upload_leases WHERE variant_id=? AND expires_at>unixepoch()) RETURNING object_key",
+    )
+    .bind(id, id, id)
+    .first<{ object_key: string }>();
+  if (row) {
+    try {
+      await objects.delete(row.object_key);
+      await db.prepare("DELETE FROM media_variants WHERE id=? AND state='deleting'").bind(id).run();
+    } catch (error) {
+      console.error("Upload cleanup pending", id, error);
+    }
+  }
 }

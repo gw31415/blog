@@ -12,7 +12,7 @@
 | 静的アセット      | `dist/`、binding `ASSETS`           |
 | D1                | `blog-posts`、binding `DB`          |
 | R2                | `blog-images`、binding `IMAGES`     |
-| Browser Rendering | binding `BROWSER`                   |
+| 定期処理 | 毎時17分、未参照AVIF/SVGの回収 |
 | Access設定        | `ACCESS_TEAM_DOMAIN` / `ACCESS_AUD` |
 
 workers.devとpreview URLは無効です。R2の画像はWorker経由で配信し、r2.dev公開やR2カスタムドメインを前提にしません。Qwikのアダプターとエントリーファイル名に `cloudflare-pages` が残っていますが、公開先はWorkersです。
@@ -55,3 +55,5 @@ Workers Buildsを使う場合のコマンドは次の組み合わせです。Nod
 WorkerのロールバックはDBを巻き戻しません。旧Workerと互換性を保つスキーマ変更を先に適用します。初期開発時の旧スキーマの破棄や `db:reset:local` を、本番の更新手順として使いません。seedの本番投入も公開コマンドには含みません。
 
 公開後は対象Workerの更新、公開ページ、Accessログイン、管理操作をそれぞれ確認します。ローカルのビルド・dry-run・テストの成功と、本番への反映・ログイン確認は分けて記録します。
+
+メディア統合の移行・監査は [メディア配信](media-delivery.md) を参照。0004で共通台帳、0005で画像原本の関連履歴削除時記録を追加する。旧表の削除は新Worker稼働後の別段階で行う。Worker entryはbuild.serverの末尾でfetchとscheduledを公開する形に仕上げる。

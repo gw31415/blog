@@ -1,3 +1,4 @@
+import { normalizeDocument } from "../src/content/document";
 /// <reference path="../worker-configuration.d.ts" />
 import { getPlatformProxy } from "wrangler";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -49,6 +50,27 @@ try {
     }
     cursor = page.truncated ? page.cursor : undefined;
   } while (cursor);
+  // Reconcile images uploaded by the old Worker after the additive migration.
+  const hasLegacy = !!(await db
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='render_cache'")
+    .first());
+  const legacyImages = hasLegacy
+    ? (
+        await db
+          .prepare("SELECT * FROM image_variants")
+          .all<{ id: string; original_id: string; width: number; height: number }>()
+      ).results
+    : [];
+  for (const v of legacyImages) {
+    const object = await bucket.head("images/variants/" + v.id);
+    if (apply && object)
+      await db
+        .prepare(
+          "INSERT INTO media_variants(id,kind,original_id,recipe,object_key,content_hash,mime,width,height,state,created_at,unreferenced_at) VALUES(?,'raster',?,'avif:legacy',?,'legacy','image/avif',?,?,'ready',unixepoch(),unixepoch()) ON CONFLICT(id) DO NOTHING",
+        )
+        .bind(v.id, v.original_id, "images/variants/" + v.id, v.width, v.height)
+        .run();
+  }
   let complete = 0;
   const failures: string[] = [];
   for (const post of posts) {
@@ -57,10 +79,12 @@ try {
       const entries = await renderEntries(body);
       const artifacts = [];
       for (const entry of new Map(entries.map((e) => [e.key, e])).values()) {
-        const row = await db
-          .prepare("SELECT output FROM render_cache WHERE key=?")
-          .bind(entry.key)
-          .first<{ output: string | null }>();
+        const row = hasLegacy
+          ? await db
+              .prepare("SELECT output FROM render_cache WHERE key=?")
+              .bind(entry.key)
+              .first<{ output: string | null }>()
+          : null;
         if (row?.output)
           artifacts.push({
             ...entry,
@@ -97,7 +121,7 @@ try {
             .all<{ body_hash: string; variant_id: string | null; object_key: string | null }>()
         ).results;
         if (entries.length > refs.length) throw new Error("Missing references");
-        const hash = await mediaHash(post.body_json);
+        const hash = await mediaHash(JSON.stringify(normalizeDocument(JSON.parse(post.body_json))));
         for (const ref of refs) {
           if (ref.body_hash !== hash) throw new Error("Stale references");
           if (ref.variant_id && (!ref.object_key || !(await bucket.head(ref.object_key))))

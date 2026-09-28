@@ -93,7 +93,7 @@ pnpm exec wrangler dev --local --ip 127.0.0.1 --port 4188 --persist-to .cache/we
 BLOG_PREVIEW_URL=http://127.0.0.1:4188 pnpm check:editor-chunk
 ```
 
-数式はWorkers内のMathJax、キャッシュのないMermaidは `BROWSER` bindingで描画します。ローカルのBrowser RenderingにはWranglerのChromiumを使うため、初回にダウンロードが発生することがあります。
+数式・Mermaidは管理クライアントで生成し、保存済みSVGを配信します。Browser Renderingは不要です。[メディア配信](media-delivery.md)のローカル移行・fixture手順を参照してください。
 
 ### Accessを含むWorkerの検証
 

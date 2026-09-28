@@ -1,9 +1,5 @@
 import { acceptMedia, mediaReferenceStatements, type MediaStore } from "./media";
 import { normalizeSingleLine, formatShortDate } from "../content/article";
-import { renderEntries } from "../content/render-contract";
-import { acceptRenderArtifacts } from "./accept-render-artifacts";
-import { syncRenderReferences } from "./render-cache";
-import { validatePublication } from "./validate-publication";
 import type { RequestEventBase, RequestEventCommon } from "@qwik.dev/router";
 
 import { canonicalPath } from "~/content/post-url";
@@ -180,7 +176,6 @@ export async function savePostContent(
     values.editingState.pending
   )
     throw new Error("入力中のフォームを適用するかキャンセルしてください");
-  if (!objects && input.status === "published") await validatePublication(input.body);
   const alias = normalizeAlias(values.alias);
   const now = new Date(Math.max(Date.now(), Date.parse(old.updated_at) + 1)).toISOString();
   const previous = {
@@ -227,32 +222,19 @@ export async function savePostContent(
       ),
   );
   const postStatementIndex = statements.length - 1;
-  const artifacts = objects
-    ? []
-    : await acceptRenderArtifacts(db, input.body, values.renderArtifacts, id);
+  const accepted = objects
+    ? await acceptMedia(db, objects, id, input.body, values.renderArtifacts)
+    : undefined;
   statements.push(
-    ...artifacts,
-    ...syncRenderReferences(
+    ...(await mediaReferenceStatements(
       db,
-      { id, body: JSON.stringify(input.body) },
-      await renderEntries(input.body),
-    ),
+      id,
+      input.body,
+      changed ? now : old.updated_at,
+      accepted?.lease ?? "",
+      input.status === "published",
+    )),
   );
-  if (objects) {
-    // Old reference writers are used only by compatibility callers without R2.
-    statements.splice(1);
-    const accepted = await acceptMedia(db, objects, id, input.body, values.renderArtifacts);
-    statements.push(
-      ...(await mediaReferenceStatements(
-        db,
-        id,
-        input.body,
-        changed ? now : old.updated_at,
-        accepted.lease,
-        input.status === "published",
-      )),
-    );
-  }
   const result = await db.batch(statements);
   if (!result[postStatementIndex]?.meta.changes)
     throw new Error("CONFLICT: 記事の変更またはエイリアスの重複があります。再取得してください");

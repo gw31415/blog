@@ -16,7 +16,12 @@ function database() {
   opened.push(sqlite);
   sqlite.exec("PRAGMA foreign_keys=ON");
   const queries: string[] = [];
-  for (const file of ["0001_initial.sql", "0004_media_delivery.sql"])
+  for (const file of [
+    "0001_initial.sql",
+    "0004_media_delivery.sql",
+    "0005_media_history.sql",
+    "0006_media_lease_grace.sql",
+  ])
     sqlite.exec(readFileSync("migrations/" + file, "utf8"));
   class Statement {
     constructor(
@@ -100,6 +105,7 @@ it("shares client artifacts, preserves current references, and collects only aft
   sqlite.prepare("UPDATE posts SET body_json=? WHERE id=?").run(JSON.stringify(body), id);
   await db.batch(await mediaReferenceStatements(db, id, body, version, first.lease));
   await acceptMedia(db, objects, id, body, [{ ...entry, svg }]);
+  await acceptMedia(db, objects, id, body, [{ key: entry.key, renderer: entry.renderer }]);
   expect(objects.objects.size).toBe(1);
   expect(await collectMedia(db, objects)).toBe(0);
   sqlite.prepare("DELETE FROM media_upload_leases").run();

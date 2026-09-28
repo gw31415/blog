@@ -36,34 +36,15 @@
 
 表示と編集のDOMは `article-surface-contract.ts`、スタイルは `ArticleStyleBoundary` / `ArticleSurfaceBoundary` を共有します。アプリ固有のスタイルはqstyleで定義し、その定義を使うコンポーネントと同じモジュールに置きます。共通テーマは `src/components/foundations/theme.tsx` が所有します。スタイルだけをコピーせず、同じ役割のUIはコンポーネントごと共有します。
 
-MathJaxはTeXからSVGと支援技術向けMathMLを生成します。Mermaidも初期HTMLへSVG画像として含め、閲覧時のJavaScriptによる描画を必要としません。編集時のプレビューはブラウザー側で生成します。Mermaidのブラウザー用配布物はViteが依存パッケージから配信・出力し、外部CDNは使いません。
+MathJaxはTeXからSVGと支援技術向けMathMLを生成します。Mermaidも初期HTMLへSVG画像として含め、閲覧時のJavaScriptによる描画を必要としません。編集時のプレビューはブラウザー側で生成します。描画器は編集時に動的importし、外部CDNは使いません。
 
-## 保存と描画キャッシュ
+## 保存とメディア配信
 
-初期スキーマは [0001_initial.sql](../migrations/0001_initial.sql) の5テーブルです。WebMCPのリクエスト管理は [0002](../migrations/0002_webmcp_requests.sql) で追加し、[0003](../migrations/0003_webmcp_request_lifecycle.sql) で実行中のみ保持する方式へ変更しています。現在のテーブルは以下の6つです。
+本文JSONを正本とし、AVIF・Mermaid SVG・MathJax SVGを共通台帳とR2で管理する。管理クライアントで生成し、閲覧時は保存済み画像を配信する。原本画像は永久保持し、生成物は最終参照とleaseを失って24時間後に回収する。
 
-| テーブル           | 保存するもの                                   |
-| ------------------ | ---------------------------------------------- |
-| `posts`            | 記事メタデータ、本文JSON、公開状態、現在の別名 |
-| `image_variants`   | 配信画像と元画像のID対応、配信画像の寸法       |
-| `post_images`      | 現在の記事と配信画像の参照                     |
-| `render_cache`     | MathJax/Mermaidの描画結果・診断・生成権        |
-| `post_render_refs` | 記事と描画キャッシュの参照                     |
-| `webmcp_requests`  | 作成処理中のrequestId、所有者、有効期限        |
+DB構成、上部の埋め込み判定、保存・GC・移行・検証は [メディア配信](media-delivery.md) を参照。既存の画像URLと画像管理操作は維持する。`posts`と`webmcp_requests`は既存の役割を継続する。
 
-DBの `format_version` は1、本文の `content_schema_version` も1です。一方、現行の保存入力・記事JSON取り込みは `formatVersion: 2` を要求します。この値の違いをDB移行済みという意味に解釈せず、詳細は文書仕様第2章・第13章に従います。
-
-描画キャッシュのキーは種別・ソース・描画契約のハッシュです。`src/content/render-contract.ts` が契約を定義し、`src/server/render-cache.ts` が取得・生成権・参照同期を扱います。時間TTLはなく、最後の記事参照が消えるとDBトリガーで削除します。生成権の期限はクラッシュからの回復用です。取得はキー一覧を使った一括JOINで行います。
-
-保存時に編集ブラウザーのMermaid SVGを受け付け、欠落分だけサーバーの `BROWSER` bindingで補完します。クライアント由来SVGは本文HTMLとして直接展開しません。数式の欠落はWorkers内のMathJaxで補完します。本文更新と参照同期は同じD1 batchで確定します。
-
-## 画像
-
-画像はファイル選択・ドロップ・貼り付け・差し替えに対応します。変換はブラウザーのWeb Workerと同梱libavif WASMで行い、元画像と配信用AVIFをR2へ保存します。受け入れる形式・上限・アニメーションの扱いは文書仕様第13.1節、変換器の保守は [画像変換器](image-codec.md) を参照してください。
-
-R2キーは `images/originals/{元画像ID}` と `images/variants/{配信ID}` です。MIMEタイプはR2のHTTPメタデータに持ち、配信時はD1を参照しません。本文は `/images/variants/{配信ID}` を参照します。
-
-記事削除・リンク解除後に未使用となった配信用R2ファイルは削除しますが、元画像と `image_variants` の対応レコードは残します。差し替え・再生成は新しいIDを発行し、同じURLを上書きしません。記事との過去の関連履歴は保持しません。`/manage/images` で現在の関連記事と紐付けのない元画像を確認し、編集終了後に未使用画像を整理できます。
+DBのformat_versionとcontent_schema_versionは1、保存入力のformatVersionは2。今回の変更で本文ノードのスキーマは変更しない。
 
 ## WebMCP
 
