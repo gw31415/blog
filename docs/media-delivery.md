@@ -54,7 +54,7 @@ pnpm media:audit -- --env local
 
 適用前の本文と結果は `.cache/media-migration/` に保存する。D1全体のバックアップは別途 `wrangler d1 export` を使う。D1復旧だけでR2は復元されない。生成物を消す前に旧Workerへ戻す必要がなくなったことを確認する。
 
-本番は `--env production` を指定する。SQLの追加migration→データ移行→監査→新Workerの順。旧表を削除するmigrationは新Worker稼働確認後に適用する。`pnpm deploy`は全未適用migrationを適用するため、削除migrationを先行リリースに含めない。
+本番は `--env production` を指定する。SQLの追加migration→データ移行→監査→新Workerの順。0007の旧表削除は新Worker稼働確認後に適用する。適用後も移行ツールの監査・再実行は新台帳で動作する。`pnpm deploy`は全未適用migrationを適用するため、削除migrationを先行リリースに含めない。
 
 ## 検証
 

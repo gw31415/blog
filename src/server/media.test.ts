@@ -21,6 +21,7 @@ function database() {
     "0004_media_delivery.sql",
     "0005_media_history.sql",
     "0006_media_lease_grace.sql",
+    "0007_retire_legacy_media.sql",
   ])
     sqlite.exec(readFileSync("migrations/" + file, "utf8"));
   class Statement {

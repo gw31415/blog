@@ -46,6 +46,7 @@ function setup() {
   sql.exec("PRAGMA foreign_keys=ON");
   sql.exec(readFileSync("migrations/0001_initial.sql", "utf8"));
   sql.exec(readFileSync("migrations/0004_media_delivery.sql", "utf8"));
+  for(const file of ["0005_media_history.sql","0006_media_lease_grace.sql","0007_retire_legacy_media.sql"]) sql.exec(readFileSync("migrations/"+file,"utf8"));
   class Statement {
     constructor(
       public query: string,
