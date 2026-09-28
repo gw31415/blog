@@ -43,6 +43,7 @@
     "@tiptap/pm": "3.31.3",
     "@tiptap/starter-kit": "3.31.3",
     "@tiptap/static-renderer": "3.31.3",
+    "@xmldom/xmldom": "^0.9.12",
     "entities": "^8.1.0",
     "gifuct-js": "^2.1.2",
     "jose": "^6.2.12",
@@ -61,6 +62,7 @@
     "@unocss/reset": "^66.10.5",
     "eslint-plugin-qwik": "2.0.0-beta.45",
     "highlight.js": "^11.12.0",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite-plus": "^1.0.0-rc.0",
     "wrangler": "^4.140.0"
