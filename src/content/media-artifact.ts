@@ -19,7 +19,7 @@ export const escapeMedia = (s: string) =>
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
 const svgTags = new Set(
-  "svg g defs path rect circle ellipse line polyline polygon text tspan textPath marker clipPath mask pattern linearGradient radialGradient stop use symbol title desc style foreignObject switch".split(
+  "svg g defs path rect circle ellipse line polyline polygon text tspan textPath marker clipPath mask pattern linearGradient radialGradient stop use symbol title desc style foreignObject switch filter feGaussianBlur feOffset feFlood feComposite feMerge feMergeNode feColorMatrix feBlend feDropShadow feComponentTransfer feFuncR feFuncG feFuncB feFuncA".split(
     " ",
   ),
 );
@@ -53,6 +53,7 @@ function parseSafe(text: string, math = false) {
       const value = a.value;
       if (
         name.startsWith("on") ||
+        name === "xml:base" ||
         ["src", "srcdoc", "action", "formaction"].includes(name) ||
         ((name === "href" || name === "xlink:href") && !value.startsWith("#"))
       )
@@ -104,6 +105,7 @@ export function parseSvgArtifact(
       !Number.isFinite(layout.verticalAlignEm)
     )
       throw new Error("数式寸法が不正です");
+    root.setAttribute("style", (root.getAttribute("style") ?? "") + ";color:#45392f");
     layout.mathml = new XMLSerializer().serializeToString(parseSafe(mathml, true));
   }
   return { svg: new XMLSerializer().serializeToString(root), width, height, layout };
@@ -128,5 +130,5 @@ export function mediaImageHTML(
   const loading = eager ? "eager" : "lazy";
   if (kind === "mermaid")
     return `<img class="mermaid-image" data-article-image data-image-state="pending" data-variant-id="${identity}" alt="Mermaid図" width="${width}" height="${height}" style="width:${width / 16}em;height:auto;aspect-ratio:${width} / ${height};--article-image-ratio:${width} / ${height}" src="${source}" loading="${loading}" decoding="async">`;
-  return `<mjx-container class="MathJax" jax="SVG"${kind === "blockMath" ? ' display="true"' : ""}><img class="math-image" data-image-state="pending" data-math-image data-variant-id="${identity}" alt="" aria-hidden="true" width="${width}" height="${height}" style="width:${layout.widthEm}em;height:${layout.heightEm}em;vertical-align:${layout.verticalAlignEm}em" src="${source}" loading="${loading}" decoding="async"><mjx-assistive-mml>${layout.mathml ?? ""}</mjx-assistive-mml></mjx-container>`;
+  return `<mjx-container class="MathJax" jax="SVG"${kind === "blockMath" ? ' display="true"' : ""}><img class="math-image" data-image-state="pending" data-math-image data-variant-id="${identity}" alt="" aria-hidden="true" width="${width}" height="${height}" style="width:${(layout.widthEm ?? 0) * 2}ex;height:${(layout.heightEm ?? 0) * 2}ex;vertical-align:${(layout.verticalAlignEm ?? 0) * 2}ex" src="${source}" loading="${loading}" decoding="async"><mjx-assistive-mml>${layout.mathml ?? ""}</mjx-assistive-mml></mjx-container>`;
 }

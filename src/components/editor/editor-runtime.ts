@@ -200,6 +200,14 @@ export async function mountArticleEditor(
           addProseMirrorPlugins: () => [createTableControlsPlugin()],
         }),
       ],
+      mathHTML: new Map(
+        [...options.element.querySelectorAll<HTMLElement>(".tiptap-mathematics-render")].map(
+          (el) => [
+            `${el.dataset.type}:${el.dataset.latex}`,
+            el.querySelector(".block-math-inner")?.innerHTML ?? el.innerHTML,
+          ],
+        ),
+      ),
       mermaidHTML: new Map(
         [...options.element.querySelectorAll<HTMLElement>(".mermaid-diagram")].map((element) => [
           element.dataset.mermaidSource ?? "",

@@ -1,3 +1,8 @@
+import {
+  mathArtifactFromHTML,
+  parseSvgArtifact,
+  mediaImageHTML,
+} from "../../content/media-artifact";
 import { articleImageAttributes } from "./article-image";
 import { semanticMarks, InlineFormatting } from "./inline-marks";
 import { DocumentTable } from "./document-table";
@@ -203,9 +208,13 @@ const SharedCodeBlock = CodeBlock.extend<
 
 function sharedMathNodeView(displayMode: boolean) {
   return function addNodeView(this: {
-    options: { onClick?: (node: ProseMirrorNode, position: number) => void };
+    options: {
+      onClick?: (node: ProseMirrorNode, position: number) => void;
+      mathHTML?: Map<string, string>;
+    };
   }) {
     const onClick = this.options.onClick;
+    const cache = this.options.mathHTML;
     return ({ node: initialNode, view, getPos }: NodeViewRendererProps) => {
       let currentNode = initialNode;
       const ownerDocument = view.dom.ownerDocument;
@@ -218,13 +227,34 @@ function sharedMathNodeView(displayMode: boolean) {
       const render = () => {
         const latex = String(currentNode.attrs.latex ?? "");
         dom.dataset.latex = latex;
+        const key = (displayMode ? "block-math:" : "inline-math:") + latex;
+        let html = cache?.get(key);
+        if (!html) {
+          const raw = renderMathContentHTML(latex, displayMode);
+          try {
+            const parts = mathArtifactFromHTML(raw);
+            const kind = displayMode ? "blockMath" : "inlineMath";
+            const artifact = parseSvgArtifact(parts.svg, kind, parts.mathml);
+            html = mediaImageHTML(
+              kind,
+              "data:image/svg+xml," + encodeURIComponent(artifact.svg),
+              artifact.width,
+              artifact.height,
+              artifact.layout,
+              "",
+              true,
+            );
+          } catch {
+            html = raw;
+          }
+        }
         if (displayMode) {
           const inner = ownerDocument.createElement("div");
           inner.className = "block-math-inner";
-          inner.innerHTML = renderMathContentHTML(latex, true);
+          inner.innerHTML = html;
           dom.replaceChildren(inner);
         } else {
-          dom.innerHTML = renderMathContentHTML(latex, false);
+          dom.innerHTML = html;
         }
       };
       render();
@@ -235,6 +265,7 @@ function sharedMathNodeView(displayMode: boolean) {
 
       return {
         dom,
+        ignoreMutation: () => true,
         update(node: ProseMirrorNode) {
           if (node.type !== currentNode.type) return false;
           currentNode = node;
@@ -247,6 +278,7 @@ function sharedMathNodeView(displayMode: boolean) {
 }
 
 interface MathNodeOptions {
+  mathHTML?: Map<string, string>;
   onClick?: (node: ProseMirrorNode, position: number) => void;
 }
 
@@ -257,7 +289,7 @@ const SharedInlineMath = Node.create<MathNodeOptions>({
   atom: true,
 
   addOptions() {
-    return { onClick: undefined };
+    return { onClick: undefined, mathHTML: undefined as Map<string, string> | undefined };
   },
 
   addAttributes() {
@@ -321,7 +353,7 @@ const SharedBlockMath = Node.create<MathNodeOptions>({
   atom: true,
 
   addOptions() {
-    return { onClick: undefined };
+    return { onClick: undefined, mathHTML: undefined as Map<string, string> | undefined };
   },
 
   addAttributes() {
@@ -371,6 +403,7 @@ interface EditorExtensionOptions {
   additionalExtensions?: AnyExtension[];
   onMermaidEdit?: (position: number) => void;
   mermaidHTML?: Map<string, string>;
+  mathHTML?: Map<string, string>;
   onMathEdit?: (request: { kind: "inline" | "block"; latex: string; position: number }) => void;
 }
 
@@ -529,10 +562,12 @@ export function createEditorExtensions(options: EditorExtensionOptions = {}): An
       },
     }).configure({ inline: true, allowBase64: false }),
     SharedInlineMath.configure({
+      mathHTML: options.mathHTML,
       onClick: (node, position) =>
         options.onMathEdit?.({ kind: "inline", latex: String(node.attrs.latex), position }),
     }),
     SharedBlockMath.configure({
+      mathHTML: options.mathHTML,
       onClick: (node, position) =>
         options.onMathEdit?.({ kind: "block", latex: String(node.attrs.latex), position }),
     }),

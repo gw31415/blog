@@ -1,3 +1,12 @@
+import { acceptMedia } from "./media";
+import { mathArtifactFromHTML } from "../content/media-artifact";
+import { validateLatex } from "../components/editor/mathjax-renderer";
+function generateMath(entry: RenderEntry) {
+  const result = validateLatex(entry.source, entry.kind === "blockMath");
+  return result.ok
+    ? { output: result.html, diagnostic: null }
+    : { output: null, diagnostic: result.message };
+}
 import { createDraft, findPost, savePostContent } from "./posts";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
@@ -6,7 +15,7 @@ import { renderEntries, renderKey, RENDERERS, type RenderEntry } from "../conten
 import { insertRenderCache, syncRenderReferences, resolveRenderCache } from "./render-cache";
 import { acceptRenderArtifacts } from "./accept-render-artifacts";
 import { renderPost } from "./render-post";
-import { generateMath, renderDocument } from "./render-document";
+import { renderDocument } from "./render-document";
 
 const opened: DatabaseSync[] = [];
 afterEach(() => {
@@ -18,6 +27,7 @@ function database() {
   sqlite.exec("PRAGMA foreign_keys=ON");
   const queries: string[] = [];
   sqlite.exec(readFileSync("migrations/0001_initial.sql", "utf8"));
+  sqlite.exec(readFileSync("migrations/0004_media_delivery.sql", "utf8"));
   class Statement {
     constructor(
       public sql: string,
@@ -110,15 +120,29 @@ describe("shared persistent rendering cache", () => {
     const { db } = database();
     const document = body();
     const entries = await renderEntries(document);
-    await db.batch(
-      entries.map((entry) =>
-        insertRenderCache(db, entry, entry.kind === "mermaid" ? svg : generateMath(entry).output!),
-      ),
+    const objects = new Map<string, string>();
+    const bucket = {
+      put: async (k: string, b: Blob) => {
+        objects.set(k, await b.text());
+      },
+      get: async (k: string) => ({ text: async () => objects.get(k)! }),
+      delete: async (k: string) => {
+        objects.delete(k);
+      },
+    };
+    const id = await createDraft(db);
+    await acceptMedia(
+      db,
+      bucket,
+      id,
+      document,
+      entries.map((e) => ({
+        ...e,
+        ...(e.kind === "mermaid" ? { svg } : mathArtifactFromHTML(generateMath(e).output!)),
+      })),
     );
     const result = await renderDocument(document, {
-      platform: { env: { DB: db } },
-      // Render cache hits only require the DB binding, not a live router request.
-      // eslint-disable-next-line typescript/no-unsafe-type-assertion
+      platform: { env: { DB: db, IMAGES: bucket } },
     } as Parameters<typeof renderDocument>[1]);
     expect(result.diagrams[0]).toContain("data:image/svg+xml,");
     expect(result.math).toHaveLength(2);
@@ -174,32 +198,48 @@ describe("shared persistent rendering cache", () => {
       acceptRenderArtifacts(db, body(), [{ ...artifact, svg: "<!DOCTYPE svg>" + svg }]),
     ).rejects.toThrow();
   });
-  it("commits browser SVG with the post so the first SSR needs no Browser Rendering", async () => {
+  it("commits browser SVG and math with a post without server rendering", async () => {
     const { db } = database();
     const id = await createDraft(db);
     const document = {
       type: "doc",
       content: [body().content[0], { type: "paragraph", content: [body().content[1]] }],
     };
-    await savePostContent(db, id, {
-      title: "cached",
-      status: "draft",
-      alias: null,
-      tags: [],
-      body: document,
-      formatVersion: 2,
-      bodyFormat: "tiptap-json",
-      contentSchemaVersion: 1,
-      renderArtifacts: [
-        { source: body().content[0].content![0].text, renderer: RENDERERS.mermaid, svg },
-      ],
-    });
-    const saved = await findPost(db, id);
-    // Cached rendering only needs the DB binding from the router request.
-    const result = await renderDocument(saved!.body, {
-      platform: { env: { DB: db } },
-      // eslint-disable-next-line typescript/no-unsafe-type-assertion
-    } as Parameters<typeof renderDocument>[1]);
+    const entries = await renderEntries(document);
+    const objects = new Map<string, string>();
+    const bucket = {
+      put: async (k: string, b: Blob) => {
+        objects.set(k, await b.text());
+      },
+      get: async (k: string) => ({ text: async () => objects.get(k)! }),
+      delete: async (k: string) => {
+        objects.delete(k);
+      },
+    };
+    await savePostContent(
+      db,
+      id,
+      {
+        title: "cached",
+        status: "draft",
+        alias: null,
+        tags: [],
+        body: document,
+        formatVersion: 2,
+        bodyFormat: "tiptap-json",
+        contentSchemaVersion: 1,
+        renderArtifacts: entries.map((e) => ({
+          ...e,
+          ...(e.kind === "mermaid" ? { svg } : mathArtifactFromHTML(generateMath(e).output!)),
+        })),
+      },
+      bucket,
+    );
+    const result = await renderDocument(
+      (await findPost(db, id))!.body,
+      { platform: { env: { DB: db, IMAGES: bucket } } } as Parameters<typeof renderDocument>[1],
+      id,
+    );
     expect(result.diagrams[0]).toContain("data:image/svg+xml,");
     expect(result.math[0].output).toContain("mjx-container");
   });
@@ -393,9 +433,7 @@ describe("current article alias", () => {
     expect((await findPost(db, a))?.id).toBe(a);
     await savePostContent(db, b, input("old-name"));
     expect((await findPost(db, "old-name"))?.id).toBe(b);
-    await expect(savePostContent(db, b, input("new-name"))).rejects.toThrow(
-      "エイリアスが他の記事で使用されています",
-    );
+    await expect(savePostContent(db, b, input("new-name"))).rejects.toThrow("CONFLICT");
     expect((await findPost(db, "new-name"))?.id).toBe(a);
     await savePostContent(db, a, input(""));
     expect(await findPost(db, "new-name")).toBeNull();

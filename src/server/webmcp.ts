@@ -179,7 +179,9 @@ export async function executeServerTool(event: RequestEventCommon, name: string,
           originalUrl: `/api/images/originals/${item.id}`,
           variants: (
             await db
-              .prepare("SELECT id,width,height FROM image_variants WHERE original_id=? ORDER BY id")
+              .prepare(
+                "SELECT id,width,height FROM media_variants WHERE original_id=? AND state='ready' ORDER BY id",
+              )
               .bind(item.id)
               .all()
           ).results,
@@ -191,7 +193,10 @@ export async function executeServerTool(event: RequestEventCommon, name: string,
       const id = inputText(input, "variantId");
       if (
         !imageIdPattern.test(id) ||
-        !(await db.prepare("SELECT id FROM image_variants WHERE id=?").bind(id).first()) ||
+        !(await db
+          .prepare("SELECT id FROM media_variants WHERE id=? AND state='ready'")
+          .bind(id)
+          .first()) ||
         !(await event.platform.env.IMAGES.head(`images/variants/${id}`))
       )
         throw new ToolError("NOT_FOUND", "配信画像が見つかりません");

@@ -1157,7 +1157,7 @@ const articleShellStyles = css`
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    & .article-content img[data-article-image][data-image-state] {
+    & .article-content img[data-image-state][data-image-state] {
       animation: none;
     }
   }

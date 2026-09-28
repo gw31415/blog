@@ -23,16 +23,29 @@ const storeImage = (db: D1Database, data: FormData) => store(db, data, buckets.g
 const deletePost = async (db: D1Database, id: string) => {
   const ids = await postImageIds(db, id);
   const result = await removePost(db, id);
+  await age(db);
   await removeUnusedVariants(db, buckets.get(db)!, ids);
   return result;
 };
-const collectUnusedImages = (db: D1Database) => collect(db, buckets.get(db)!);
+async function age(db: D1Database) {
+  await db.prepare("DELETE FROM media_upload_leases").run();
+  await db
+    .prepare(
+      "UPDATE media_variants SET unreferenced_at=unixepoch()-86401 WHERE NOT EXISTS(SELECT 1 FROM post_media_refs WHERE variant_id=media_variants.id)",
+    )
+    .run();
+}
+const collectUnusedImages = async (db: D1Database) => {
+  await age(db);
+  return collect(db, buckets.get(db)!);
+};
 afterEach(() => opened.splice(0).forEach((db) => db.close()));
 function setup() {
   const sql = new DatabaseSync(":memory:");
   opened.push(sql);
   sql.exec("PRAGMA foreign_keys=ON");
   sql.exec(readFileSync("migrations/0001_initial.sql", "utf8"));
+  sql.exec(readFileSync("migrations/0004_media_delivery.sql", "utf8"));
   class Statement {
     constructor(
       public query: string,
@@ -112,10 +125,18 @@ function save(sql: DatabaseSync, postId: string, urls: string[]) {
     }),
     postId,
   );
+  sql.prepare("DELETE FROM post_media_refs WHERE post_id=?").run(postId);
+  urls.forEach((url, i) => {
+    const id = url.split("/").at(-1)!;
+    sql
+      .prepare("INSERT INTO post_media_refs VALUES(?,?,'test',?,NULL,0,'test',NULL)")
+      .run(postId, String(i), id);
+  });
+  sql.prepare("DELETE FROM media_upload_leases WHERE post_id=?").run(postId);
 }
 
-describe("two-table image lifecycle", () => {
-  it("uses separate ULID filenames and keeps original and variant row after deletion", async () => {
+describe("unified image lifecycle", () => {
+  it("uses separate ULID filenames and keeps original after the variant grace period", async () => {
     const { db, sql, objects } = setup();
     const post = await createDraft(db);
     const image = await storeImage(db, form(post));
@@ -125,7 +146,7 @@ describe("two-table image lifecycle", () => {
     save(sql, post, [image.url]);
     await deletePost(db, post);
     expect(objects.size).toBe(1);
-    expect(sql.prepare("SELECT count(*) n FROM image_variants").get()?.n).toBe(1);
+    expect(sql.prepare("SELECT count(*) n FROM image_originals").get()?.n).toBe(1);
     expect((await listOriginals(db, true)).items[0].articles).toEqual([]);
   });
   it("keeps shared delivery until its last article reference disappears", async () => {
@@ -147,6 +168,7 @@ describe("two-table image lifecycle", () => {
     save(sql, post, [image.url]);
     const ids = await postImageIds(db, post);
     save(sql, post, []);
+    await age(db);
     await removeUnusedVariants(db, buckets.get(db)!, ids);
     expect(objects.size).toBe(1);
     expect((await listOriginals(db, true)).items).toHaveLength(1);

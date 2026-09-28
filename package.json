@@ -6,7 +6,7 @@
     "icons:generate": "node scripts/generate-site-icons.mjs",
     "build": "qwik build",
     "build.client": "vp build",
-    "build.server": "qwik check-client src dist && vp build -c adapters/cloudflare-workers/vite.config.ts",
+    "build.server": "qwik check-client src dist && vp build -c adapters/cloudflare-workers/vite.config.ts && node scripts/finalize-worker.mjs",
     "build.types": "wrangler types && tsc --incremental --noEmit",
     "check": "vp check",
     "check:editor-chunk": "node scripts/check-editor-chunk.mjs",
@@ -21,10 +21,11 @@
     "db:seed:local": "node scripts/seed-document.mjs && wrangler d1 execute blog-posts --local --file scripts/seed-document.sql",
     "db:reset:local": "node scripts/reset-local-db.mjs --discard-test-data",
     "db:migrate:remote": "wrangler d1 migrations apply blog-posts --remote",
-    "deploy:built": "pnpm run db:migrate:remote && wrangler deploy"
+    "deploy:built": "pnpm run db:migrate:remote && wrangler deploy",
+    "media:migrate": "tsx scripts/migrate-media.ts",
+    "media:audit": "tsx scripts/migrate-media.ts --audit"
   },
   "dependencies": {
-    "@cloudflare/puppeteer": "^1.4.0",
     "@mathjax/mathjax-tex-font": "4.1.3",
     "@mathjax/src": "4.1.3",
     "@tiptap/core": "3.31.3",

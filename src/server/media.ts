@@ -219,10 +219,8 @@ export async function mediaReferenceStatements(
       )
       .bind(postId, ...args, postId),
     db
-      .prepare(
-        `DELETE FROM media_upload_leases WHERE post_id=? AND (token LIKE ? OR variant_id IN (SELECT variant_id FROM post_media_refs WHERE post_id=?)) AND ${guard}`,
-      )
-      .bind(postId, lease + ":%", postId, ...args),
+      .prepare(`DELETE FROM media_upload_leases WHERE post_id=? AND token LIKE ? AND ${guard}`)
+      .bind(postId, lease + ":%", ...args),
   ];
 }
 export async function collectMedia(db: D1Database, objects: Pick<MediaStore, "delete">) {

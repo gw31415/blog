@@ -9,3 +9,7 @@ declare global {
 }
 
 export const fetch = createQwikRouter({ render });
+
+export async function scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
+  ctx.waitUntil((await import("./server/media")).collectMedia(env.DB, env.IMAGES));
+}

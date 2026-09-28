@@ -53,7 +53,7 @@ export const usePost = routeLoader$(async (event) => {
   const presentation = renderPost(post.body, rendered.diagrams, rendered.math);
   const { results: images } = await database(event)
     .prepare(
-      "SELECT v.id, v.width, v.height FROM image_variants v JOIN post_images p ON p.variant_id=v.id WHERE p.post_id=?",
+      "SELECT DISTINCT v.id, v.width, v.height FROM media_variants v JOIN post_media_refs p ON p.variant_id=v.id WHERE p.post_id=?",
     )
     .bind(post.id)
     .all<{ id: string; width: number; height: number }>();
@@ -92,7 +92,7 @@ export const useSavePost = routeAction$(
     if (!post) throw event.error(404, "記事が見つかりません。");
     try {
       const imageIds = await postImageIds(database(event), post.id);
-      await savePostContent(database(event), post.id, values);
+      await savePostContent(database(event), post.id, values, event.platform.env.IMAGES);
       await removeUnusedVariants(database(event), event.platform.env.IMAGES, imageIds);
       event.sharedMap.delete("blog.post");
       return { ok: true, version: (await findPost(database(event), post.id))!.updated_at };
@@ -135,8 +135,7 @@ export default component$(() => {
       canEdit={data.value.canManage}
       autoEditFromQuery
       onSave$={$(async (draft) => {
-        const { validateMermaidDocument, prepareMermaidArtifacts } =
-          await import("~/components/editor/mermaid-renderer");
+        const { validateMermaidDocument } = await import("~/components/editor/mermaid-renderer");
         if (draft.status === "published") {
           await validateMermaidDocument(draft.body);
         }
@@ -146,7 +145,11 @@ export default component$(() => {
           title: draft.title,
           subtitle: draft.subtitle === (post.subtitle ?? "") ? post.subtitle : draft.subtitle,
           body: JSON.stringify(draft.body),
-          renderArtifacts: JSON.stringify(await prepareMermaidArtifacts(draft.body)),
+          renderArtifacts: JSON.stringify(
+            await (
+              await import("~/components/editor/prepare-media")
+            ).prepareMediaArtifacts(draft.body),
+          ),
           editingState: draft.editingState,
           tags: JSON.stringify(draft.tags),
           description:

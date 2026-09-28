@@ -19,8 +19,12 @@ export function setSurface<T extends HTMLElement>(
   return element;
 }
 
+export function figureFieldAttributes() {
+  return { class: "figure-field", ...surfaceAttributes(articleSurface.figure) };
+}
+
 export function figureFieldDOMSpec(content: DOMOutputSpec): DOMOutputSpec {
-  return ["div", { class: "figure-field", ...surfaceAttributes(articleSurface.figure) }, content];
+  return ["div", figureFieldAttributes(), content];
 }
 
 export function createFigureField(ownerDocument: Document): HTMLDivElement {
@@ -40,9 +44,9 @@ export function mermaidFigureDOMSpec(source: string, caption?: string | null): D
     [
       "div",
       {
+        ...figureFieldAttributes(),
         class: "figure-field mermaid-preview",
         "data-blog-role": "mermaid-field",
-        ...surfaceAttributes(articleSurface.figure),
       },
       0,
     ],

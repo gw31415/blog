@@ -79,7 +79,9 @@ export async function prepareMermaidArtifacts(
     try {
       const svg = url?.startsWith("data:image/svg+xml,")
         ? decodeURIComponent(url.slice("data:image/svg+xml,".length))
-        : await svgFor(source);
+        : url?.startsWith("/media/variants/")
+          ? await (await fetch(url)).text()
+          : await svgFor(source);
       result.push({ source, renderer: MERMAID_RENDERER, svg });
     } catch {
       /* Keep invalid draft source; SSR will retain its rendering diagnostic. */

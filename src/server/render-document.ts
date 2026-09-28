@@ -1,43 +1,78 @@
 import type { JSONContent } from "@tiptap/core";
 import type { RequestEventLoader } from "@qwik.dev/router";
-import { renderEntries, type RenderEntry, type RenderResult } from "../content/render-contract";
-import { validateLatex } from "../components/editor/mathjax-renderer";
-import { mermaidImageHTML, MERMAID_ERROR } from "../components/editor/mermaid-contract";
-import { resolveRenderCache } from "./render-cache";
-import { generateMermaid } from "./render-mermaid";
-
-export function generateMath(entry: RenderEntry): RenderResult {
-  const result = validateLatex(entry.source, entry.kind === "blockMath");
-  return result.ok
-    ? { output: result.html, diagnostic: null }
-    : { output: null, diagnostic: result.message };
-}
+import { renderEntries, type RenderResult } from "../content/render-contract";
+import { mediaOccurrences, FOLD_POLICY } from "../content/media-fold";
+import { mediaImageHTML, type ArtifactLayout } from "../content/media-artifact";
+import { readMedia, mediaHash } from "./media";
+import { MERMAID_ERROR } from "../components/editor/mermaid-contract";
 export async function renderDocument(
   document: JSONContent,
   event: RequestEventLoader,
   postId?: string,
 ) {
   const entries = await renderEntries(document);
-  const results = await resolveRenderCache(
+  const rows = await readMedia(
     event.platform.env.DB,
-    entries,
-    async (missing) => {
-      const diagrams = missing.filter((entry) => entry.kind === "mermaid");
-      const generated = diagrams.length ? await generateMermaid(diagrams, event) : [];
-      let diagramIndex = 0;
-      return missing.map((entry) =>
-        entry.kind === "mermaid" ? generated[diagramIndex++] : generateMath(entry),
-      );
-    },
-    postId ? { id: postId, body: JSON.stringify(document) } : undefined,
+    entries.map((e) => e.key),
   );
+  const map = new Map(rows.map((r) => [r.render_key, r]));
+  const refs = postId
+    ? (
+        await event.platform.env.DB.prepare(
+          "SELECT node_path,embed_initial,body_hash,policy_version FROM post_media_refs WHERE post_id=?",
+        )
+          .bind(postId)
+          .all<{
+            node_path: string;
+            embed_initial: number;
+            body_hash: string;
+            policy_version: string;
+          }>()
+      ).results
+    : [];
+  const hash = await mediaHash(JSON.stringify(document));
+  const refMap = new Map(refs.map((r) => [r.node_path, r]));
+  const occurrences = mediaOccurrences(document).filter(
+    (o) => o.node.type !== "image" && o.node.type !== "figure",
+  );
+  const bodies = new Map<string, Promise<string | null>>();
   const diagrams: string[] = [];
   const math: RenderResult[] = [];
-  for (const entry of entries) {
-    const result = results.get(entry.key)!;
-    if (entry.kind === "mermaid")
-      diagrams.push(result.output ? mermaidImageHTML(result.output) : MERMAID_ERROR);
-    else math.push(result);
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i],
+      row = map.get(entry.key);
+    const ref = refMap.get(occurrences[i].path);
+    const embed =
+      !ref || ref.body_hash !== hash || ref.policy_version !== FOLD_POLICY || !!ref.embed_initial;
+    let html: string | null = null;
+    if (row) {
+      let src = "/media/variants/" + row.id;
+      if (embed) {
+        if (!bodies.has(row.id))
+          bodies.set(
+            row.id,
+            event.platform.env.IMAGES.get(row.object_key).then((o) => (o ? o.text() : null)),
+          );
+        const svg = await bodies.get(row.id)!;
+        src = svg ? "data:image/svg+xml," + encodeURIComponent(svg) : "";
+      }
+      if (src)
+        html = mediaImageHTML(
+          entry.kind,
+          src,
+          row.width,
+          row.height,
+          JSON.parse(row.layout_json) as ArtifactLayout,
+          row.id,
+          embed,
+        );
+    }
+    if (entry.kind === "mermaid") diagrams.push(html ?? MERMAID_ERROR);
+    else
+      math.push({
+        output: html,
+        diagnostic: html ? null : "数式を編集画面で確認して保存してください",
+      });
   }
   return { diagrams, math };
 }

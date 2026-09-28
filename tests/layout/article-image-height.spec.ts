@@ -36,7 +36,7 @@ for (const viewport of [
       });
     });
     await page.goto("/blog/document-showcase", { waitUntil: "domcontentloaded" });
-    const images = page.locator("img[data-article-image]");
+    const images = page.locator("img[data-article-image]:not(.mermaid-image)");
     const measure = () =>
       images.evaluateAll((elements) =>
         elements.map((el) => {

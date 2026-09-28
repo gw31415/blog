@@ -24,13 +24,19 @@ export function observeArticleImages(root: HTMLElement) {
       : "pending";
   };
   const onSettled = (event: Event) => {
-    if (event.target instanceof HTMLImageElement && event.target.hasAttribute("data-article-image"))
+    if (
+      event.target instanceof HTMLImageElement &&
+      (event.target.hasAttribute("data-article-image") ||
+        event.target.hasAttribute("data-math-image"))
+    )
       updateState(event.target);
   };
   root.addEventListener("load", onSettled, true);
   root.addEventListener("error", onSettled, true);
   const scan = () => {
-    for (const image of root.querySelectorAll<HTMLImageElement>("img[data-article-image]")) {
+    for (const image of root.querySelectorAll<HTMLImageElement>(
+      "img[data-article-image],img[data-math-image]",
+    )) {
       const source = image.getAttribute("src") ?? "";
       const known = dimensions.get(source);
       if (known) {

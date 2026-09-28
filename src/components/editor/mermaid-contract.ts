@@ -1,3 +1,4 @@
+import { mediaImageHTML } from "../../content/media-artifact";
 import type { JSONContent } from "@tiptap/core";
 
 import { RENDERERS, renderInputs } from "../../content/render-contract";
@@ -21,9 +22,15 @@ export function mermaidImageHTML(svg: string): string {
   const box = /\bviewBox="([^"]+)"/.exec(tag)?.[1].trim().split(/[ ,]+/).map(Number);
   const width = box?.[2],
     height = box?.[3];
-  const dimensions =
-    width && height && Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0
-      ? ` width="${width}" height="${height}" style="width:${width / 16}em;max-width:100%;height:auto"`
-      : "";
-  return `<img class="mermaid-image" alt="Mermaid図"${dimensions} src="data:image/svg+xml,${encodeURIComponent(svg)}">`;
+  return width && height
+    ? mediaImageHTML(
+        "mermaid",
+        "data:image/svg+xml," + encodeURIComponent(svg),
+        width,
+        height,
+        {},
+        "",
+        true,
+      )
+    : MERMAID_ERROR;
 }
