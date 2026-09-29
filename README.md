@@ -8,8 +8,8 @@ Node.js 26とpnpm 12を使います。正確なバージョン・依存関係は
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm exec wrangler d1 migrations apply blog-posts --local --persist-to .cache/webmcp-test
-BLOG_LOCAL_TEST=1 pnpm dev --host 127.0.0.1 --port 4187 --strictPort
+pnpm db:migrate:local
+pnpm dev --host 127.0.0.1 --port 4187 --strictPort
 ```
 
 この起動方法ではローカルのD1/R2を使います。画面右下の「管理者目線」で開発用の編集権限を切り替えられます。サンプル記事の投入やテスト、ビルドの手順は [開発・検証](docs/development.md) にまとめています。

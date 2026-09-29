@@ -28,6 +28,6 @@
     "scripts",
     "./*.config.ts",
     "adapters/**/*.ts",
-    "worker-configuration.d.ts"
+    ".cloudflare/types/index.d.ts"
   ]
 }

@@ -1,20 +1,16 @@
 import { normalizeDocument } from "../src/content/document";
-/// <reference path="../worker-configuration.d.ts" />
-import { getPlatformProxy } from "wrangler";
+import { getLocalPlatform } from "./local-platform";
 import { mkdir, writeFile } from "node:fs/promises";
 import { renderEntries } from "../src/content/render-contract";
 import { acceptMedia, mediaReferenceStatements, mediaHash } from "../src/server/media";
 import { mathArtifactFromHTML } from "../src/content/media-artifact";
 const args = process.argv.slice(2);
 const target = args[args.indexOf("--env") + 1];
-if (!["local", "production"].includes(target) || !args.includes("--env"))
-  throw new Error("Specify --env local|production");
+if (target !== "local" || !args.includes("--env"))
+  throw new Error("This tool only supports --env local; production is never accessed.");
 const apply = args.includes("--apply");
 const audit = args.includes("--audit");
-const platform = await getPlatformProxy<Env>({
-  remoteBindings: target === "production",
-  persist: { path: ".cache/webmcp-test/v3" },
-});
+const platform = await getLocalPlatform();
 try {
   const { DB: db, IMAGES: bucket } = platform.env;
   const posts = (

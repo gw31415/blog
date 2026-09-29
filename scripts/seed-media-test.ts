@@ -1,12 +1,9 @@
-import { getPlatformProxy } from "wrangler";
+import { getLocalPlatform } from "./local-platform";
 import { acceptMedia, mediaReferenceStatements } from "../src/server/media";
 import { renderEntries } from "../src/content/render-contract";
 import { validateLatex } from "../src/components/editor/mathjax-renderer";
 import { mathArtifactFromHTML } from "../src/content/media-artifact";
-const p = await getPlatformProxy<Env>({
-  remoteBindings: false,
-  persist: { path: ".cache/webmcp-test/v3" },
-});
+const p = await getLocalPlatform();
 try {
   const id = "01K" + "0".repeat(21) + "99";
   const diagram = {

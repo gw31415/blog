@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
-import { createRequire } from "node:module";
 import { readFile, readdir } from "node:fs/promises";
+import { resolve } from "node:path";
 import { generateKeyPair, exportJWK, SignJWT } from "jose";
-const require = createRequire(import.meta.url);
-const { Miniflare, convertV4MiniflareOptions } = createRequire(
-  require.resolve("wrangler/package.json"),
-)("miniflare");
+import { Miniflare, convertV4MiniflareOptions } from "miniflare";
+const bundle = resolve(".cloudflare/output/v0/workers/default/bundle");
 const issuer = "https://runtime-test.cloudflareaccess.com",
   audience = "runtime-test-aud";
 const { privateKey, publicKey } = await generateKeyPair("RS256");
@@ -21,8 +19,9 @@ const jwt = await new SignJWT({ email: "editor@example.test", type: "app" })
 const auth = { Cookie: `CF_Authorization=${jwt}` };
 const mf = new Miniflare(
   convertV4MiniflareOptions({
-    modules: true,
-    scriptPath: ".cache/access-bundle/_worker.js",
+    modules: ["index.js", ...(await readdir(`${bundle}/assets`)).map((file) => `assets/${file}`)]
+      .filter((file) => file.endsWith(".js"))
+      .map((file) => ({ type: "ESModule", path: resolve(bundle, file) })),
     compatibilityDate: "2026-09-04",
     compatibilityFlags: ["nodejs_compat"],
     bindings: { ACCESS_TEAM_DOMAIN: issuer, ACCESS_AUD: audience },

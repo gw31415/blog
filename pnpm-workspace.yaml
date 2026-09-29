@@ -44,8 +44,12 @@ minimumReleaseAgeExclude:
   - "@voidzero-dev/vite-plus-win32-arm64-msvc@1.0.0"
   - "@voidzero-dev/vite-plus-win32-x64-msvc@1.0.0"
   - vite-plus@1.0.0
+  - "@cloudflare/codemods@0.2.1"
+  - cf@1.0.0-beta.5
 patchedDependencies:
   "@qstyle/vite@0.2.0": patches/@qstyle__vite@0.2.0.patch
   "@qwik.dev/core@2.0.0-beta.45": patches/@qwik.dev__core@2.0.0-beta.45.patch
   "@qwik.dev/router@2.0.0-beta.45": patches/@qwik.dev__router-prefetch@2.0.0-beta.45.patch
   "@tiptap/static-renderer@3.31.3": patches/@tiptap__static-renderer@3.31.3.patch
+  # Registry watchers must not keep completed local cf commands alive.
+  miniflare@5.20260926.0-alpha: patches/miniflare@5.20260926.0-alpha.patch

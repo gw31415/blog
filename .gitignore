@@ -17,6 +17,7 @@ dummy-non-existing-folder
 .mf
 .rollup.cache
 .wrangler
+.cloudflare
 tsconfig.tsbuildinfo
 worker-configuration.d.ts
 

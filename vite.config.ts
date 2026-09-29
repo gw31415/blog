@@ -8,14 +8,7 @@ import { discoveryPaths } from "./src/webmcp/discovery";
 export default defineConfig(async ({ command, mode }) => {
   const proxy =
     command === "serve" && mode !== "test"
-      ? await (
-          await import("wrangler")
-        ).getPlatformProxy<Env>({
-          remoteBindings: process.env.BLOG_LOCAL_TEST !== "1",
-          ...(process.env.BLOG_LOCAL_TEST === "1"
-            ? { persist: { path: ".cache/webmcp-test/v3" } }
-            : {}),
-        })
+      ? await (await import("./scripts/local-platform")).getLocalPlatform()
       : undefined;
 
   return {
@@ -107,10 +100,10 @@ export default defineConfig(async ({ command, mode }) => {
       categories: { correctness: "warn", suspicious: "warn" },
     },
     fmt: {
-      // wrangler types による生成物はフォーマット対象外
+      // cf workers types による生成物はフォーマット対象外
       ignorePatterns: [
         "public/codecs/**",
-        "worker-configuration.d.ts",
+        ".cloudflare/**",
         // vite-plus test がテスト実行時に作る ESM 判定用ディレクトリ
         "dummy-non-existing-folder",
         // 正本仕様は文意に無関係な表・フェンスの全面整形を避ける

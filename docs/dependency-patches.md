@@ -40,3 +40,11 @@ The unpatched observer passes a concrete pathname to a graph keyed by route
 names, so dynamic article URLs can prefetch loader data without prefetching the
 matching route bundles. Remove when the observer delegates both bundle and data
 prefetching to `prefetchRoute()` upstream.
+
+## Miniflare: local CLI exit
+
+`miniflare@5.20260926.0-alpha.patch` sets the development registry watcher to
+`persistent: false`. On macOS, a watcher can remain after runtime disposal and
+keep completed `cf d1` commands running. The watcher still receives events while
+the development server is running. Remove when unpatched local migration and SQL
+commands exit normally after completion.

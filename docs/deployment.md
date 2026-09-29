@@ -2,7 +2,7 @@
 
 ## Cloudflare構成
 
-リポジトリ側の設定の正本は [wrangler.jsonc](../wrangler.jsonc) です。ここでは設定と運用手順を記し、Cloudflare側の現在のデプロイ・データ・ポリシーの状態を保証するものではありません。
+リポジトリ側の設定の正本は [cloudflare.config.ts](../cloudflare.config.ts) です。ここでは設定と運用手順を記し、Cloudflare側の現在のデプロイ・データ・ポリシーの状態を保証するものではありません。
 
 | 項目             | 設定                                |
 | ---------------- | ----------------------------------- |
@@ -41,7 +41,7 @@ SSRとloader/action応答は `private, no-store`。管理者の一覧をIndexedD
 pnpm deploy
 ```
 
-`deploy` はビルド後に `deploy:built` を実行します。`deploy:built` は `db:migrate:remote` で本番D1の未適用マイグレーションを適用し、成功した場合だけ `wrangler deploy` します。直接 `wrangler deploy` する設定ではマイグレーションが省略されます。
+`deploy` はビルド後に `deploy:built` を実行します。`deploy:built` は `db:migrate:remote` で本番D1の未適用マイグレーションを適用し、成功した場合だけ `cf deploy --prebuilt` します。直接 `cf deploy --prebuilt` する設定ではマイグレーションが省略されます。
 
 Workers Buildsを使う場合のコマンドは次の組み合わせです。Node 26・pnpm 12とlockfileを使用し、本番デプロイは本番ブランチに限定します。
 

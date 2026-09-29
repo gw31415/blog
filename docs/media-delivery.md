@@ -42,7 +42,7 @@ SSRはメタデータを一括取得し、上部SVGだけR2から取得する。
 
 ## 移行・監査
 
-接続先は必須。通常のdevは本番接続なので、書き込みテストは `BLOG_LOCAL_TEST=1` と `.cache/webmcp-test` に限定する。
+移行・監査スクリプトはローカル専用。`--env local` を必須とし、`production` はエラーにする。devと同じ `.cache/webmcp-test`（変更する場合は `BLOG_LOCAL_STATE`）のMiniflareを使う。
 
 ```sh
 pnpm media:migrate -- --env local
@@ -52,9 +52,9 @@ pnpm media:audit -- --env local
 
 `--apply`なしでは原本・既存描画データを調査し、変更しない。`--audit`は参照とR2実体・本文hashを検査する。適用は原本一覧、旧AVIF台帳、現行本文、旧キャッシュから新台帳へ登録する。原本R2 key・既存画像ID・本文bytesを変更しない。再実行可能であり、途中失敗時は修正後に全体を再実行する。旧キャッシュ不足はエラーとして報告し、編集クライアントで再生成する。
 
-適用前の本文と結果は `.cache/media-migration/` に保存する。D1全体のバックアップは別途 `wrangler d1 export` を使う。D1復旧だけでR2は復元されない。生成物を消す前に旧Workerへ戻す必要がなくなったことを確認する。
+適用前の本文と結果は `.cache/media-migration/` に保存する。D1全体のバックアップは別途 `cf d1 export <database-id>` を使う。D1復旧だけでR2は復元されない。生成物を消す前に旧Workerへ戻す必要がなくなったことを確認する。
 
-本番は `--env production` を指定する。SQLの追加migration→データ移行→監査→新Workerの順。0007の旧表削除は新Worker稼働確認後に適用する。適用後も移行ツールの監査・再実行は新台帳で動作する。`pnpm deploy`は全未適用migrationを適用するため、削除migrationを先行リリースに含めない。
+Nodeから本番bindingへ接続する経路は廃止した。今後本番で同種のデータ移行が必要な場合は、別途Cloudflare APIまたはWorker内で実行する手順を用意する。`pnpm deploy` は未適用SQLマイグレーションを適用するが、このローカル用スクリプトは実行しない。
 
 ## 検証
 
