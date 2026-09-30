@@ -68,13 +68,13 @@ Qwikの `valid-lexical-scope` と `use-async-top` はoxlintのJSプラグイン�
 unit testは変更した領域を指定できます。
 
 ```sh
-pnpm test src/content/document.test.ts src/server/posts.test.ts
+pnpm test src/content/document.test.ts src/server/posts.test.ts src/server/post-drafts.test.ts src/components/editor/draft-autosave.test.ts
 ```
 
 ブラウザーテストは [playwright.config.ts](../playwright.config.ts) が `tests/layout/` を対象にします。**`BLOG_TEST_URL` がない場合は通常の `pnpm dev` を自動起動します。** データを分離したい場合は `BLOG_LOCAL_STATE` を指定してマイグレーションを適用し、そのdevを維持した別ターミナルから接続先と対象ファイルを明示します。
 
 ```sh
-BLOG_TEST_URL=http://127.0.0.1:4187 pnpm exec playwright test tests/layout/webmcp.spec.ts
+BLOG_TEST_URL=http://127.0.0.1:4187 pnpm exec playwright test tests/layout/webmcp.spec.ts tests/layout/draft-autosave.spec.ts
 ```
 
 `webmcp.spec.ts` はテスト記事を作成し、自分で作成した記事を削除します。`document-showcase` を使うテストは先にサンプルを投入します。各テストが要求する記事・認証・ブラウザーを確認して対象を選びます。編集切替・CSSの変更時は [editor-parityスキル](../.agents/skills/blog-editor-parity/SKILL.md) に従い、devと本番ビルド、デスクトップ幅とモバイル幅、ChromiumとWebKitの確認を区別して記録します。

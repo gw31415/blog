@@ -1,6 +1,16 @@
+import { readArticleMetadata } from "../editor/article-metadata";
+import { useNavigate } from "@qwik.dev/router";
 import { observeArticleImages } from "../editor/article-image";
 import { observeArticleAnnotations } from "../editor/article-annotations";
-import { ArticleEditButton } from "~/components/atoms/edit-button";
+import { ArticleEditControls } from "~/components/molecules/article-edit-controls";
+import {
+  createDraftAutosaver,
+  type DraftAutosaver,
+  type DraftSnapshot,
+  type SaveResult,
+  type AutosaveState,
+} from "../editor/draft-autosave";
+import type { SaveIntent } from "~/server/posts";
 import { StickyHeader } from "~/components/molecules/sticky-header";
 import { BlogTopbar } from "~/components/molecules/topbar";
 import {
@@ -80,6 +90,9 @@ interface EditorUiState {
   mode: "view" | "loading" | "edit";
   editorReady: boolean;
   saving: boolean;
+  publishing: boolean;
+  saveState: AutosaveState;
+  hasDraft: boolean;
   error: string;
   publishedAt: string;
   title: string;
@@ -101,10 +114,11 @@ interface ArticleShellProps {
   initialContent: JSONContent;
   publicationStatus?: "draft" | "published";
   canonicalAlias?: string | null;
+  hasDraft?: boolean;
   autoEditFromQuery?: boolean;
   canEdit?: boolean;
   onSave$?: QRL<
-    (draft: ArticleDraft & { status: "draft" | "published"; alias: string }) => Promise<void>
+    (draft: DraftSnapshot, intent: SaveIntent, keepalive?: boolean) => Promise<SaveResult>
   >;
 }
 
@@ -231,6 +245,7 @@ const ArticleBody = component$(
 
 export const ArticleShell = component$((props: ArticleShellProps) => {
   const article = props.article;
+  const navigate = useNavigate();
   const initialHtml = useConstant(() => props.initialHtml);
   const initialHeader = useConstant(() => ({
     title: article.title,
@@ -241,10 +256,14 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
   const editorMount = useSignal<HTMLElement>();
   const formattingToolbar = useSignal<HTMLElement>();
   const controller = useSignal<NoSerialize<EditorController>>();
+  const autosaver = useSignal<NoSerialize<DraftAutosaver>>();
   const ui = useStore<EditorUiState>({
     mode: "view",
     editorReady: false,
     saving: false,
+    publishing: false,
+    saveState: "saved",
+    hasDraft: props.hasDraft ?? false,
     error: "",
     publishedAt: article.publishedAt,
     title: article.title,
@@ -320,41 +339,135 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
     }
   });
 
-  const enterView$ = $(async () => {
-    if (!canSwitchToView(ui.mode) || ui.saving) return;
-    if (props.onSave$) {
-      ui.error = "";
-      ui.saving = true;
-      try {
-        if (controller.value?.getWorkingState()?.uploading)
-          throw new Error("画像の変換・アップロードが完了するまでお待ちください。");
-        if (controller.value?.getWorkingState()?.pending)
-          throw new Error("入力中のフォームを適用するかキャンセルしてください。");
-        await props.onSave$({
-          publishedAt: ui.publishedAt,
-          title: ui.title,
-          subtitle: ui.subtitle,
-          body: controller.value?.getJSON() ?? ui.body,
-          editingState: null,
-          description: ui.description,
-          tags: ui.tags,
-          status: ui.status,
-          alias: ui.alias.trim(),
-        });
-        document.dispatchEvent(new Event("blog:article-saved"));
-        if (props.autoEditFromQuery && new URLSearchParams(window.location.search).has("edit")) {
-          window.history.replaceState(window.history.state, "", window.location.pathname);
+  // Autosave does not change mode, navigation, or the public revision.
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(
+    ({ cleanup }) => {
+      if (!props.canEdit || !props.onSave$) return;
+      // Retain this article root: a queued unload save must not read the next route.
+      const metadataRoot =
+        (editorMount.value ?? document.querySelector("[data-editor-mount]"))?.closest(
+          "main.paper",
+        ) ?? null;
+      const read = (): DraftSnapshot => ({
+        ...readArticleMetadata(ui, metadataRoot),
+        publishedAt: ui.publishedAt,
+        body: controller.value?.getJSON() ?? ui.body,
+        editingState: null,
+        alias: ui.alias.trim(),
+      });
+      const saver = createDraftAutosaver({
+        initial: read(),
+        read,
+        blocked: () =>
+          !!controller.value?.getWorkingState()?.pending ||
+          !!controller.value?.getWorkingState()?.uploading ||
+          !!ui.insertDialog,
+        save: (draft, intent, keepalive) => props.onSave$!(draft, intent, keepalive),
+        state: (state, message) => {
+          ui.saveState = state;
+          ui.saving = state === "saving";
+          ui.error = message ?? "";
+          if (state === "error") ui.publishing = false;
+        },
+        saved: (result, intent) => {
+          if (intent !== "save") ui.publishing = false;
+          ui.status = result.status;
+          if (!ui.publishedAt && result.publishedAt)
+            ui.publishedAt = result.publishedAt.slice(0, 10);
+          ui.hasDraft = result.hasDraft;
+          document.dispatchEvent(new Event("blog:article-saved"));
+        },
+      });
+      autosaver.value = noSerialize(saver);
+      const beforeUnload = (event: BeforeUnloadEvent) => {
+        if (
+          saver.dirty() ||
+          controller.value?.getWorkingState()?.pending ||
+          controller.value?.getWorkingState()?.uploading
+        ) {
+          event.preventDefault();
+          event.returnValue = "";
         }
-      } catch (error) {
-        ui.error = error instanceof Error ? error.message : "保存できませんでした。";
-        return;
-      } finally {
-        ui.saving = false;
-      }
+      };
+      const leaving = () => {
+        if (saver.dirty()) void saver.flush("save", true).catch(() => {});
+      };
+      const hidden = () => {
+        if (document.visibilityState === "hidden") leaving();
+      };
+      const online = () => {
+        void saver.flush().catch(() => {});
+      };
+      window.addEventListener("beforeunload", beforeUnload);
+      window.addEventListener("pagehide", leaving);
+      window.addEventListener("online", online);
+      document.addEventListener("visibilitychange", hidden);
+      cleanup(() => {
+        void saver
+          .flush("save", true)
+          .catch(() => {})
+          .finally(() => saver.dispose());
+        autosaver.value = undefined;
+        window.removeEventListener("beforeunload", beforeUnload);
+        window.removeEventListener("pagehide", leaving);
+        window.removeEventListener("online", online);
+        document.removeEventListener("visibilitychange", hidden);
+      });
+    },
+    { strategy: "document-ready" },
+  );
+
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(
+    ({ track }) => {
+      track(() =>
+        JSON.stringify([
+          ui.title,
+          ui.subtitle,
+          ui.description,
+          ui.tags,
+          ui.publishedAt,
+          ui.alias,
+          ui.body,
+        ]),
+      );
+      if (ui.mode === "edit") autosaver.value?.schedule();
+    },
+    { strategy: "document-ready" },
+  );
+
+  const saveDraft$ = $(async (intent: SaveIntent = "save") => {
+    try {
+      ui.error = "";
+      Object.assign(ui, readArticleMetadata(ui, editorMount.value?.closest("main.paper") ?? null));
+      if (!autosaver.value) throw new Error("保存の準備中です。もう一度お試しください。");
+      await autosaver.value.flush(intent);
+    } catch (error) {
+      ui.error = error instanceof Error ? error.message : "保存できませんでした。";
     }
+  });
+  const publish$ = $(async () => {
+    if (ui.publishing || ui.mode === "loading") return;
+    ui.publishing = true;
+    try {
+      await saveDraft$("publish");
+    } finally {
+      ui.publishing = false;
+    }
+  });
+  const enterView$ = $(async () => {
+    if (!canSwitchToView(ui.mode) || ui.publishing) return;
+    await saveDraft$();
+    if (ui.error || autosaver.value?.dirty()) return;
     controller.value?.enterView();
     ui.insertDialog = null;
     ui.mode = "view";
+    if (
+      props.postId &&
+      (window.location.search || window.location.pathname !== `/blog/${ui.alias || props.postId}`)
+    )
+      await navigate(`/blog/${ui.alias || props.postId}`, { replaceState: true, scroll: false });
   });
 
   // eslint-disable-next-line qwik/no-use-visible-task
@@ -379,7 +492,11 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
           ui,
           controller: () => controller.value,
           enter: enterEdit$,
-          save: enterView$,
+          save: $(async (intent: SaveIntent = "save") => {
+            if (intent === "save") await enterView$();
+            else await saveDraft$(intent);
+          }),
+          dirty: () => autosaver.value?.dirty() ?? false,
           version: () => props.version ?? "",
         });
     },
@@ -422,10 +539,16 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
       <VirtualKeyboardViewport internalScroll={ui.mode === "edit"}>
         <StickyHeader q:slot="top" class="article-sticky-header" title={ui.title || "無題"}>
           {props.canEdit !== false && (
-            <ArticleEditButton
+            <ArticleEditControls
               placement="sticky"
               editable={ui.mode === "edit"}
-              busy={ui.mode === "loading" || ui.saving}
+              busy={ui.mode === "loading"}
+              publishing={ui.publishing}
+              published={ui.status === "published"}
+              hasDraft={ui.hasDraft}
+              saveState={ui.saveState}
+              onPublish$={publish$}
+              onRetry$={$(() => saveDraft$())}
               onEditIntent$={preloadEditor$}
               onEditRequest$={enterEdit$}
               onDoneRequest$={enterView$}
@@ -440,10 +563,16 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
             variant="inline"
           >
             {props.canEdit !== false && (
-              <ArticleEditButton
+              <ArticleEditControls
                 placement="header"
                 editable={ui.mode === "edit"}
-                busy={ui.mode === "loading" || ui.saving}
+                busy={ui.mode === "loading"}
+                publishing={ui.publishing}
+                published={ui.status === "published"}
+                hasDraft={ui.hasDraft}
+                saveState={ui.saveState}
+                onPublish$={publish$}
+                onRetry$={$(() => saveDraft$())}
                 onEditIntent$={preloadEditor$}
                 onEditRequest$={enterEdit$}
                 onDoneRequest$={enterView$}
@@ -461,8 +590,16 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
             initialTags={initialHeader.tags}
             subtitle={ui.subtitle}
             editable={ui.mode === "edit"}
-            onPublicationToggle$={$(() => {
-              ui.status = ui.status === "published" ? "draft" : "published";
+            onPublicationToggle$={$(async () => {
+              if (ui.publishing || ui.mode !== "edit") return;
+              if (ui.status === "published" && window.confirm("この記事を非公開にしますか？")) {
+                ui.publishing = true;
+                try {
+                  await saveDraft$("unpublish");
+                } finally {
+                  ui.publishing = false;
+                }
+              } else if (ui.status === "draft") await publish$();
             })}
             onDateInput$={$((value) => {
               if (value) ui.publishedAt = value;

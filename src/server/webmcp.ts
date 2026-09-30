@@ -16,7 +16,7 @@ import { catalog, ToolError, inputText, validateInput, type Input } from "../web
 import type { JSONContent } from "@tiptap/core";
 
 export async function visiblePost(event: RequestEventCommon, identifier: string) {
-  const post = await findPost(database(event), identifier);
+  const post = await findPost(database(event), identifier, await canManagePosts(event));
   if (!post || (post.status !== "published" && !(await canManagePosts(event))))
     throw new ToolError("NOT_FOUND", "記事が見つかりません");
   return post;
@@ -81,7 +81,7 @@ export async function searchPosts(db: D1Database, manager: boolean, input: Input
   }
   const { results } = await db
     .prepare(
-      `SELECT p.id,p.title,p.subtitle,p.description,p.tags,p.status,p.canonical_alias,p.published_at,p.created_at,p.updated_at FROM posts p WHERE ${conditions.join(" AND ")} ORDER BY COALESCE(p.published_at,p.created_at) DESC,p.id DESC LIMIT 21`,
+      `SELECT p.id,p.title,p.subtitle,p.description,p.tags,p.status,p.canonical_alias,p.published_at,p.created_at,p.updated_at FROM ${manager ? "editable_posts" : "posts"} p WHERE ${conditions.join(" AND ")} ORDER BY COALESCE(p.published_at,p.created_at) DESC,p.id DESC LIMIT 21`,
     )
     .bind(...bindings)
     .all<{
@@ -133,7 +133,7 @@ export async function executeServerTool(event: RequestEventCommon, name: string,
       return (
         await db
           .prepare(
-            `SELECT value AS tag, COUNT(DISTINCT p.id) AS count FROM posts p, json_each(p.tags) WHERE ${(await canManagePosts(event)) ? "1=1" : "p.status='published'"} GROUP BY value ORDER BY count DESC,tag LIMIT 500`,
+            `SELECT value AS tag, COUNT(DISTINCT p.id) AS count FROM ${(await canManagePosts(event)) ? "editable_posts" : "posts"} p, json_each(p.tags) WHERE ${(await canManagePosts(event)) ? "1=1" : "p.status='published'"} GROUP BY value ORDER BY count DESC,tag LIMIT 500`,
           )
           .all()
       ).results;

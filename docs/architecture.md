@@ -24,7 +24,7 @@
 
 本文JSON・メタデータ・Markdown・操作の正本は [Tiptap文書仕様](tiptap-document-spec-v1.md) です。`src/content/document.ts` が許可ノードと正規化を担当し、`src/server/posts.ts` が読込・保存を担当します。通常の保存と再読込にMarkdown変換を挟みません。
 
-`/` は記事一覧、`/blog` は年月別アーカイブ、`/blog/{IDまたはalias}` は記事です。`posts.canonical_alias` は現在の別名だけを保持し、変更・解除した旧別名は404になります。ULIDは不変です。下書きは管理者だけが閲覧できます。
+`/` は記事一覧、`/blog` は年月別アーカイブ、`/blog/{IDまたはalias}` は記事です。`posts.canonical_alias` は現在の別名だけを保持し、変更・解除した旧別名は404になります。ULIDは不変です。下書きは管理者だけが閲覧できます。`posts` は公開版、`post_drafts` は作業下書きです。管理者は `editable_posts` で下書きを優先し、一般閲覧・Markdown・検索・タグ一覧は公開版だけを読みます。公開中の編集も入力停止後に下書きへ自動保存し、「更新」まで公開内容は変わりません。「完了」は下書き保存後に編集を閉じる操作です。
 
 記事画面は `ArticleShell`、表示・編集のヘッダーは共通部品を使用します。タイトル・副題・説明・タグ・公開日を表示位置で編集し、本文はH2〜H4を許可します。固定ツールバーはUndo・Redo・表・画像・リンク、その他の本文操作は入力ルールとスラッシュ候補から行います。公開／非公開と未確定フォームは別であり、未確定フォームやアップロード中の保存は拒否します。旧 `editing_state` は互換読込のみで、新規保存しません。
 
@@ -42,7 +42,7 @@ MathJaxはTeXからSVGと支援技術向けMathMLを生成します。Mermaidも
 
 本文JSONを正本とし、AVIF・Mermaid SVG・MathJax SVGを共通台帳とR2で管理する。管理クライアントで生成し、閲覧時は保存済み画像を配信する。原本画像は永久保持し、生成物は最終参照とleaseを失って24時間後に回収する。
 
-DB構成、上部の埋め込み判定、保存・GC・移行・検証は [メディア配信](media-delivery.md) を参照。既存の画像URLと画像管理操作は維持する。`posts`と`webmcp_requests`は既存の役割を継続する。
+DB構成、上部の埋め込み判定、保存・GC・移行・検証は [メディア配信](media-delivery.md) を参照。既存の画像URLと画像管理操作は維持する。公開版の参照は `post_media_refs`、作業下書きは `post_draft_media_refs` に保存し、回収・画像一覧は `all_post_media_refs` で両方の参照を確認します。公開／更新時は内容と参照を同じD1 batchで切り替えます。`expectedVersion` と保存ごとのトークンで並行保存の敗者が公開版やメディア参照を変更しないよう保護します。
 
 DBのformat_versionとcontent_schema_versionは1、保存入力のformatVersionは2。今回の変更で本文ノードのスキーマは変更しない。
 

@@ -9,6 +9,7 @@ export async function renderDocument(
   document: JSONContent,
   event: { platform: { env: { DB: D1Database; IMAGES: Pick<MediaStore, "get"> } } },
   postId?: string,
+  draft = false,
 ) {
   const entries = await renderEntries(document);
   const rows = await readMedia(
@@ -19,7 +20,7 @@ export async function renderDocument(
   const refs = postId
     ? (
         await event.platform.env.DB.prepare(
-          "SELECT node_path,embed_initial,body_hash,policy_version FROM post_media_refs WHERE post_id=?",
+          `SELECT node_path,embed_initial,body_hash,policy_version FROM ${draft ? "post_draft_media_refs" : "post_media_refs"} WHERE post_id=?`,
         )
           .bind(postId)
           .all<{

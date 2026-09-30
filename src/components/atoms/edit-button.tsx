@@ -1,4 +1,4 @@
-import { type QRL } from "@qwik.dev/core";
+import { component$, type QRL } from "@qwik.dev/core";
 import { css } from "@qstyle/qwik";
 
 /** Both article entry points share loading, preloading and mode semantics. */
@@ -11,14 +11,16 @@ interface ArticleEditButtonProps {
   onDoneRequest$?: QRL<() => void>;
 }
 
-export function ArticleEditButton(props: ArticleEditButtonProps) {
+export const ArticleEditButton = component$((props: ArticleEditButtonProps) => {
   return (
     <button
+      // Keep busy/ready DOM distinct so a resumed control cannot retain disabled attributes.
+      key={props.busy ? "busy" : "ready"}
       type="button"
       css={editButtonStyles}
       class={`article-${props.placement}-edit`}
       aria-busy={props.busy ? "true" : "false"}
-      disabled={props.busy ? true : undefined}
+      disabled={props.busy ?? false}
       onPointerEnter$={props.editable ? undefined : props.onEditIntent$}
       onFocus$={props.editable ? undefined : props.onEditIntent$}
       onClick$={props.editable ? props.onDoneRequest$ : props.onEditRequest$}
@@ -28,7 +30,7 @@ export function ArticleEditButton(props: ArticleEditButtonProps) {
       </span>
     </button>
   );
-}
+});
 
 const editButtonStyles = css`
   display: flex;

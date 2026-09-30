@@ -141,7 +141,7 @@ export const catalog = [
   ),
   tool(
     "update_draft",
-    "現在の記事の編集内容を更新する（保存しない）。body全体またはstartBlock/deleteCount/blocksでトップレベルブロックを置換。未知ノードは拒否。",
+    "現在の記事の作業下書きを更新する（自動保存、公開版は変更しない）。body全体またはstartBlock/deleteCount/blocksでトップレベルブロックを置換。未知ノードは拒否。",
     "editor",
     "browser",
     {
@@ -169,7 +169,7 @@ export const catalog = [
   ),
   tool(
     "save_post",
-    "現在の編集内容を保存し閲覧表示へ戻る。公開状態は保存済み状態から変更しない。公開記事は確認が必要。",
+    "現在の編集内容を作業下書きとして保存し閲覧表示へ戻る。公開版は変更しない。",
     "editor",
     "browser",
     { expectedState: state },
@@ -179,7 +179,7 @@ export const catalog = [
   ),
   tool(
     "publish_post",
-    "現在の記事と未保存内容を検証して公開。ブラウザで確認が必要。",
+    "現在の記事の作業下書きと未保存内容を検証して公開／更新。ブラウザで確認が必要。",
     "editor",
     "browser",
     { expectedState: state },
@@ -189,7 +189,7 @@ export const catalog = [
   ),
   tool(
     "unpublish_post",
-    "現在の記事と未保存内容を下書きとして保存。ブラウザで確認が必要。",
+    "現在の記事と未保存内容を保存して公開を取り消す。ブラウザで確認が必要。",
     "editor",
     "browser",
     { expectedState: state },

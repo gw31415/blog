@@ -18,6 +18,7 @@ function setup() {
     "0005_media_history.sql",
     "0006_media_lease_grace.sql",
     "0007_retire_legacy_media.sql",
+    "0008_post_drafts.sql",
   ])
     sql.exec(readFileSync("migrations/" + file, "utf8"));
   class Statement {

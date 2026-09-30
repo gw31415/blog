@@ -38,7 +38,7 @@ export async function listPostPage(
       "(COALESCE(published_at,created_at) < ? OR (COALESCE(published_at,created_at) = ? AND id < ?))",
     );
   const query = db.prepare(
-    `SELECT id,title,subtitle,description,status,canonical_alias,published_at,created_at,tags FROM posts WHERE ${conditions.join(" AND ")} ORDER BY COALESCE(published_at,created_at) DESC,id DESC LIMIT 13`,
+    `SELECT id,title,subtitle,description,status,canonical_alias,published_at,created_at,tags FROM ${includeDrafts ? "editable_posts" : "posts"} WHERE ${conditions.join(" AND ")} ORDER BY COALESCE(published_at,created_at) DESC,id DESC LIMIT 13`,
   );
   const { results } = await (after ? query.bind(after[0], after[0], after[1]) : query).all<
     Omit<PostSummary, "tags"> & { tags: string }
