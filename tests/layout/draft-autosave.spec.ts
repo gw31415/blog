@@ -58,12 +58,16 @@ for (const width of [1280, 390]) {
       expect((await search.json()).data.items).toHaveLength(0);
       await page.locator(".article-header-edit").click();
       await expect(page.locator("article")).toHaveAttribute("data-editor-mode", "view");
+      await expect(page).toHaveURL(new RegExp(`/blog/${id}$`));
       await page.reload();
+      await expect(page.locator(".article-header-edit")).toHaveText("編集");
       await expect(page.locator("h1")).toHaveText(`secret-${id}`);
       await expect(page.locator(".article-topbar [data-publish-post]")).toHaveText("更新");
       await publicPage.reload();
       await expect(publicPage.locator("h1")).toHaveText(`live-${id}`);
       await page.locator(".article-topbar [data-publish-post]").click();
+      await expect(page.locator(".editor-error")).toHaveCount(0);
+      await expect.poll(async () => (await call("get_post", { identifier: id })).has_draft).toBe(0);
       await expect(page.locator(".article-topbar [data-publish-post]")).toHaveCount(0);
       await publicPage.reload();
       await expect(publicPage.locator("h1")).toHaveText(`secret-${id}`);

@@ -414,20 +414,23 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
   );
 
   // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(({ track }) => {
-    track(() =>
-      JSON.stringify([
-        ui.title,
-        ui.subtitle,
-        ui.description,
-        ui.tags,
-        ui.publishedAt,
-        ui.alias,
-        ui.body,
-      ]),
-    );
-    if (ui.mode === "edit") autosaver.value?.schedule();
-  });
+  useVisibleTask$(
+    ({ track }) => {
+      track(() =>
+        JSON.stringify([
+          ui.title,
+          ui.subtitle,
+          ui.description,
+          ui.tags,
+          ui.publishedAt,
+          ui.alias,
+          ui.body,
+        ]),
+      );
+      if (ui.mode === "edit") autosaver.value?.schedule();
+    },
+    { strategy: "document-ready" },
+  );
 
   const saveDraft$ = $(async (intent: SaveIntent = "save") => {
     try {
