@@ -26,6 +26,7 @@ for (const width of [1280, 390]) {
       await page.goto(`/blog/${id}?edit=1`);
       await expect(page.locator("article")).toHaveAttribute("data-editor-mode", "edit");
       const title = page.locator('[data-article-field="title"]');
+      await expect(title).toHaveAttribute("contenteditable", "true");
       await title.fill(`live-${id}`);
       await page.locator("article .ProseMirror").fill("public body");
       await expect
@@ -119,6 +120,10 @@ test("keeps failed saves in place and retries; stale tab cannot overwrite", asyn
         body: JSON.stringify({ message: "test offline" }),
       }),
     );
+    await expect(page.locator('[data-article-field="title"]')).toHaveAttribute(
+      "contenteditable",
+      "true",
+    );
     await page.locator('[data-article-field="title"]').fill("retained offline");
     await expect(page.locator(".editor-error")).toContainText("test offline");
     await expect(page.locator('[data-article-field="title"]')).toHaveText("retained offline");
@@ -130,6 +135,10 @@ test("keeps failed saves in place and retries; stale tab cannot overwrite", asyn
     const other = await context.newPage();
     await other.goto(`/blog/${id}?edit=1`);
     await expect(other.locator("article")).toHaveAttribute("data-editor-mode", "edit");
+    await expect(other.locator('[data-article-field="title"]')).toHaveAttribute(
+      "contenteditable",
+      "true",
+    );
     await other.locator('[data-article-field="title"]').fill("other tab winner");
     await expect
       .poll(async () => (await call("get_post", { identifier: id })).title)

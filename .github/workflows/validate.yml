@@ -25,13 +25,25 @@ jobs:
       - run: node tests/security/access-runtime.mjs
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm db:migrate:local
-      - run: pnpm exec playwright test tests/layout/draft-autosave.spec.ts tests/layout/webmcp.spec.ts --max-failures=1 --global-timeout=300000
+      - name: Browser workflows
+        run: |
+          mkdir -p .cache
+          pnpm dev --host 127.0.0.1 --port 4173 --strictPort > .cache/playwright-dev.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:4173/ > /dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:4173/ > /dev/null
+          BLOG_TEST_URL=http://127.0.0.1:4173 timeout --kill-after=10s 6m pnpm exec playwright test tests/layout/draft-autosave.spec.ts tests/layout/webmcp.spec.ts --max-failures=1 --global-timeout=300000
       - name: Browser results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: browser-results
           path: |
+            .cache/playwright-dev.log
             .cache/playwright-results
             .cache/autosave-*.png
           retention-days: 7
