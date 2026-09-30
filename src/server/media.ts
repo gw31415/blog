@@ -207,7 +207,7 @@ export async function mediaReferenceStatements(
       .bind(postId, hash, FOLD_POLICY, JSON.stringify(payload), ...args),
     db
       .prepare(
-        `INSERT INTO image_article_history SELECT DISTINCT v.original_id,p.id,p.title,unixepoch(),unixepoch(),NULL FROM posts p JOIN all_post_media_refs r ON r.post_id=p.id JOIN media_variants v ON v.id=r.variant_id WHERE p.id=? AND v.original_id IS NOT NULL AND ${guard} ON CONFLICT(original_id,post_id_snapshot) DO UPDATE SET post_title_snapshot=excluded.post_title_snapshot,last_linked_at=excluded.last_linked_at,last_unlinked_at=NULL`,
+        `INSERT INTO image_article_history SELECT DISTINCT v.original_id,p.id,p.title,unixepoch(),unixepoch(),NULL FROM editable_posts p JOIN all_post_media_refs r ON r.post_id=p.id JOIN media_variants v ON v.id=r.variant_id WHERE p.id=? AND v.original_id IS NOT NULL AND ${guard} ON CONFLICT(original_id,post_id_snapshot) DO UPDATE SET post_title_snapshot=excluded.post_title_snapshot,last_linked_at=excluded.last_linked_at,last_unlinked_at=NULL`,
       )
       .bind(postId, ...args),
     db

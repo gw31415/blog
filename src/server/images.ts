@@ -127,7 +127,7 @@ export async function listOriginals(db: D1Database, unused: boolean, before = ""
     ? (
         await db
           .prepare(
-            `SELECT DISTINCT v.original_id,p.id AS post_id,p.title AS post_title FROM media_variants v JOIN all_post_media_refs r ON r.variant_id=v.id JOIN posts p ON p.id=r.post_id WHERE v.original_id IN (${rows.map(() => "?").join(",")})`,
+            `SELECT DISTINCT v.original_id,p.id AS post_id,p.title AS post_title FROM media_variants v JOIN all_post_media_refs r ON r.variant_id=v.id JOIN editable_posts p ON p.id=r.post_id WHERE v.original_id IN (${rows.map(() => "?").join(",")})`,
           )
           .bind(...rows.map((row) => row.id))
           .all<{ original_id: string; post_id: string; post_title: string }>()

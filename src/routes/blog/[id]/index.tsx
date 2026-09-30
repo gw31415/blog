@@ -51,7 +51,7 @@ export const usePost = routeLoader$(async (event) => {
   const presentation = renderPost(post.body, rendered.diagrams, rendered.math);
   const { results: images } = await database(event)
     .prepare(
-      "SELECT DISTINCT v.id, v.width, v.height FROM media_variants v JOIN post_media_refs p ON p.variant_id=v.id WHERE p.post_id=?",
+      `SELECT DISTINCT v.id, v.width, v.height FROM media_variants v JOIN ${post.has_draft ? "post_draft_media_refs" : "post_media_refs"} p ON p.variant_id=v.id WHERE p.post_id=?`,
     )
     .bind(post.id)
     .all<{ id: string; width: number; height: number }>();

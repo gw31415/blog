@@ -7,6 +7,8 @@ export default defineConfig({
   outputDir: ".cache/playwright-results",
   reporter: "line",
   use: {
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
     baseURL: process.env.BLOG_TEST_URL ?? `http://127.0.0.1:${port}`,
   },
   workers: 1,

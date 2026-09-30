@@ -25,7 +25,7 @@ jobs:
       - run: node tests/security/access-runtime.mjs
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm db:migrate:local
-      - run: pnpm exec playwright test tests/layout/draft-autosave.spec.ts tests/layout/webmcp.spec.ts
+      - run: pnpm exec playwright test tests/layout/draft-autosave.spec.ts tests/layout/webmcp.spec.ts --max-failures=1
       - name: Browser results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

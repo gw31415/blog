@@ -135,3 +135,40 @@ it("waits for pending forms/uploads and supports best-effort keepalive", async (
   expect(t.save.mock.calls[1]?.[2]).toBe(true);
   t.saver.dispose();
 });
+
+it("does not close past a pending form even when the document itself is clean", async () => {
+  const t = setup();
+  t.block(true);
+  await expect(t.saver.flush()).rejects.toThrow("フォーム");
+  expect(t.save).not.toHaveBeenCalled();
+  t.block(false);
+  await t.saver.flush();
+  expect(t.state).toHaveBeenLastCalledWith("saved");
+  t.saver.dispose();
+});
+
+it("accepts the server-assigned first publication date without creating another draft", async () => {
+  vi.useFakeTimers();
+  let draft = { ...initial };
+  const save = vi.fn(async () => ({
+    ...result,
+    status: "published" as const,
+    hasDraft: false,
+    publishedAt: "2026-09-30T06:00:00Z",
+  }));
+  const saver = createDraftAutosaver({
+    initial,
+    read: () => draft,
+    blocked: () => false,
+    save,
+    state: () => {},
+    saved: (r) => {
+      draft = { ...draft, publishedAt: r.publishedAt!.slice(0, 10) };
+    },
+  });
+  await saver.flush("publish");
+  expect(saver.dirty()).toBe(false);
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(save).toHaveBeenCalledOnce();
+  saver.dispose();
+});

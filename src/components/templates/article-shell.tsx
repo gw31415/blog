@@ -582,6 +582,7 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
             subtitle={ui.subtitle}
             editable={ui.mode === "edit"}
             onPublicationToggle$={$(async () => {
+              if (ui.publishing || ui.mode !== "edit") return;
               if (ui.status === "published" && window.confirm("この記事を非公開にしますか？")) {
                 ui.publishing = true;
                 try {
