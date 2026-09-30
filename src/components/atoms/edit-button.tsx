@@ -1,4 +1,4 @@
-import { type QRL } from "@qwik.dev/core";
+import { component$, type QRL } from "@qwik.dev/core";
 import { css } from "@qstyle/qwik";
 
 /** Both article entry points share loading, preloading and mode semantics. */
@@ -11,7 +11,7 @@ interface ArticleEditButtonProps {
   onDoneRequest$?: QRL<() => void>;
 }
 
-export function ArticleEditButton(props: ArticleEditButtonProps) {
+export const ArticleEditButton = component$((props: ArticleEditButtonProps) => {
   return (
     <button
       type="button"
@@ -28,7 +28,7 @@ export function ArticleEditButton(props: ArticleEditButtonProps) {
       </span>
     </button>
   );
-}
+});
 
 const editButtonStyles = css`
   display: flex;
