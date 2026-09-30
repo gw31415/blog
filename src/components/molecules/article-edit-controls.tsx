@@ -20,7 +20,7 @@ export const ArticleEditControls = component$(
   }) => {
     return (
       <div css={styles}>
-        {(props.editable || props.hasDraft) && (
+        {(props.editable || props.hasDraft || props.publishing) && (
           <>
             <span role="status" aria-live="polite" data-save-status>
               {props.saveState === "saving"

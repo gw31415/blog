@@ -365,8 +365,10 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
           ui.saveState = state;
           ui.saving = state === "saving";
           ui.error = message ?? "";
+          if (state === "error") ui.publishing = false;
         },
-        saved: (result) => {
+        saved: (result, intent) => {
+          if (intent !== "save") ui.publishing = false;
           ui.status = result.status;
           if (!ui.publishedAt && result.publishedAt)
             ui.publishedAt = result.publishedAt.slice(0, 10);

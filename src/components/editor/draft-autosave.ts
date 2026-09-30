@@ -23,7 +23,7 @@ export function createDraftAutosaver(options: {
   blocked(): boolean;
   save(draft: DraftSnapshot, intent: SaveIntent, keepalive: boolean): Promise<SaveResult>;
   state(state: AutosaveState, message?: string): void;
-  saved(result: SaveResult): void;
+  saved(result: SaveResult, intent: SaveIntent): void;
   delay?: number;
 }): DraftAutosaver {
   let baseline = JSON.stringify(options.initial);
@@ -78,7 +78,7 @@ export function createDraftAutosaver(options: {
         if (!snapshot.publishedAt && result.publishedAt)
           snapshot.publishedAt = result.publishedAt.slice(0, 10);
         baseline = JSON.stringify(snapshot);
-        options.saved(result);
+        options.saved(result, intent);
         options.state(dirty() ? "pending" : "saved");
       } catch (error) {
         const message = error instanceof Error ? error.message : "保存できませんでした。";
