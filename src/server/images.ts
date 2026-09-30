@@ -98,7 +98,7 @@ export async function postImageIds(db: D1Database, postId: string) {
   return (
     await db
       .prepare(
-        "SELECT DISTINCT variant_id FROM post_media_refs WHERE post_id=? AND variant_id IS NOT NULL",
+        "SELECT DISTINCT variant_id FROM all_post_media_refs WHERE post_id=? AND variant_id IS NOT NULL",
       )
       .bind(postId)
       .all<{ variant_id: string }>()
@@ -118,7 +118,7 @@ export async function collectUnusedImages(db: D1Database, objects: ImageObjectSt
 export async function listOriginals(db: D1Database, unused: boolean, before = "") {
   const { results } = await db
     .prepare(`SELECT v.id FROM image_originals v
-    WHERE (?='' OR v.id<?) AND (?=0 OR NOT EXISTS(SELECT 1 FROM media_variants x JOIN post_media_refs r ON r.variant_id=x.id WHERE x.original_id=v.id))
+    WHERE (?='' OR v.id<?) AND (?=0 OR NOT EXISTS(SELECT 1 FROM media_variants x JOIN all_post_media_refs r ON r.variant_id=x.id WHERE x.original_id=v.id))
     ORDER BY v.id DESC LIMIT 51`)
     .bind(before, before, unused ? 1 : 0)
     .all<{ id: string }>();
@@ -127,7 +127,7 @@ export async function listOriginals(db: D1Database, unused: boolean, before = ""
     ? (
         await db
           .prepare(
-            `SELECT DISTINCT v.original_id,p.id AS post_id,p.title AS post_title FROM media_variants v JOIN post_media_refs r ON r.variant_id=v.id JOIN posts p ON p.id=r.post_id WHERE v.original_id IN (${rows.map(() => "?").join(",")})`,
+            `SELECT DISTINCT v.original_id,p.id AS post_id,p.title AS post_title FROM media_variants v JOIN all_post_media_refs r ON r.variant_id=v.id JOIN posts p ON p.id=r.post_id WHERE v.original_id IN (${rows.map(() => "?").join(",")})`,
           )
           .bind(...rows.map((row) => row.id))
           .all<{ original_id: string; post_id: string; post_title: string }>()

@@ -1,3 +1,4 @@
+import type { SaveIntent } from "../server/posts";
 import type { JSONContent } from "@tiptap/core";
 import type { EditorController } from "../components/editor/editor-controller";
 import { normalizeDocument } from "../content/document";
@@ -22,7 +23,8 @@ export interface EditorBinding {
   ui: EditorState;
   controller(): EditorController | undefined;
   enter(): Promise<void>;
-  save(): Promise<void>;
+  save(intent?: SaveIntent): Promise<void>;
+  dirty?(): boolean;
   version(): string;
 }
 async function token(value: string) {
@@ -61,10 +63,13 @@ export function registerEditorTools(binding: EditorBinding) {
     };
   };
   let saved = JSON.stringify(read());
-  let savedStatus = ui.status;
   const dirty = () => {
     const working = binding.controller()?.getWorkingState();
-    return !!working?.pending || !!working?.uploading || JSON.stringify(read()) !== saved;
+    return (
+      !!working?.pending ||
+      !!working?.uploading ||
+      (binding.dirty ? binding.dirty() : JSON.stringify(read()) !== saved)
+    );
   };
   const disconnect = setEditorBridge({ dirty, editing: () => ui.mode !== "view" });
   const ensureIdle = () => {
@@ -232,22 +237,22 @@ export function registerEditorTools(binding: EditorBinding) {
         return { saved: false, stateToken: await token(JSON.stringify(snapshot())) };
       }
       const nextStatus =
-        name === "publish_post" ? "published" : name === "unpublish_post" ? "draft" : savedStatus;
+        name === "publish_post" ? "published" : name === "unpublish_post" ? "draft" : ui.status;
       const data = { ...read(), status: nextStatus };
-      await validate(data, nextStatus === "published");
+      await validate(data, name === "publish_post");
       await checkState(input);
-      if (name !== "save_post" || nextStatus === "published")
+      if (name !== "save_post")
         confirmAction(
           `「${data.title || "無題"}」の現在の編集内容を${nextStatus === "published" ? "公開状態で" : "非公開にして"}保存します。よろしいですか？`,
           signal,
         );
       signal?.throwIfAborted();
-      applyMetadata(data);
-      await binding.save();
+      await binding.save(
+        name === "publish_post" ? "publish" : name === "unpublish_post" ? "unpublish" : "save",
+      );
       if (ui.error)
         throw new ToolError(ui.error.startsWith("CONFLICT:") ? "CONFLICT" : "FAILED", ui.error);
       saved = JSON.stringify(read());
-      savedStatus = ui.status;
       return {
         saved: true,
         status: ui.status,
@@ -259,7 +264,6 @@ export function registerEditorTools(binding: EditorBinding) {
   // Normal UI saves also establish a new clean baseline.
   const onSaved = () => {
     saved = JSON.stringify(read());
-    savedStatus = ui.status;
   };
   document.addEventListener("blog:article-saved", onSaved);
   return () => {

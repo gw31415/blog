@@ -165,6 +165,72 @@ try {
     ).status,
     403,
   );
+  // Autosave is manager-only, and its body never replaces the public revision.
+  const save = (input, headers = auth, origin = "https://blog.example") =>
+    mf.dispatchFetch(`https://blog.example/api/posts/${published}`, {
+      method: "POST",
+      headers: { ...headers, Origin: origin, "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  const content = {
+    title: "SECRET REVISION",
+    subtitle: "PRIVATE SUBTITLE",
+    description: "PRIVATE DESCRIPTION",
+    tags: ["private-tag"],
+    alias: "private-alias",
+    body: {
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "PRIVATE BODY" }] }],
+    },
+    formatVersion: 2,
+    bodyFormat: "tiptap-json",
+    contentSchemaVersion: 1,
+    expectedVersion: "2026-01-01",
+  };
+  for (const headers of [
+    {},
+    { Cookie: "CF_Authorization=forged" },
+    { "Cf-Access-Authenticated-User-Email": "editor@example.test" },
+  ])
+    assert.equal((await save(content, headers)).status, 403);
+  assert.equal((await save(content, auth, "https://evil.example")).status, 403);
+  const saved = await save(content);
+  assert.equal(saved.status, 200);
+  const version = (await saved.json()).version;
+  assert.equal((await save(content)).status, 409);
+  for (const path of ["/", `/blog/${published}`, `/blog/${published}.md`]) {
+    const response = await get(path);
+    const body = await response.text();
+    assert.equal(response.status, 200);
+    for (const secret of [
+      "SECRET REVISION",
+      "PRIVATE SUBTITLE",
+      "PRIVATE DESCRIPTION",
+      "PRIVATE BODY",
+      "private-tag",
+      "private-alias",
+    ])
+      assert(!body.includes(secret), `${path} leaked ${secret}`);
+  }
+  assert.equal((await get("/blog/private-alias")).status, 404);
+  assert((await (await get("/blog/private-alias", auth)).text()).includes("SECRET REVISION"));
+  assert.equal(
+    (await (await tool("search_posts", { query: "PRIVATE BODY" }, {})).json()).data.items.length,
+    0,
+  );
+  assert.equal(
+    (await (await tool("list_tags", {}, {})).json()).data.some(
+      (entry) => entry.tag === "private-tag",
+    ),
+    false,
+  );
+  assert.equal(
+    (await save({ ...content, expectedVersion: version, intent: "publish" })).status,
+    200,
+  );
+  const updated = await get("/blog/private-alias");
+  assert.equal(updated.status, 200);
+  assert((await updated.text()).includes("SECRET REVISION"));
   const firstCreation = await (await tool("create_draft", { requestId: "replay" })).json();
   assert(firstCreation.ok, JSON.stringify(firstCreation));
   assert.equal((await db.prepare("SELECT count(*) AS n FROM webmcp_requests").first()).n, 0);
@@ -203,7 +269,7 @@ try {
   assert.equal(create.status, 303);
   assert.equal((await db.prepare("SELECT count(*) AS n FROM posts").first()).n, 3);
   console.log(
-    "Access runtime checks passed: SSR, private reads, forged tokens, CSRF, image API and Qwik mutations",
+    "Access runtime checks passed: SSR, private reads, forged tokens, CSRF, image API, Qwik mutations, draft isolation and explicit publication",
   );
 } finally {
   await mf.dispose();

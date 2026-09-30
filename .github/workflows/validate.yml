@@ -1,0 +1,37 @@
+name: Validate blog
+on:
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: blog-validation-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm build
+      - run: node tests/security/access-runtime.mjs
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm db:migrate:local
+      - run: pnpm exec playwright test tests/layout/draft-autosave.spec.ts tests/layout/webmcp.spec.ts
+      - name: Browser results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: browser-results
+          path: |
+            .cache/playwright-results
+            .cache/autosave-*.png
+          retention-days: 7

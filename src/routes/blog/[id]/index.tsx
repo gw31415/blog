@@ -1,9 +1,6 @@
-import { postImageIds, removeUnusedVariants } from "~/server/images";
 import { sendMarkdown } from "~/server/markdown-response";
 import { $, component$, useSignal } from "@qwik.dev/core";
 import {
-  useNavigate,
-  routeAction$,
   routeLoader$,
   type DocumentHead,
   type RequestHandler,
@@ -11,11 +8,12 @@ import {
 } from "@qwik.dev/router";
 
 import { ArticleShell } from "~/components/templates/article-shell";
+import { isRecord } from "~/content/record";
 import { CONTENT_SCHEMA_VERSION } from "~/content/document";
-import { canManagePosts, requireManager } from "~/server/access";
+import { canManagePosts } from "~/server/access";
 import { canonicalPath } from "~/content/post-url";
 import { SITE_DESCRIPTION } from "~/content/page-metadata";
-import { database, findPost, redirectCanonical, savePostContent } from "~/server/posts";
+import { database, findPost, redirectCanonical } from "~/server/posts";
 import { renderDocument } from "~/server/render-document";
 import { renderPost } from "~/server/render-post";
 
@@ -24,9 +22,10 @@ const requestPosts = new WeakMap<object, ReturnType<typeof findPost>>();
 async function findRequestPost(event: RequestEventCommon) {
   let pending = requestPosts.get(event.sharedMap);
   if (!pending) {
-    pending = findPost(database(event), event.params.id).then(async (post) =>
-      post && (post.status === "published" || (await canManagePosts(event))) ? post : null,
-    );
+    pending = canManagePosts(event).then(async (manager) => {
+      const post = await findPost(database(event), event.params.id, manager);
+      return post && (post.status === "published" || manager) ? post : null;
+    });
     requestPosts.set(event.sharedMap, pending);
   }
   return pending;
@@ -47,7 +46,7 @@ export const onRequest: RequestHandler = async (event) => {
 export const usePost = routeLoader$(async (event) => {
   const post = await findRequestPost(event);
   if (!post) throw event.error(404, "記事が見つかりません。");
-  const rendered = await renderDocument(post.body, event, post.id);
+  const rendered = await renderDocument(post.body, event, post.id, !!post.has_draft);
   const canManage = await canManagePosts(event);
   const presentation = renderPost(post.body, rendered.diagrams, rendered.math);
   const { results: images } = await database(event)
@@ -84,33 +83,8 @@ export const usePost = routeLoader$(async (event) => {
   };
 });
 
-export const useSavePost = routeAction$(
-  async (values, event) => {
-    await requireManager(event);
-    const post = await findRequestPost(event);
-    if (!post) throw event.error(404, "記事が見つかりません。");
-    try {
-      const imageIds = await postImageIds(database(event), post.id);
-      await savePostContent(database(event), post.id, values, event.platform.env.IMAGES);
-      await removeUnusedVariants(database(event), event.platform.env.IMAGES, imageIds);
-      event.sharedMap.delete("blog.post");
-      return { ok: true, version: (await findPost(database(event), post.id))!.updated_at };
-    } catch (error) {
-      return event.fail(400, {
-        message: error instanceof Error ? error.message : "保存できませんでした。",
-      });
-    }
-  },
-  {
-    // strictLoaders defaults to true: refresh saved metadata without replacing the editor DOM.
-    invalidate: [usePost],
-  },
-);
-
 export default component$(() => {
   const data = usePost();
-  const save = useSavePost();
-  const navigate = useNavigate();
   const post = data.value.post;
   const version = useSignal(post.updated_at);
   return (
@@ -130,45 +104,58 @@ export default component$(() => {
       initialHtml={data.value.html}
       initialContent={data.value.content}
       publicationStatus={post.status}
+      hasDraft={!!post.has_draft}
       canonicalAlias={post.canonical_alias}
       canEdit={data.value.canManage}
       autoEditFromQuery
-      onSave$={$(async (draft) => {
-        const { validateMermaidDocument } = await import("~/components/editor/mermaid-renderer");
-        if (draft.status === "published") {
-          await validateMermaidDocument(draft.body);
+      onSave$={$(async (draft, intent, keepalive = false) => {
+        let renderArtifacts: unknown[] = [];
+        if (!keepalive) {
+          const { prepareMediaArtifacts } = await import("~/components/editor/prepare-media");
+          if (intent === "publish") {
+            const { validateMermaidDocument } =
+              await import("~/components/editor/mermaid-renderer");
+            await validateMermaidDocument(draft.body);
+            renderArtifacts = await prepareMediaArtifacts(draft.body);
+          } else {
+            // Invalid in-progress diagrams must not prevent the text draft from being saved.
+            renderArtifacts = await prepareMediaArtifacts(draft.body).catch(() => []);
+          }
         }
-        const result = await save.submit({
-          expectedVersion: version.value,
-          publishedAt: draft.publishedAt,
-          title: draft.title,
-          subtitle: draft.subtitle === (post.subtitle ?? "") ? post.subtitle : draft.subtitle,
-          body: JSON.stringify(draft.body),
-          renderArtifacts: JSON.stringify(
-            await (
-              await import("~/components/editor/prepare-media")
-            ).prepareMediaArtifacts(draft.body),
-          ),
-          editingState: draft.editingState,
-          tags: JSON.stringify(draft.tags),
-          description:
-            draft.description === (post.description ?? "") ? post.description : draft.description,
-          formatVersion: 2,
-          bodyFormat: "tiptap-json",
-          contentSchemaVersion: CONTENT_SCHEMA_VERSION,
-          status: draft.status,
-          alias: draft.alias,
+        const response = await fetch(`/api/posts/${post.id}`, {
+          method: "POST",
+          credentials: "same-origin",
+          keepalive,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...draft,
+            intent,
+            expectedVersion: version.value,
+            renderArtifacts,
+            formatVersion: 2,
+            bodyFormat: "tiptap-json",
+            contentSchemaVersion: CONTENT_SCHEMA_VERSION,
+          }),
         });
-        if (result.status && result.status >= 400)
+        const result = await response.json();
+        if (!isRecord(result)) throw new Error("保存結果を確認できませんでした。");
+        if (!response.ok)
           throw new Error(
-            "message" in result.value ? String(result.value.message) : "保存できませんでした。",
+            typeof result.message === "string" ? result.message : "保存できませんでした。",
           );
-        if ("version" in result.value && typeof result.value.version === "string")
-          version.value = result.value.version;
-        const savedPath = `/blog/${draft.alias || post.id}`;
-        // Saving a new draft must also remove ?edit=1 from the router's URL state.
-        if (window.location.pathname !== savedPath || window.location.search)
-          await navigate(savedPath, { replaceState: true, scroll: false });
+        if (
+          typeof result.version !== "string" ||
+          (result.status !== "draft" && result.status !== "published") ||
+          typeof result.hasDraft !== "boolean"
+        )
+          throw new Error("保存結果を確認できませんでした。");
+        version.value = result.version;
+        return {
+          version: result.version,
+          status: result.status,
+          hasDraft: result.hasDraft,
+          publishedAt: typeof result.publishedAt === "string" ? result.publishedAt : null,
+        };
       })}
     />
   );

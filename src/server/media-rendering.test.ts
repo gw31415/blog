@@ -7,7 +7,7 @@ function generateMath(entry: RenderEntry) {
     ? { output: result.html, diagnostic: null }
     : { output: null, diagnostic: result.message };
 }
-import { createDraft, findPost, savePostContent } from "./posts";
+import { createDraft, findPost, savePostContent as saveContent } from "./posts";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vite-plus/test";
@@ -15,6 +15,19 @@ import { renderEntries, renderKey, type RenderEntry } from "../content/render-co
 import { renderPost } from "./render-post";
 import { renderDocument } from "./render-document";
 
+async function savePostContent(
+  db: D1Database,
+  id: string,
+  values: Record<string, unknown>,
+  objects?: Parameters<typeof saveContent>[3],
+) {
+  return saveContent(
+    db,
+    id,
+    { ...values, expectedVersion: (await findPost(db, id))!.updated_at },
+    objects,
+  );
+}
 const opened: DatabaseSync[] = [];
 afterEach(() => {
   opened.splice(0).forEach((db) => db.close());
@@ -30,6 +43,7 @@ function database() {
     "0005_media_history.sql",
     "0006_media_lease_grace.sql",
     "0007_retire_legacy_media.sql",
+    "0008_post_drafts.sql",
   ])
     sqlite.exec(readFileSync("migrations/" + file, "utf8"));
   class Statement {
@@ -245,7 +259,7 @@ it("rejects unfinished saves regardless of publication status and does not persi
         status,
         editingState: { pending: { command: "link", values: { href: "unfinished" } } },
       }),
-    ).rejects.toThrow("適用するかキャンセル");
+    ).rejects.toThrow("フォームや画像処理");
     await expect(
       savePostContent(db, id, {
         ...values,

@@ -144,6 +144,8 @@ export async function mediaReferenceStatements(
   version: string,
   lease = "",
   published = false,
+  revision: "draft" | "published" = "published",
+  saveToken?: string,
 ) {
   const normalized = normalizeDocument(body);
   const occurrences = mediaOccurrences(normalized);
@@ -192,23 +194,25 @@ export async function mediaReferenceStatements(
       };
     })
     .filter((r, i) => r.key || keys[i]);
-  const guard = "EXISTS(SELECT 1 FROM posts WHERE id=? AND updated_at=? AND body_json=?)";
-  const args = [postId, version, JSON.stringify(body)];
+  const table = revision === "draft" ? "post_draft_media_refs" : "post_media_refs";
+  const source = revision === "draft" ? "post_drafts" : "posts";
+  const guard = `EXISTS(SELECT 1 FROM ${source} WHERE id=? AND updated_at=? AND body_json=?)${saveToken ? " AND EXISTS(SELECT 1 FROM post_drafts WHERE id=? AND save_token=?)" : ""}`;
+  const args = [postId, version, JSON.stringify(body), ...(saveToken ? [postId, saveToken] : [])];
   return [
-    db.prepare(`DELETE FROM post_media_refs WHERE post_id=? AND ${guard}`).bind(postId, ...args),
+    db.prepare(`DELETE FROM ${table} WHERE post_id=? AND ${guard}`).bind(postId, ...args),
     db
       .prepare(
-        `INSERT INTO post_media_refs(post_id,node_path,body_hash,variant_id,render_key,embed_initial,policy_version,diagnostic) SELECT ?,json_extract(value,'$.path'),?,json_extract(value,'$.id'),json_extract(value,'$.key'),json_extract(value,'$.embed'),?,json_extract(value,'$.diagnostic') FROM json_each(?) WHERE ${guard}`,
+        `INSERT INTO ${table}(post_id,node_path,body_hash,variant_id,render_key,embed_initial,policy_version,diagnostic) SELECT ?,json_extract(value,'$.path'),?,json_extract(value,'$.id'),json_extract(value,'$.key'),json_extract(value,'$.embed'),?,json_extract(value,'$.diagnostic') FROM json_each(?) WHERE ${guard}`,
       )
       .bind(postId, hash, FOLD_POLICY, JSON.stringify(payload), ...args),
     db
       .prepare(
-        `INSERT INTO image_article_history SELECT DISTINCT v.original_id,p.id,p.title,unixepoch(),unixepoch(),NULL FROM posts p JOIN post_media_refs r ON r.post_id=p.id JOIN media_variants v ON v.id=r.variant_id WHERE p.id=? AND v.original_id IS NOT NULL AND ${guard} ON CONFLICT(original_id,post_id_snapshot) DO UPDATE SET post_title_snapshot=excluded.post_title_snapshot,last_linked_at=excluded.last_linked_at,last_unlinked_at=NULL`,
+        `INSERT INTO image_article_history SELECT DISTINCT v.original_id,p.id,p.title,unixepoch(),unixepoch(),NULL FROM posts p JOIN all_post_media_refs r ON r.post_id=p.id JOIN media_variants v ON v.id=r.variant_id WHERE p.id=? AND v.original_id IS NOT NULL AND ${guard} ON CONFLICT(original_id,post_id_snapshot) DO UPDATE SET post_title_snapshot=excluded.post_title_snapshot,last_linked_at=excluded.last_linked_at,last_unlinked_at=NULL`,
       )
       .bind(postId, ...args),
     db
       .prepare(
-        `UPDATE image_article_history SET last_unlinked_at=unixepoch() WHERE post_id_snapshot=? AND last_unlinked_at IS NULL AND ${guard} AND NOT EXISTS(SELECT 1 FROM post_media_refs r JOIN media_variants v ON v.id=r.variant_id WHERE r.post_id=? AND v.original_id=image_article_history.original_id)`,
+        `UPDATE image_article_history SET last_unlinked_at=unixepoch() WHERE post_id_snapshot=? AND last_unlinked_at IS NULL AND ${guard} AND NOT EXISTS(SELECT 1 FROM all_post_media_refs r JOIN media_variants v ON v.id=r.variant_id WHERE r.post_id=? AND v.original_id=image_article_history.original_id)`,
       )
       .bind(postId, ...args, postId),
     db
@@ -220,12 +224,12 @@ export async function collectMedia(db: D1Database, objects: Pick<MediaStore, "de
   await db.prepare("DELETE FROM media_upload_leases WHERE expires_at<=unixepoch()").run();
   await db
     .prepare(
-      "UPDATE media_variants SET unreferenced_at=unixepoch() WHERE state='ready' AND unreferenced_at IS NULL AND NOT EXISTS(SELECT 1 FROM post_media_refs WHERE variant_id=media_variants.id) AND NOT EXISTS(SELECT 1 FROM media_upload_leases WHERE variant_id=media_variants.id)",
+      "UPDATE media_variants SET unreferenced_at=unixepoch() WHERE state='ready' AND unreferenced_at IS NULL AND NOT EXISTS(SELECT 1 FROM all_post_media_refs WHERE variant_id=media_variants.id) AND NOT EXISTS(SELECT 1 FROM media_upload_leases WHERE variant_id=media_variants.id)",
     )
     .run();
   const claimed = await db
     .prepare(
-      "UPDATE media_variants SET state='deleting' WHERE id IN (SELECT id FROM media_variants WHERE (state='deleting' OR (state='uploading' AND upload_expires_at<unixepoch()) OR (state='ready' AND unreferenced_at<unixepoch()-86400)) AND NOT EXISTS(SELECT 1 FROM post_media_refs WHERE variant_id=media_variants.id) AND NOT EXISTS(SELECT 1 FROM media_upload_leases WHERE variant_id=media_variants.id) LIMIT 50) RETURNING id,object_key",
+      "UPDATE media_variants SET state='deleting' WHERE id IN (SELECT id FROM media_variants WHERE (state='deleting' OR (state='uploading' AND upload_expires_at<unixepoch()) OR (state='ready' AND unreferenced_at<unixepoch()-86400)) AND NOT EXISTS(SELECT 1 FROM all_post_media_refs WHERE variant_id=media_variants.id) AND NOT EXISTS(SELECT 1 FROM media_upload_leases WHERE variant_id=media_variants.id) LIMIT 50) RETURNING id,object_key",
     )
     .all<{ id: string; object_key: string }>();
   let removed = 0;
@@ -252,7 +256,7 @@ export async function discardUpload(
 ) {
   const row = await db
     .prepare(
-      "UPDATE media_variants SET state='deleting' WHERE id=? AND NOT EXISTS(SELECT 1 FROM post_media_refs WHERE variant_id=?) AND NOT EXISTS(SELECT 1 FROM media_upload_leases WHERE variant_id=? AND expires_at>unixepoch()) RETURNING object_key",
+      "UPDATE media_variants SET state='deleting' WHERE id=? AND NOT EXISTS(SELECT 1 FROM all_post_media_refs WHERE variant_id=?) AND NOT EXISTS(SELECT 1 FROM media_upload_leases WHERE variant_id=? AND expires_at>unixepoch()) RETURNING object_key",
     )
     .bind(id, id, id)
     .first<{ object_key: string }>();
