@@ -18,7 +18,7 @@ export const ArticleEditButton = component$((props: ArticleEditButtonProps) => {
       css={editButtonStyles}
       class={`article-${props.placement}-edit`}
       aria-busy={props.busy ? "true" : "false"}
-      disabled={props.busy ? true : undefined}
+      disabled={props.busy ?? false}
       onPointerEnter$={props.editable ? undefined : props.onEditIntent$}
       onFocus$={props.editable ? undefined : props.onEditIntent$}
       onClick$={props.editable ? props.onDoneRequest$ : props.onEditRequest$}
