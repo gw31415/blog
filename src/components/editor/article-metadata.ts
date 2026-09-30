@@ -1,19 +1,22 @@
 /** Read browser-owned fields even when a lazy metadata QRL is still loading. */
-export function readArticleMetadata(fallback: {
-  title: string;
-  subtitle: string;
-  description: string;
-  tags: string[];
-}) {
+export function readArticleMetadata(
+  fallback: {
+    title: string;
+    subtitle: string;
+    description: string;
+    tags: string[];
+  },
+  root: Pick<ParentNode, "querySelector"> | null = document,
+) {
   const fields = {
-    title: document.querySelector('[data-article-field="title"]')?.textContent ?? fallback.title,
+    title: root?.querySelector('[data-article-field="title"]')?.textContent ?? fallback.title,
     subtitle:
-      document.querySelector('[data-article-field="subtitle"]')?.textContent ?? fallback.subtitle,
+      root?.querySelector('[data-article-field="subtitle"]')?.textContent ?? fallback.subtitle,
     description:
-      document.querySelector('[data-article-field="description"]')?.textContent ??
+      root?.querySelector('[data-article-field="description"]')?.textContent ??
       fallback.description,
   };
-  const element = document.querySelector('[data-article-field="tags"]');
+  const element = root?.querySelector('[data-article-field="tags"]');
   const tags = element
     ? Array.from(element.childNodes).flatMap((node) =>
         node.nodeType === Node.TEXT_NODE

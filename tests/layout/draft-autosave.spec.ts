@@ -157,6 +157,7 @@ test("keeps failed saves in place and retries; stale tab cannot overwrite", asyn
 
 test("captures metadata immediately before publish and Done while input handlers resume", async ({
   page,
+  browser,
   baseURL,
 }) => {
   await page.context().addCookies([{ name: "blog_dev_manager", value: "1", url: baseURL! }]);
@@ -170,6 +171,16 @@ test("captures metadata immediately before publish and Done while input handlers
       ).json()
     ).data;
   const { id } = await call("create_draft", { requestId: `immediate-${Date.now()}` });
+  const reader = await browser.newContext({ baseURL });
+  const publicTitle = async () =>
+    (
+      await (
+        await reader.request.post("/api/webmcp", {
+          headers: { Origin: baseURL! },
+          data: { name: "get_post", input: { identifier: id } },
+        })
+      ).json()
+    ).data?.title;
   try {
     await page.goto(`/blog/${id}?edit=1`);
     const title = page.locator('[data-article-field="title"]');
@@ -180,15 +191,18 @@ test("captures metadata immediately before publish and Done while input handlers
       .poll(async () => (await call("get_post", { identifier: id })).status)
       .toBe("published");
     expect((await call("get_post", { identifier: id })).title).toBe("immediate publication");
+    await expect.poll(publicTitle).toBe("immediate publication");
     await expect(page.locator(".article-header-edit")).toBeEnabled();
     await title.fill("immediate draft");
     await page.locator(".article-header-edit").click();
     await expect(page.locator("article")).toHaveAttribute("data-editor-mode", "view");
     expect((await call("get_post", { identifier: id })).title).toBe("immediate draft");
+    expect(await publicTitle()).toBe("immediate publication");
     await expect(page).toHaveURL(new RegExp(`/blog/${id}$`));
     await page.reload();
     await expect(title).toHaveText("immediate draft");
   } finally {
+    await reader.close();
     const post = await call("get_post", { identifier: id });
     await call("delete_post", { identifier: id, expectedVersion: post.version });
   }

@@ -344,8 +344,13 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
   useVisibleTask$(
     ({ cleanup }) => {
       if (!props.canEdit || !props.onSave$) return;
+      // Retain this article root: a queued unload save must not read the next route.
+      const metadataRoot =
+        (editorMount.value ?? document.querySelector("[data-editor-mount]"))?.closest(
+          "main.paper",
+        ) ?? null;
       const read = (): DraftSnapshot => ({
-        ...readArticleMetadata(ui),
+        ...readArticleMetadata(ui, metadataRoot),
         publishedAt: ui.publishedAt,
         body: controller.value?.getJSON() ?? ui.body,
         editingState: null,
@@ -435,7 +440,7 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
   const saveDraft$ = $(async (intent: SaveIntent = "save") => {
     try {
       ui.error = "";
-      Object.assign(ui, readArticleMetadata(ui));
+      Object.assign(ui, readArticleMetadata(ui, editorMount.value?.closest("main.paper") ?? null));
       if (!autosaver.value) throw new Error("保存の準備中です。もう一度お試しください。");
       await autosaver.value.flush(intent);
     } catch (error) {
