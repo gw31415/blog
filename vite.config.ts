@@ -125,6 +125,8 @@ export default defineConfig(async ({ command, mode }) => {
       ],
     },
     server: {
+      // Playwright traces contain HTML snapshots; watching them reloads the app mid-test.
+      watch: { ignored: ["**/.cache/**"] },
       allowedHosts: true as const,
     },
   } satisfies ViteUserConfig;
