@@ -1,3 +1,4 @@
+import { readArticleMetadata } from "../components/editor/article-metadata";
 import type { SaveIntent } from "../server/posts";
 import type { JSONContent } from "@tiptap/core";
 import type { EditorController } from "../components/editor/editor-controller";
@@ -35,27 +36,8 @@ export function registerEditorTools(binding: EditorBinding) {
   const { ui } = binding;
   // Browser-owned header fields may have an input handler still queued by Qwik.
   const read = () => {
-    const metadata = Object.fromEntries(
-      (["title", "subtitle", "description"] as const).map((key) => [
-        key,
-        document.querySelector(`[data-article-field="${key}"]`)?.textContent ?? ui[key],
-      ]),
-    );
-    const tagsElement = document.querySelector('[data-article-field="tags"]');
-    const tags = tagsElement
-      ? Array.from(tagsElement.childNodes).flatMap((node) =>
-          node.nodeType === Node.TEXT_NODE
-            ? (node.textContent ?? "").split(/[,，、\s]+/u).filter(Boolean)
-            : node instanceof Element && node.classList.contains("meta-tag")
-              ? [node.textContent ?? ""]
-              : [],
-        )
-      : ui.tags;
     return {
-      title: metadata.title,
-      subtitle: metadata.subtitle,
-      description: metadata.description,
-      tags: [...new Set(tags)],
+      ...readArticleMetadata(ui),
       publishedAt: ui.publishedAt,
       alias: ui.alias,
       status: ui.status,

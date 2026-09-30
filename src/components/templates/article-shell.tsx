@@ -1,3 +1,4 @@
+import { readArticleMetadata } from "../editor/article-metadata";
 import { useNavigate } from "@qwik.dev/router";
 import { observeArticleImages } from "../editor/article-image";
 import { observeArticleAnnotations } from "../editor/article-annotations";
@@ -344,13 +345,10 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
     ({ cleanup }) => {
       if (!props.canEdit || !props.onSave$) return;
       const read = (): DraftSnapshot => ({
+        ...readArticleMetadata(ui),
         publishedAt: ui.publishedAt,
-        title: ui.title,
-        subtitle: ui.subtitle,
         body: controller.value?.getJSON() ?? ui.body,
         editingState: null,
-        description: ui.description,
-        tags: [...ui.tags],
         alias: ui.alias.trim(),
       });
       const saver = createDraftAutosaver({
@@ -437,6 +435,7 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
   const saveDraft$ = $(async (intent: SaveIntent = "save") => {
     try {
       ui.error = "";
+      Object.assign(ui, readArticleMetadata(ui));
       if (!autosaver.value) throw new Error("保存の準備中です。もう一度お試しください。");
       await autosaver.value.flush(intent);
     } catch (error) {

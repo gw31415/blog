@@ -14,6 +14,8 @@ interface ArticleEditButtonProps {
 export const ArticleEditButton = component$((props: ArticleEditButtonProps) => {
   return (
     <button
+      // Keep busy/ready DOM distinct so a resumed control cannot retain disabled attributes.
+      key={props.busy ? "busy" : "ready"}
       type="button"
       css={editButtonStyles}
       class={`article-${props.placement}-edit`}

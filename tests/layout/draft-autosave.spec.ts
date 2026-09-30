@@ -70,6 +70,7 @@ for (const width of [1280, 390]) {
       await expect(page.locator(".editor-error")).toHaveCount(0);
       await expect.poll(async () => (await call("get_post", { identifier: id })).has_draft).toBe(0);
       await expect(page.locator(".article-topbar [data-publish-post]")).toHaveCount(0);
+      await expect(page.locator(".article-header-edit")).toBeEnabled();
       await publicPage.reload();
       await expect(publicPage.locator("h1")).toHaveText(`secret-${id}`);
       await expect(publicPage.locator("article")).toContainText("private working body");
@@ -148,6 +149,45 @@ test("keeps failed saves in place and retries; stale tab cannot overwrite", asyn
     expect((await call("get_post", { identifier: id })).title).toBe("other tab winner");
     await expect(page.locator('[data-article-field="title"]')).toHaveText("stale retained input");
     await other.close();
+  } finally {
+    const post = await call("get_post", { identifier: id });
+    await call("delete_post", { identifier: id, expectedVersion: post.version });
+  }
+});
+
+test("captures metadata immediately before publish and Done while input handlers resume", async ({
+  page,
+  baseURL,
+}) => {
+  await page.context().addCookies([{ name: "blog_dev_manager", value: "1", url: baseURL! }]);
+  const call = async (name: string, input: object) =>
+    (
+      await (
+        await page.request.post(`${baseURL}/api/webmcp`, {
+          headers: { Origin: baseURL! },
+          data: { name, input },
+        })
+      ).json()
+    ).data;
+  const { id } = await call("create_draft", { requestId: `immediate-${Date.now()}` });
+  try {
+    await page.goto(`/blog/${id}?edit=1`);
+    const title = page.locator('[data-article-field="title"]');
+    await expect(title).toHaveAttribute("contenteditable", "true");
+    await title.fill("immediate publication");
+    await page.locator(".article-topbar [data-publish-post]").click();
+    await expect
+      .poll(async () => (await call("get_post", { identifier: id })).status)
+      .toBe("published");
+    expect((await call("get_post", { identifier: id })).title).toBe("immediate publication");
+    await expect(page.locator(".article-header-edit")).toBeEnabled();
+    await title.fill("immediate draft");
+    await page.locator(".article-header-edit").click();
+    await expect(page.locator("article")).toHaveAttribute("data-editor-mode", "view");
+    expect((await call("get_post", { identifier: id })).title).toBe("immediate draft");
+    await expect(page).toHaveURL(new RegExp(`/blog/${id}$`));
+    await page.reload();
+    await expect(title).toHaveText("immediate draft");
   } finally {
     const post = await call("get_post", { identifier: id });
     await call("delete_post", { identifier: id, expectedVersion: post.version });
