@@ -13,6 +13,79 @@ const initial: DraftSnapshot = {
 };
 const result: SaveResult = { version: "1", status: "draft", hasDraft: true };
 afterEach(() => vi.useRealTimers());
+
+it("ignores Tiptap key and mark ordering while retaining real and invalid edits", async () => {
+  vi.useFakeTimers();
+  const stored: DraftSnapshot = {
+    ...initial,
+    body: {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "linked text",
+              marks: [{ type: "bold" }, { type: "link", attrs: { href: "https://example.com" } }],
+            },
+          ],
+        },
+      ],
+    },
+  };
+  let draft: DraftSnapshot = {
+    ...stored,
+    body: {
+      content: [
+        {
+          content: [
+            {
+              type: "text",
+              marks: [
+                { attrs: { title: null, href: "https://example.com" }, type: "link" },
+                { type: "bold" },
+              ],
+              text: "linked text",
+            },
+          ],
+          type: "paragraph",
+        },
+      ],
+      type: "doc",
+    },
+  };
+  const save = vi.fn(async (_draft: DraftSnapshot) => result);
+  const state = vi.fn();
+  const saver = createDraftAutosaver({
+    initial: stored,
+    read: () => draft,
+    blocked: () => false,
+    save,
+    state,
+    saved: () => {},
+  });
+  expect(saver.dirty()).toBe(false);
+  saver.schedule();
+  await saver.flush();
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(state).toHaveBeenLastCalledWith("saved");
+  expect(save).not.toHaveBeenCalled();
+  draft = { ...draft, title: "changed metadata" };
+  expect(saver.dirty()).toBe(true);
+  await saver.flush();
+  expect(save).toHaveBeenCalledOnce();
+  expect(saver.dirty()).toBe(false);
+  draft = {
+    ...draft,
+    body: { type: "doc", content: [{ type: "unknown", attrs: { source: "retain" } }] },
+  };
+  expect(saver.dirty()).toBe(true);
+  await saver.flush();
+  expect(save.mock.calls.at(-1)?.[0]?.body).toEqual(draft.body);
+  saver.dispose();
+});
+
 function setup(
   save = vi.fn(async (_draft: DraftSnapshot, _intent: SaveIntent, _keepalive: boolean) => result),
 ) {

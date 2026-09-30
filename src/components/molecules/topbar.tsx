@@ -113,7 +113,11 @@ const blogTopbarStyles = css`
   & .site-topbar-actions:empty {
     display: none;
   }
-  & .site-topbar-actions > :is(form, button, a) {
+  & .site-topbar-actions > :is(form, button, a),
+  &
+    .site-topbar-actions
+    > .article-edit-controls
+    > :is(.article-header-edit, .article-sticky-edit) {
     border-left: var(--topbar-action-border) solid var(--surface-rule, var(--line-soft));
     padding-inline: var(--topbar-action-inset);
     height: 100%;

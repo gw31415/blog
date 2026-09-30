@@ -19,7 +19,7 @@ export const ArticleEditControls = component$(
     onRetry$: QRL<() => void>;
   }) => {
     return (
-      <div css={styles}>
+      <div css={styles} class="article-edit-controls">
         {(props.editable || props.hasDraft || props.publishing) && (
           <>
             <span role="status" aria-live="polite" data-save-status>
@@ -34,12 +34,13 @@ export const ArticleEditControls = component$(
                       : "下書き保存済み"}
             </span>
             {props.saveState === "error" && (
-              <button type="button" onClick$={props.onRetry$}>
+              <button type="button" class="article-draft-action" onClick$={props.onRetry$}>
                 再試行
               </button>
             )}
             <button
               type="button"
+              class="article-draft-action"
               data-publish-post
               disabled={props.busy || props.publishing}
               onClick$={props.onPublish$}
@@ -65,10 +66,11 @@ const styles = css`
   align-items: center;
   justify-content: flex-end;
   gap: 0.7em;
+  height: 100%;
   margin-inline-start: auto;
   color: var(--muted);
   font-size: 12px;
-  & > button {
+  & > .article-draft-action {
     border: 0;
     background: transparent;
     color: var(--link);
@@ -76,11 +78,11 @@ const styles = css`
     cursor: pointer;
     padding: 0.2em;
   }
-  & > button:disabled {
+  & > .article-draft-action:disabled {
     opacity: 0.58;
     cursor: wait;
   }
-  & > button:focus-visible {
+  & > .article-draft-action:focus-visible {
     outline: 1px solid var(--red);
   }
   & > span {

@@ -1,5 +1,6 @@
 import type { ArticleDraft } from "../../content/article";
 import type { SaveIntent } from "../../server/posts";
+import { normalizeDocument } from "../../content/document";
 
 export type DraftSnapshot = ArticleDraft & { alias: string };
 export type SaveResult = {
@@ -16,6 +17,17 @@ export interface DraftAutosaver {
   dispose(): void;
 }
 
+function fingerprint(draft: DraftSnapshot): string {
+  let body = draft.body;
+  try {
+    // Tiptap changes JSON key/mark order on mount; compare the stored document semantics.
+    body = normalizeDocument(body);
+  } catch {
+    // Unfinished or invalid input must remain dirty and available for retry.
+  }
+  return JSON.stringify({ ...draft, body });
+}
+
 /** One writer per editor. Acknowledgements only clean the snapshot actually sent. */
 export function createDraftAutosaver(options: {
   initial: DraftSnapshot;
@@ -26,12 +38,12 @@ export function createDraftAutosaver(options: {
   saved(result: SaveResult, intent: SaveIntent): void;
   delay?: number;
 }): DraftAutosaver {
-  let baseline = JSON.stringify(options.initial);
+  let baseline = fingerprint(options.initial);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let inflight: Promise<void> | undefined;
   let disposed = false;
   let conflict = false;
-  const dirty = () => JSON.stringify(options.read()) !== baseline;
+  const dirty = () => fingerprint(options.read()) !== baseline;
   const clear = () => {
     clearTimeout(timer);
     timer = undefined;
@@ -77,7 +89,7 @@ export function createDraftAutosaver(options: {
         const result = await options.save(snapshot, intent, keepalive);
         if (!snapshot.publishedAt && result.publishedAt)
           snapshot.publishedAt = result.publishedAt.slice(0, 10);
-        baseline = JSON.stringify(snapshot);
+        baseline = fingerprint(snapshot);
         options.saved(result, intent);
         options.state(dirty() ? "pending" : "saved");
       } catch (error) {
