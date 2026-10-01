@@ -58,6 +58,8 @@ const blogThemeStyles = css`
     --surface-grain-opacity: 0.055;
     --muted: #b5b2a5;
     --red: #cbb1a6;
+    --strong: #dda59d;
+    --inline-code-ink: var(--ink);
     --link: #d8bab0;
     --link-hover: #f0d0c4;
     --link-underline: rgb(216 186 176 / 65%);
@@ -150,6 +152,8 @@ const blogThemeStyles = css`
   --faint: #655c4e;
 
   --red: #87594f;
+  --strong: #701c28;
+  --inline-code-ink: #57443a;
   --rule: rgb(80 51 39 / 60%);
 
   --line-soft: var(--surface-rule);
@@ -225,6 +229,14 @@ const blogThemeStyles = css`
   }
   & .ink-quote {
     --ink-color: #51493d;
+  }
+  /* Keep ink wear on the decorative letters; uninterrupted strokes on the
+     reading sheet preserve thin Mincho glyphs and small metadata. */
+  & .paper .ink {
+    background-image: linear-gradient(var(--ink-color), var(--ink-color));
+    background-size: 100% 100%;
+    background-position: 0 0;
+    background-repeat: no-repeat;
   }
   & .type-title {
     font-family: var(--serif);
@@ -316,7 +328,8 @@ const blogThemeStyles = css`
       background: Canvas;
       --desk-texture: none;
     }
-    & .ink {
+    & .ink,
+    & .paper .ink {
       color: CanvasText;
       -webkit-text-fill-color: CanvasText;
       background-image: none;

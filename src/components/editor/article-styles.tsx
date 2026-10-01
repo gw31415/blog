@@ -70,6 +70,8 @@ const articleShellStyles = css`
     height: 100%;
 
     pointer-events: none;
+    /* Retain the graph-paper pattern without competing with fine text strokes. */
+    opacity: 0.55;
   }
 
   & .paper-texture {
@@ -420,8 +422,8 @@ const articleShellStyles = css`
   }
 
   & strong {
-    color: #701c28;
-    -webkit-text-fill-color: #701c28;
+    color: var(--strong);
+    -webkit-text-fill-color: var(--strong);
   }
 
   & i {
@@ -896,9 +898,9 @@ const articleShellStyles = css`
   & :not(pre) > code {
     padding: 0.42em 0.32em;
 
-    color: #57443a;
+    color: var(--inline-code-ink);
 
-    -webkit-text-fill-color: #57443a;
+    -webkit-text-fill-color: var(--inline-code-ink);
 
     background: rgb(121 79 65 / 8%);
 
