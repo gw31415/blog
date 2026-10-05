@@ -169,7 +169,7 @@ const blogThemeStyles = css`
   --body-size: 1rem;
   --heading-size: calc(var(--body-size) * 1.2);
   --small-size: calc(var(--body-size) * 0.75);
-  --body-leading: calc(var(--body-size) * 1.5);
+  --body-leading: calc(var(--body-size) * 2);
   --site-chrome-inset: max(16px, env(safe-area-inset-left), env(safe-area-inset-right));
   --paper-inset: clamp(1.5em, 5vw, 3em);
   --paper-measure: 48em;
@@ -260,7 +260,7 @@ const blogThemeStyles = css`
     font-family: var(--serif);
 
     font-size: var(--body-size);
-    line-height: 1.5;
+    line-height: 2;
 
     letter-spacing: normal;
 

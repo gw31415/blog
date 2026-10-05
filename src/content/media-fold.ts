@@ -1,5 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
-export const FOLD_POLICY = "media-fold-v1";
+export const FOLD_POLICY = "media-fold-v2";
 export interface MediaSize {
   width: number;
   height: number;
@@ -80,7 +80,7 @@ export function classifyMedia(
           let y = 0;
           const mark = (node: JSONContent, path: string) => {
             const o = byPath.get(path);
-            if (o && y <= height + Math.max(3 * font, 0.1 * height)) o.embed = true;
+            if (o && y <= height + Math.max(4 * font, 0.1 * height)) o.embed = true;
             node.content?.forEach((n, i) => mark(n, `${path}.${i}`));
           };
           body.content?.forEach((node, i) => {
@@ -112,7 +112,7 @@ export function classifyMedia(
               const lines = text
                 .split("\n")
                 .reduce((n, t) => n + Math.max(1, Math.floor((advance(t) * font) / content)), 0);
-              y += Math.max(0, (lines - 2) * 1.5 * font);
+              y += Math.max(0, (lines - 2) * 2 * font);
             }
           });
         }

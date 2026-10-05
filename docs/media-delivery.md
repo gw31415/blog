@@ -28,7 +28,7 @@ SVGはXMLとして要素/属性・外部参照を検証する。数式はSVGと�
 
 ## 上部判定
 
-正本は `src/content/media-fold.ts` の `media-fold-v1`。編集端末・現在時刻・DOM・フォント測定を使わず、正規本文と保存された寸法に固定計算を適用する。
+正本は `src/content/media-fold.ts` の `media-fold-v2`。編集端末・現在時刻・DOM・フォント測定を使わず、正規本文と保存された寸法に固定計算を適用する。
 
 ```text
 embed(i) = any s: estimatedY(i,s) <= H(s) + max(2 × lineHeight(s), 0.1 × H(s))

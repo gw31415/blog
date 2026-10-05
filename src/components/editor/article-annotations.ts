@@ -46,7 +46,7 @@ export function observeArticleAnnotations(root: HTMLElement) {
       rubyModes.push({
         ruby,
         natural:
-          Number.parseFloat(style.lineHeight) > size * 1.5 + 0.1 ||
+          Number.parseFloat(style.lineHeight) > size * 2 + 0.1 ||
           Number.parseFloat(style.letterSpacing) >= size * 0.1 ||
           Number.parseFloat(style.wordSpacing) >= size * 0.15,
       });

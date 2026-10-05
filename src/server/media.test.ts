@@ -139,7 +139,7 @@ it("has deterministic fold decisions with late diagrams lazy and unknown heights
   const long = {
     type: "doc",
     content: [
-      { type: "paragraph", content: [{ type: "text", text: "文".repeat(15000) }] },
+      { type: "paragraph", content: [{ type: "text", text: "文".repeat(8000) }] },
       ...body.content,
     ],
   };

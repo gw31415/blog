@@ -228,7 +228,7 @@ test("annotation geometry, ruby priority, and user text spacing", async ({ page 
   }
   // A reader's spacing preferences must trigger repaint and a natural ruby fallback.
   const preferences = await page.addStyleTag({
-    content: `article.article-content * {line-height:1.8!important;letter-spacing:.12em!important;word-spacing:.16em!important} article.article-content {font-family:sans-serif!important}`,
+    content: `article.article-content * {line-height:2.4!important;letter-spacing:.12em!important;word-spacing:.16em!important} article.article-content {font-family:sans-serif!important}`,
   });
   await expect(article.locator("ruby").first()).toHaveAttribute("data-ruby-natural", "");
   await expect(article.locator("ruby").first()).toHaveCSS("display", "ruby");
