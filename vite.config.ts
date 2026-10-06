@@ -1,8 +1,9 @@
 import { fileURLToPath } from "node:url";
 import { qwikVite } from "@qwik.dev/core/optimizer";
 import { qwikRouter } from "@qwik.dev/router/vite";
-import { qstyle } from "@qstyle/vite";
+import { applyEditsWithMap, originalLineOf, qstyle } from "@qstyle/vite";
 import { defineConfig, type ViteUserConfig } from "vite-plus";
+import { BODY_LINE_HEIGHT, mediaFoldPolicy } from "./src/content/typography";
 import { discoveryPaths } from "./src/webmcp/discovery";
 
 export default defineConfig(async ({ command, mode }) => {
@@ -13,6 +14,7 @@ export default defineConfig(async ({ command, mode }) => {
 
   return {
     define: {
+      "import.meta.env.BLOG_MEDIA_FOLD_POLICY": JSON.stringify(mediaFoldPolicy()),
       "import.meta.env.BLOG_DEV_SERVER": JSON.stringify(
         command === "serve" && mode !== "test" && !process.env.VITEST,
       ),
@@ -34,6 +36,21 @@ export default defineConfig(async ({ command, mode }) => {
             }
             next();
           });
+        },
+      },
+      {
+        name: "body-line-height",
+        enforce: "pre",
+        transform(code, id) {
+          if (!/\/src\/components\/(foundations\/theme|editor\/article-styles)\.tsx$/.test(id))
+            return undefined;
+          const edits = [...code.matchAll(/__BLOG_BODY_LINE_HEIGHT__/g)].map((match) => ({
+            start: match.index,
+            end: match.index + match[0].length,
+            newText: String(BODY_LINE_HEIGHT),
+            srcLine: originalLineOf(code, match.index),
+          }));
+          return edits.length ? applyEditsWithMap(code, id, edits) : undefined;
         },
       },
       qstyle(),

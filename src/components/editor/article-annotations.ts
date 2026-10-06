@@ -1,3 +1,5 @@
+import { BODY_LINE_HEIGHT } from "../../content/typography";
+
 /** Presentation only: keep em/ruby text and the editor-owned DOM intact. */
 export function observeArticleAnnotations(root: HTMLElement) {
   const layer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -46,7 +48,7 @@ export function observeArticleAnnotations(root: HTMLElement) {
       rubyModes.push({
         ruby,
         natural:
-          Number.parseFloat(style.lineHeight) > size * 2 + 0.1 ||
+          Number.parseFloat(style.lineHeight) > size * BODY_LINE_HEIGHT + 0.1 ||
           Number.parseFloat(style.letterSpacing) >= size * 0.1 ||
           Number.parseFloat(style.wordSpacing) >= size * 0.15,
       });

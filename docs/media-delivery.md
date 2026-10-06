@@ -28,7 +28,7 @@ SVGはXMLとして要素/属性・外部参照を検証する。数式はSVGと�
 
 ## 上部判定
 
-正本は `src/content/media-fold.ts` の `media-fold-v2`。編集端末・現在時刻・DOM・フォント測定を使わず、正規本文と保存された寸法に固定計算を適用する。
+正本は `src/content/media-fold.ts`。本文行高の基準は `src/content/typography.ts` の `BODY_LINE_HEIGHT`（既定2）で、上部判定の識別子 `media-fold-v2-leading-2` も同じ基準からビルド時に確定する。編集端末・現在時刻・DOM・フォント測定を使わず、正規本文と保存された寸法に固定計算を適用する。
 
 ```text
 embed(i) = any s: estimatedY(i,s) <= H(s) + max(2 × lineHeight(s), 0.1 × H(s))

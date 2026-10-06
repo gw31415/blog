@@ -616,7 +616,7 @@ const articleShellStyles = css`
     list-style: none;
 
     font-size: 1em;
-    line-height: 2;
+    line-height: __BLOG_BODY_LINE_HEIGHT__;
   }
 
   & .link-list li {
@@ -736,7 +736,7 @@ const articleShellStyles = css`
     font-family: var(--sans);
     font-size: var(--body-size);
     font-weight: 600;
-    line-height: 2;
+    line-height: __BLOG_BODY_LINE_HEIGHT__;
     letter-spacing: normal;
 
     text-align: start;
@@ -868,7 +868,7 @@ const articleShellStyles = css`
     border-inline-start: 0.2em solid var(--line-strong);
     background: rgb(112 65 58 / 7%);
 
-    line-height: 2;
+    line-height: __BLOG_BODY_LINE_HEIGHT__;
 
     font-feature-settings:
       "palt" 1,
@@ -1105,7 +1105,7 @@ const articleShellStyles = css`
     border-spacing: 0;
 
     font-size: 1em;
-    line-height: 2;
+    line-height: __BLOG_BODY_LINE_HEIGHT__;
 
     font-feature-settings: "palt" 1;
 
@@ -1329,7 +1329,7 @@ const articleShellStyles = css`
 
     font-family: var(--serif);
     font-size: 1em;
-    line-height: 2;
+    line-height: __BLOG_BODY_LINE_HEIGHT__;
   }
 
   & .aside .callout-content > :first-child,
@@ -1415,7 +1415,7 @@ const articleShellStyles = css`
   & .details-body {
     padding: 0 0 0.5lh 1.5em;
     font-size: 1em;
-    line-height: 2;
+    line-height: __BLOG_BODY_LINE_HEIGHT__;
   }
 
   & hr {

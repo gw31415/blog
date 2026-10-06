@@ -31,6 +31,7 @@ for (const width of [1280, 390]) {
         }),
       );
     const check = async () => {
+      await expect(editor).toHaveCSS("line-height", "32px");
       const em = editor.locator("em").first();
       await expect(em).toHaveCSS("text-emphasis-style", "none");
       const layer = page.locator(".article-emphasis-layer");
