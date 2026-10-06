@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { BODY_LINE_HEIGHT } from "../../src/content/typography";
 
 test.beforeEach(async ({ context, baseURL }) => {
   await context.addCookies([{ name: "blog_dev_manager", value: "1", url: baseURL! }]);
@@ -31,7 +32,7 @@ for (const width of [1280, 390]) {
         }),
       );
     const check = async () => {
-      await expect(editor).toHaveCSS("line-height", "32px");
+      await expect(editor).toHaveCSS("line-height", `${16 * BODY_LINE_HEIGHT}px`);
       const em = editor.locator("em").first();
       await expect(em).toHaveCSS("text-emphasis-style", "none");
       const layer = page.locator(".article-emphasis-layer");
