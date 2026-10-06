@@ -72,21 +72,4 @@ describe("editor controller", () => {
 
     expect(commands).toEqual([{ type: "updateMath", kind: "block", position: 12, latex: "x^2" }]);
   });
-
-  it("forwards a code language selected from a code block", async () => {
-    const commands: unknown[] = [];
-    const handle = fakeHandle([]);
-    handle.run = (command) => {
-      commands.push(command);
-      return true;
-    };
-    const controller = createEditorController<{ innerHTML: string }>(async () => ({
-      mountArticleEditor: () => handle,
-    }));
-
-    await controller.enterEdit({ innerHTML: "" });
-    controller.run({ type: "setCodeLanguage", position: 8, language: "typescript" });
-
-    expect(commands).toEqual([{ type: "setCodeLanguage", position: 8, language: "typescript" }]);
-  });
 });

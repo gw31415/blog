@@ -190,17 +190,6 @@ test("mobile envelopes keep desktop spacing while year, month and day share the 
   ).toBeLessThan(1);
 });
 
-test("the desk texture and inset edges are painted behind the envelopes", async ({ page }) => {
-  for (const width of [1280, 390]) {
-    await page.setViewportSize({ width, height: 900 });
-    await page.goto("/");
-    const desk = page.locator(".post-stream");
-    await expect(desk).toHaveCSS("background-image", /radial-gradient/);
-    await expect(desk).toHaveCSS("background-attachment", "scroll, scroll");
-    await expect(desk).toHaveCSS("box-shadow", /inset/);
-  }
-});
-
 test("heading starts at the upper third and envelopes accelerate below and decelerate above", async ({
   page,
 }) => {
@@ -290,20 +279,6 @@ test("envelope hover is paused during scrolling and restored afterward", async (
   await expect.poll(titleInk).not.toBe(normalInk);
 });
 
-test("loads the next page on scroll without duplicating cards", async ({ page }) => {
-  await page.goto("/");
-  const cards = page.locator(".letter");
-  const count = await cards.count();
-  const next = page.getByRole("link", { name: "続きを読み込む" });
-  if (!(await next.count())) return;
-  await next.scrollIntoViewIfNeeded();
-  await expect.poll(() => cards.count()).toBeGreaterThan(count);
-  const urls = await cards
-    .locator(".letter-link")
-    .evaluateAll((links) => links.map((link) => link.getAttribute("href")));
-  expect(new Set(urls).size).toBe(urls.length);
-});
-
 test("restores the loaded list without randomUUID on reload and back", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -318,6 +293,10 @@ test("restores the loaded list without randomUUID on reload and back", async ({ 
   expect(await next.count(), "fixture must include more than one page").toBe(1);
   await next.scrollIntoViewIfNeeded();
   await expect.poll(() => cards.count()).toBeGreaterThan(firstCount);
+  const urls = await cards
+    .locator(".letter-link")
+    .evaluateAll((links) => links.map((link) => link.getAttribute("href")));
+  expect(new Set(urls).size).toBe(urls.length);
   const target = cards.nth(firstCount).locator(".letter-link");
   await target.scrollIntoViewIfNeeded();
   const href = await target.getAttribute("href");

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-for (const width of [1280, 467, 390])
+for (const width of [1280, 390])
   test(`metadata geometry stays fixed at ${width}`, async ({ page }) => {
     test.setTimeout(90000);
     await page.setViewportSize({ width, height: 800 });

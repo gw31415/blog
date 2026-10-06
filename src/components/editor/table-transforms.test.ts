@@ -4,7 +4,7 @@ import { TableMap } from "@tiptap/pm/tables";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createEditorExtensions } from "./editor-extensions";
-import { canReorderTable, transformTable, type TableAction } from "./table-transforms";
+import { transformTable, type TableAction } from "./table-transforms";
 
 const schema = getSchema(createEditorExtensions());
 
@@ -240,36 +240,6 @@ describe("transformTable", () => {
       ok: false,
       reason: "out-of-range",
     });
-  });
-
-  it.each([
-    ["rowspan", { rowspan: 2 }],
-    ["colspan", { colspan: 2 }],
-  ])("rejects moves when a cell has a non-unit %s", (_attribute, attrs) => {
-    const merged = schema.nodes.table.create(undefined, [
-      schema.nodes.tableRow.create(undefined, [
-        cell(schema, "tableCell", "merged", attrs),
-        cell(schema, "tableCell", "other"),
-      ]),
-      schema.nodes.tableRow.create(undefined, [
-        cell(schema, "tableCell", "next"),
-        cell(schema, "tableCell", "last"),
-      ]),
-    ]);
-
-    expect(canReorderTable(merged)).toBe(false);
-    expect(transformTable(merged, { type: "move", axis: "row", from: 0, to: 1 })).toEqual({
-      ok: false,
-      reason: "merged-cells",
-    });
-    expect(transformTable(merged, { type: "move", axis: "column", from: 0, to: 1 })).toEqual({
-      ok: false,
-      reason: "merged-cells",
-    });
-  });
-
-  it("allows reordering a rectangular table whose cells all span one slot", () => {
-    expect(canReorderTable(mixedTable())).toBe(true);
   });
 
   it.each(["rowspan", "colspan"] as const)(

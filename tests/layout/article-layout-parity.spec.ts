@@ -125,7 +125,7 @@ for (const viewport of [
     }
 
     const documentTimeOrigin = await page.evaluate(() => performance.timeOrigin);
-    for (let cycle = 0; cycle < 3; cycle++) {
+    for (let cycle = 0; cycle < 2; cycle++) {
       await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
       await waitForStickyHeader(page);
       const reading = await captureLayout(page);

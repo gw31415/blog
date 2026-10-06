@@ -1,51 +1,37 @@
-import { describe, expect, it } from "vite-plus/test";
+import { expect, it } from "vite-plus/test";
+import { testDatabase } from "../../tests/helpers/database";
 import { listPostPage } from "./post-list";
 
-function fakeDatabase(rows: unknown[]) {
-  let sql = "";
-  let bindings: unknown[] = [];
-  const statement = {
-    bind: (...args: unknown[]) => {
-      bindings = args;
-      return statement;
-    },
-    all: async () => ({ results: rows }),
-  };
-  const db = {
-    prepare: (query: string) => {
-      sql = query;
-      return statement;
-    },
-    // This test emulates only the D1 operations exercised by this module.
-    // eslint-disable-next-line typescript/no-unsafe-type-assertion
-  } as unknown as D1Database;
-  return { db, sql: () => sql, bindings: () => bindings };
-}
-describe("summary pagination", () => {
-  it("fetches one lookahead row without bodies and excludes drafts for readers", async () => {
-    const rows = Array.from({ length: 13 }, (_, index) => ({
-      id: String(index),
-      created_at: "2026-08-01",
-      published_at: "2026-09-25",
-      tags: '["開発"]',
-    }));
-    const fake = fakeDatabase(rows);
-    const page = await listPostPage(fake.db, false);
-    expect(page.posts).toHaveLength(12);
-    expect(page.next).toBe(JSON.stringify(["2026-09-25", "11"]));
-    expect(fake.sql()).toContain("LIMIT 13");
-    expect(fake.sql()).toContain("status='published'");
-    expect(fake.sql()).not.toContain("SELECT *");
-    expect(page.posts[0].tags).toEqual(["開発"]);
-  });
-  it("uses a stable date and id cursor, including after deletion of the boundary row", async () => {
-    const fake = fakeDatabase([]);
-    const page = await listPostPage(fake.db, true, JSON.stringify(["2026-09-25", "boundary"]));
-    expect(fake.bindings()).toEqual(["2026-09-25", "2026-09-25", "boundary"]);
-    expect(fake.sql()).toContain("id < ?");
-    expect(page.next).toBeNull();
-  });
-  it("rejects malformed cursors", async () => {
-    await expect(listPostPage(fakeDatabase([]).db, false, "[1,2]")).rejects.toThrow();
-  });
+const postId = (index: number) => String(index).padStart(26, "0");
+
+it("paginates tied dates without leaking drafts or losing rows after the boundary is deleted", async () => {
+  const { db, sql } = testDatabase();
+  try {
+    const draftId = "Z".repeat(26);
+    const insert = sql.prepare(
+      "INSERT INTO posts(id,title,status,published_at,created_at,updated_at,tags) VALUES(?,?,?,'2026-09-25','2026-09-25','2026-09-25','[\"開発\"]')",
+    );
+    for (let index = 1; index <= 13; index++) {
+      const id = postId(index);
+      insert.run(id, id, "published");
+    }
+    insert.run(draftId, "Private draft", "draft");
+
+    const first = await listPostPage(db, false);
+    expect(first.posts).toHaveLength(12);
+    expect(first.posts[0].id).toBe(postId(13));
+    expect(first.posts.at(-1)?.id).toBe(postId(2));
+    expect(first.posts.some((post) => post.id === draftId)).toBe(false);
+    expect(first.posts[0].tags).toEqual(["開発"]);
+    expect(first.posts[0]).not.toHaveProperty("body_json");
+    expect(first.next).not.toBeNull();
+
+    sql.prepare("DELETE FROM posts WHERE id=?").run(postId(2));
+    const next = await listPostPage(db, false, first.next);
+    expect(next.posts.map((post) => post.id)).toEqual([postId(1)]);
+    expect(next.next).toBeNull();
+    await expect(listPostPage(db, false, "[1,2]")).rejects.toThrow();
+  } finally {
+    sql.close();
+  }
 });

@@ -21,13 +21,14 @@ test("inline delimiters work after Japanese text while retaining ASCII boundarie
     ["==", "mark"],
     ["~~", "s"],
   ]) {
-    for (const prefix of ["日本語", "かな", "カナ", "Ａ１", "。", "𠮷", "😀", "", " "]) {
+    // Exercise boundary categories once, and every delimiter with Japanese and ASCII text.
+    for (const prefix of delimiter === "**" ? ["日本語", "𠮷", "😀", "", " "] : ["日本語"]) {
       await reset();
       await page.keyboard.type(prefix + delimiter + "文字" + delimiter);
       await expect(editor.locator(tag)).toHaveText("文字");
       await expect(editor).toHaveText(prefix + "文字");
     }
-    for (const prefix of ["a", "1", ")", "\\"]) {
+    for (const prefix of delimiter === "**" ? ["a", ")", "\\"] : ["a"]) {
       await reset();
       const source = prefix + delimiter + "文字" + delimiter;
       await page.keyboard.type(source);

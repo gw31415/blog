@@ -111,7 +111,11 @@ describe("Markdown boundary contracts", () => {
       ),
     ]));
   it("keeps source when rejecting HTML or unknown directives", () => {
-    for (const source of ["<div>raw</div>", ":::{unknown}\nbody\n:::"]) {
+    for (const source of [
+      "<div>raw</div>",
+      ":::{unknown}\nbody\n:::",
+      "```html example.html\nx\n```",
+    ]) {
       try {
         parseArticleMarkdown(source);
         throw new Error("expected rejection");

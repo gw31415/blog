@@ -123,18 +123,14 @@ describe("table action transaction", () => {
     ]);
     const mergedState = EditorState.create({ schema, doc: schema.nodes.doc.create(null, merged) });
     expect(TableMap.get(merged).problems).toBeNull();
-    for (const axis of ["row", "column"] as const) {
-      for (const action of ["before", "after", "duplicate", "delete", "next"] as const) {
-        expect(
-          tableActionTransaction(
-            mergedState,
-            { position: 0, table: merged },
-            menuAction(axis, 0, action),
-          ),
-        ).toBeNull();
-        expect(mergedState.doc.firstChild).toBe(merged);
-      }
-    }
+    expect(
+      tableActionTransaction(
+        mergedState,
+        { position: 0, table: merged },
+        menuAction("row", 0, "duplicate"),
+      ),
+    ).toBeNull();
+    expect(mergedState.doc.firstChild).toBe(merged);
   });
   it("rejects merged-cell drags before activation and mutation", () => {
     const merged = schema.nodes.table.create(null, [

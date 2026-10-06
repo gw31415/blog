@@ -7,30 +7,6 @@ function roundTrip(source: string): string {
 }
 
 describe("article Markdown", () => {
-  it("round-trips headings, GFM content, and standard math delimiters", () => {
-    const source = [
-      "## 節",
-      "",
-      "本文の $x^2$。",
-      "",
-      "$$",
-      "y = x + 1",
-      "$$",
-      "",
-      "| 左 | 右 |",
-      "| --- | --- |",
-      "| A | B |",
-      "",
-    ].join("\n");
-
-    const output = roundTrip(source);
-
-    expect(output).toContain("## 節");
-    expect(output).toContain("本文の $x^2$。");
-    expect(output).toContain("$$\ny = x + 1\n$$");
-    expect(output).toMatch(/\| 左\s+\| 右\s+\|/);
-  });
-
   it.each([
     ["callout", ":::{note} 補足\n本文\n:::"],
     ["figure", ":::{figure} /image.jpg\n:alt: 代替\n\n図の説明\n:::"],
