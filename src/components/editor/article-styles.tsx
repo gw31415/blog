@@ -1319,13 +1319,18 @@ const articleShellStyles = css`
        ───────────────────────────── */
 
   & .aside {
+    --callout-space: calc(var(--body-leading) / 4);
+    --callout-rule-width: 1px;
+    --callout-icon-size: var(--body-size);
+
     margin: var(--body-leading) 0;
-    padding-block: 0.25lh;
-    padding-inline: 0;
+    padding-block: var(--callout-space);
+    padding-inline: calc(var(--callout-space) * 2);
 
-    border-top: 1px solid var(--line-soft);
-
-    border-bottom: 1px solid var(--line-soft);
+    /* Separate edges so qstyle's output order cannot override the thick rule. */
+    border-block: var(--callout-rule-width) solid var(--line-soft);
+    border-inline-end: var(--callout-rule-width) solid var(--line-soft);
+    border-inline-start: calc(var(--callout-rule-width) * 3) solid var(--line-strong);
 
     font-family: var(--serif);
     font-size: 1em;
@@ -1343,29 +1348,34 @@ const articleShellStyles = css`
   }
 
   & .aside-label {
-    margin-right: 0.85em;
+    display: grid;
+    grid-template-columns: var(--callout-icon-size) minmax(0, 1fr);
+    column-gap: var(--callout-space);
+    margin-block-end: var(--callout-space);
     font-family: var(--sans);
     font-size: var(--small-size);
+    line-height: var(--body-leading);
     letter-spacing: normal;
+    text-align: start;
   }
 
   /* ASCII letters with CSS frames: no SVG, emoji or special-symbol font dependency. */
   & .aside-label::before {
     content: "i";
-    display: inline-grid;
+    display: grid;
     place-items: center;
-    inline-size: 1em;
-    block-size: 1em;
+    align-self: start;
+    inline-size: var(--callout-icon-size);
+    block-size: var(--callout-icon-size);
     box-sizing: border-box;
-    margin-inline-end: 0.4em;
-    border: 0.08em solid currentColor;
+    margin-block-start: calc((var(--body-leading) - var(--callout-icon-size)) / 2);
+    border: var(--callout-rule-width) solid currentColor;
     border-radius: 50%;
     color: var(--muted);
     -webkit-text-fill-color: currentColor;
     font-family: sans-serif;
     font-weight: 600;
     line-height: 1;
-    vertical-align: baseline;
   }
 
   & .aside[data-kind="warning"] .aside-label::before {
