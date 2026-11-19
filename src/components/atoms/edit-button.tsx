@@ -66,9 +66,11 @@ const editButtonStyles = css`
     margin-inline-start: auto;
     padding: 0;
   }
-  &:hover {
-    color: var(--link);
-    background: var(--highlight);
+  @media (hover: hover) {
+    &:hover {
+      color: var(--link);
+      background: var(--highlight);
+    }
   }
   &:focus-visible {
     outline: 1px solid var(--red);

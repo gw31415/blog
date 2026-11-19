@@ -35,9 +35,20 @@ export const PostList = component$<{
         window.clearTimeout(idleTimer);
         idleTimer = window.setTimeout(endScroll, 150);
       };
-      window.addEventListener("scroll", onScroll, { passive: true });
-      window.addEventListener("scrollend", endScroll);
+      // Only pointers that can hover have a hover state to pause while scrolling.
+      const hover = window.matchMedia("(hover: hover) and (pointer: fine)");
+      const sync = () => {
+        window.removeEventListener("scroll", onScroll);
+        window.removeEventListener("scrollend", endScroll);
+        endScroll();
+        if (!hover.matches) return;
+        window.addEventListener("scroll", onScroll, { passive: true });
+        window.addEventListener("scrollend", endScroll);
+      };
+      sync();
+      hover.addEventListener("change", sync);
       cleanup(() => {
+        hover.removeEventListener("change", sync);
         window.removeEventListener("scroll", onScroll);
         window.removeEventListener("scrollend", endScroll);
         endScroll();

@@ -367,22 +367,30 @@ const ArticleBodyObservers = component$((props: { target: Signal<HTMLElement | u
   return null;
 });
 
-const ArticleBody = component$(
-  (props: { html: string; elementRef: Signal<HTMLElement | undefined> }) => {
-    // After mounting, Tiptap owns this DOM; a re-render must not restore the SSR HTML.
-    const html = useConstant(() => props.html);
-    return (
-      <RenderOnce>
-        <article
-          class="article-content"
-          data-layout-key="article"
-          data-editor-mount
-          ref={props.elementRef}
-          dangerouslySetInnerHTML={html}
-        ></article>
-      </RenderOnce>
-    );
-  },
+const articleBody = (html: string, elementRef: Signal<HTMLElement | undefined>) => (
+  <RenderOnce>
+    <article
+      class="article-content"
+      data-layout-key="article"
+      data-editor-mount
+      ref={elementRef}
+      dangerouslySetInnerHTML={html}
+    ></article>
+  </RenderOnce>
+);
+
+type ArticleBodyProps = { html: string; elementRef: Signal<HTMLElement | undefined> };
+
+const ArticleBody = component$((props: ArticleBodyProps) => {
+  // After mounting, Tiptap owns this DOM; a re-render must not restore the SSR HTML.
+  const html = useConstant(() => props.html);
+  return articleBody(html, props.elementRef);
+});
+
+// Readers never mount the editor, so they need no pinned copy of the HTML: the
+// constant above would be serialized into the page next to the markup itself.
+const ReaderArticleBody = component$((props: ArticleBodyProps) =>
+  articleBody(props.html, props.elementRef),
 );
 
 export const ArticleShell = component$((props: ArticleShellProps) => {
@@ -619,7 +627,15 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
             })}
           />
           {/* After mounting, Tiptap owns this DOM; mode updates must not restore the SSR HTML. */}
-          <ArticleBody key="article-body" html={props.initialHtml} elementRef={editorMount} />
+          {props.canEdit !== false ? (
+            <ArticleBody key="article-body" html={props.initialHtml} elementRef={editorMount} />
+          ) : (
+            <ReaderArticleBody
+              key="article-body"
+              html={props.initialHtml}
+              elementRef={editorMount}
+            />
+          )}
           <ArticleBodyObservers target={editorMount} />
           <BlogFooterContainer q:slot="footer" wide>
             <BlogFooter left={BLOG_NAME} right={presentation.footerRight} />

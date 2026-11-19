@@ -85,9 +85,11 @@ const blogTopbarStyles = css`
     letter-spacing: 0.02em;
     text-decoration: none;
   }
-  & .site-breadcrumb-home .site-link:hover {
-    text-decoration: underline;
-    text-underline-offset: 4px;
+  @media (hover: hover) {
+    & .site-breadcrumb-home .site-link:hover {
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
   }
   & .site-breadcrumb-current {
     display: flex;
