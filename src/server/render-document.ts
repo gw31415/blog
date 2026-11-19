@@ -5,6 +5,8 @@ import { mediaOccurrences, FOLD_POLICY } from "../content/media-fold";
 import { mediaImageHTML, parseArtifactLayout } from "../content/media-artifact";
 import { readMedia, mediaHash } from "./media";
 import { MERMAID_ERROR } from "../components/editor/mermaid-contract";
+/** UTF-8 bytes of SVG that one page may carry inline as data URLs. */
+export const EMBED_BUDGET = 32 * 1024;
 export async function renderDocument(
   document: JSONContent,
   event: { platform: { env: { DB: D1Database; IMAGES: Pick<MediaStore, "get"> } } },
@@ -51,14 +53,29 @@ export async function renderDocument(
     ).values(),
   ];
   const bodies = new Map<string, string | null>();
+  // Variants past the budget keep their eager loading but come from their own
+  // immutable URL: large diagrams would otherwise be resent with every page view.
+  const external = new Set<string>();
+  let budget = EMBED_BUDGET;
   // Bound concurrent R2 streams and never fetch below-fold SVG bodies.
-  for (let i = 0; i < upper.length; i += 6)
+  for (let i = 0; i < upper.length; i += 6) {
+    const batch = upper.slice(i, i + 6);
+    const objects = await Promise.all(
+      batch.map((row) => event.platform.env.IMAGES.get(row.object_key)),
+    );
     await Promise.all(
-      upper.slice(i, i + 6).map(async (row) => {
-        const object = await event.platform.env.IMAGES.get(row.object_key);
+      batch.map(async (row, index) => {
+        const object = objects[index];
+        if (object && (object.size ?? 0) > budget) {
+          external.add(row.id);
+          await object.body?.cancel();
+          return;
+        }
+        budget -= object?.size ?? 0;
         bodies.set(row.id, object ? await object.text() : null);
       }),
     );
+  }
   const diagrams: string[] = [];
   const math: RenderResult[] = [];
   for (let i = 0; i < entries.length; i++) {
@@ -68,7 +85,7 @@ export async function renderDocument(
     let html: string | null = null;
     if (row) {
       let src = "/media/variants/" + row.id;
-      if (embed) {
+      if (embed && !external.has(row.id)) {
         const svg = bodies.get(row.id);
         src = svg ? "data:image/svg+xml," + encodeURIComponent(svg) : "";
       }

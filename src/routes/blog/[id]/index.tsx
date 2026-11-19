@@ -51,15 +51,25 @@ export const usePost = routeLoader$(async (event) => {
   const presentation = renderPost(post.body, rendered.diagrams, rendered.math);
   const { results: images } = await database(event)
     .prepare(
-      `SELECT DISTINCT v.id, v.width, v.height FROM media_variants v JOIN ${post.has_draft ? "post_draft_media_refs" : "post_media_refs"} p ON p.variant_id=v.id WHERE p.post_id=?`,
+      `SELECT v.id, v.width, v.height, MAX(p.embed_initial) AS upper FROM media_variants v JOIN ${post.has_draft ? "post_draft_media_refs" : "post_media_refs"} p ON p.variant_id=v.id WHERE p.post_id=? GROUP BY v.id`,
     )
     .bind(post.id)
-    .all<{ id: string; width: number; height: number }>();
+    .all<{ id: string; width: number; height: number; upper: number }>();
   const dimensions = new Map(images.map((image) => [image.id, image]));
+  // The stored fold result decides which rasters may start loading at once; the first
+  // of them is the likely largest paint and is fetched ahead of other images.
+  let prioritized = false;
   presentation.html = presentation.html.replace(/<img\b[^>]*>/g, (tag) => {
     const source = /\ssrc="([^"]+)"/.exec(tag)?.[1];
     const id = source && /^(?:https?:\/\/[^/]+)?\/images\/variants\/([^/?#]+)$/.exec(source)?.[1];
     const image = id ? dimensions.get(id) : undefined;
+    if (image?.upper && tag.includes('loading="lazy"')) {
+      tag = tag.replace(
+        'loading="lazy"',
+        prioritized ? 'loading="eager"' : 'loading="eager" fetchpriority="high"',
+      );
+      prioritized = true;
+    }
     return image
       ? tag
           .replace('width="960"', `width="${image.width}"`)

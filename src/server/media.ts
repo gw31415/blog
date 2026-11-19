@@ -14,7 +14,9 @@ export interface MediaStore {
     value: Blob,
     options: { httpMetadata: { contentType: string } },
   ): Promise<unknown>;
-  get(key: string): Promise<{ text(): Promise<string> } | null>;
+  get(
+    key: string,
+  ): Promise<{ text(): Promise<string>; size?: number; body?: { cancel(): Promise<void> } } | null>;
   delete(key: string): Promise<void>;
 }
 export interface MediaRow {
