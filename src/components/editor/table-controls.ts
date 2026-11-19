@@ -377,12 +377,15 @@ class TableControls {
 
   private position(): void {
     const mount = this.root.getBoundingClientRect();
-    for (const handle of this.handles) {
-      const table = handle.tableDOM.getBoundingClientRect();
-      const item = handle.itemDOM.getBoundingClientRect();
-      const clip = (
-        handle.tableDOM.closest(".tableWrapper") ?? handle.tableDOM
-      ).getBoundingClientRect();
+    // Measure every handle before moving any: writing between reads would make the
+    // browser lay the document out again for each row and column.
+    const measured = this.handles.map((handle) => ({
+      handle,
+      table: handle.tableDOM.getBoundingClientRect(),
+      item: handle.itemDOM.getBoundingClientRect(),
+      clip: (handle.tableDOM.closest(".tableWrapper") ?? handle.tableDOM).getBoundingClientRect(),
+    }));
+    for (const { handle, table, item, clip } of measured) {
       const left = Math.max(0, clip.left);
       const right = Math.min(window.innerWidth, clip.right);
       const point = handlePosition(

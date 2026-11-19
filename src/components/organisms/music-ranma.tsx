@@ -16,6 +16,7 @@ export const MusicRanma = component$(() => {
       let frame = 0;
       let start = 0;
       let distance = 1;
+      let painted = -1;
       const stags = element.querySelectorAll(".ranma-walking-stag");
       const torsos = element.querySelectorAll(".ranma-deer-torso");
       const legs = Array.from(element.querySelectorAll<SVGPathElement>(".ranma-walking-leg"));
@@ -26,6 +27,9 @@ export const MusicRanma = component$(() => {
         const progress = reduced.matches
           ? 0
           : Math.min(1, Math.max(0, (window.scrollY - start) / distance));
+        // Past the scenery, and with reduced motion, scrolling changes nothing here.
+        if (progress === painted) return;
+        painted = progress;
         element.style.setProperty("--ranma-progress", String(progress));
         // One unhurried stride. During stance the hoof stays fixed in world space.
         const walking = Math.min(1, progress / 0.56);

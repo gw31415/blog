@@ -31,12 +31,19 @@ async function findRequestPost(event: RequestEventCommon) {
   return pending;
 }
 
+/** Wall time spent waiting on D1/R2, visible in the browser's network timing panel. */
+function timing(event: RequestEventCommon, name: string, started: number) {
+  event.headers.append("Server-Timing", `${name};dur=${(performance.now() - started).toFixed(1)}`);
+}
+
 export const onRequest: RequestHandler = async (event) => {
   if (event.params.id.endsWith(".md")) {
     await sendMarkdown(event);
     return;
   }
+  const started = performance.now();
   const post = await findRequestPost(event);
+  timing(event, "post", started);
   if (!post) throw event.error(404, "記事が見つかりません。");
   if (!event.internalRequest && event.originalUrl.pathname !== canonicalPath(post)) {
     redirectCanonical(event, `${canonicalPath(post)}${event.originalUrl.search}`);
@@ -46,20 +53,26 @@ export const onRequest: RequestHandler = async (event) => {
 export const usePost = routeLoader$(async (event) => {
   const post = await findRequestPost(event);
   if (!post) throw event.error(404, "記事が見つかりません。");
+  const started = performance.now();
   const rendered = await renderDocument(post.body, event, post.id, !!post.has_draft);
+  timing(event, "media", started);
   const canManage = await canManagePosts(event);
   const presentation = renderPost(post.body, rendered.diagrams, rendered.math);
-  const { results: images } = await database(event)
-    .prepare(
-      `SELECT DISTINCT v.id, v.width, v.height FROM media_variants v JOIN ${post.has_draft ? "post_draft_media_refs" : "post_media_refs"} p ON p.variant_id=v.id WHERE p.post_id=?`,
-    )
-    .bind(post.id)
-    .all<{ id: string; width: number; height: number }>();
-  const dimensions = new Map(images.map((image) => [image.id, image]));
+  const dimensions = new Map(rendered.images.map((image) => [image.id, image]));
+  // The stored fold result decides which rasters may start loading at once; the first
+  // of them is the likely largest paint and is fetched ahead of other images.
+  let prioritized = false;
   presentation.html = presentation.html.replace(/<img\b[^>]*>/g, (tag) => {
     const source = /\ssrc="([^"]+)"/.exec(tag)?.[1];
     const id = source && /^(?:https?:\/\/[^/]+)?\/images\/variants\/([^/?#]+)$/.exec(source)?.[1];
     const image = id ? dimensions.get(id) : undefined;
+    if (image?.upper && tag.includes('loading="lazy"')) {
+      tag = tag.replace(
+        'loading="lazy"',
+        prioritized ? 'loading="eager"' : 'loading="eager" fetchpriority="high"',
+      );
+      prioritized = true;
+    }
     return image
       ? tag
           .replace('width="960"', `width="${image.width}"`)
@@ -71,15 +84,13 @@ export const usePost = routeLoader$(async (event) => {
           )
       : tag;
   });
+  const { body: _body, ...summary } = post;
   return {
-    // Share the normalized tree with the editor input so Qwik serializes it once.
-    post: {
-      ...post,
-      body: presentation.content,
-      editing_state: canManage ? post.editing_state : null,
-    },
+    post: { ...summary, editing_state: canManage ? post.editing_state : null },
     canManage,
-    ...presentation,
+    html: presentation.html,
+    // Readers already have the rendered HTML; only the editor needs the document tree.
+    content: canManage ? presentation.content : null,
   };
 });
 
@@ -96,13 +107,12 @@ export default component$(() => {
         publishedAt: post.published_at?.slice(0, 10) ?? "",
         title: post.title,
         subtitle: post.subtitle ?? "",
-        body: post.body,
         editingState: post.editing_state,
         description: post.description ?? "",
         tags: post.tags,
       }}
       initialHtml={data.value.html}
-      initialContent={data.value.content}
+      initialContent={data.value.content ?? undefined}
       publicationStatus={post.status}
       hasDraft={!!post.has_draft}
       canonicalAlias={post.canonical_alias}

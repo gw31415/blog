@@ -73,6 +73,15 @@ export default defineConfig(async ({ command, mode }) => {
           ]
         : []),
     ],
+    build: {
+      rolldownOptions: {
+        output: {
+          // Without a chunk of its own, the SVG validator (xmldom, ~85 KB) also becomes
+          // the home of Rolldown's shared runtime helper, and every reader chunk imports it.
+          codeSplitting: { groups: [{ name: "svg-artifact", test: /@xmldom|media-artifact/ }] },
+        },
+      },
+    },
     resolve: {
       tsconfigPaths: true,
       // SVG imports a default font even when fontData is supplied. Reuse the

@@ -13,7 +13,7 @@ import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import { renderEntries, renderKey, type RenderEntry } from "../content/render-contract";
 import { renderPost } from "./render-post";
-import { renderDocument } from "./render-document";
+import { EMBED_BUDGET, renderDocument } from "./render-document";
 
 async function savePostContent(
   db: D1Database,
@@ -144,6 +144,23 @@ describe("persisted media rendering", () => {
     expect(result.diagrams[0]).toContain("data:image/svg+xml,");
     expect(result.math).toHaveLength(2);
     expect(result.math.every((item) => item.output?.includes("mjx-container"))).toBe(true);
+    // Past the inline budget an upper diagram stays eager but is served from its own URL.
+    let read = 0;
+    const large = await renderDocument(document, {
+      platform: {
+        env: {
+          DB: db,
+          IMAGES: {
+            get: async (k: string) => ({
+              size: k.endsWith(".svg") && objects.get(k) === svg ? EMBED_BUDGET + 1 : 1,
+              text: async () => (read++, objects.get(k)!),
+            }),
+          },
+        },
+      },
+    });
+    expect(large.diagrams[0]).toMatch(/src="\/media\/variants\/[^"]+" loading="eager"/);
+    expect(read).toBe(2);
   });
   it("commits browser SVG and math with a post without server rendering", async () => {
     const { db } = database();

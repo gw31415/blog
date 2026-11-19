@@ -38,7 +38,7 @@ embed(i) = any s: estimatedY(i,s) <= H(s) + max(2 × lineHeight(s), 0.1 × H(s))
 
 これは全端末への数学的保証ではなく、上部の取りこぼしを減らす決定的な近似。短段落・複雑な表が多い記事は埋め込みが多くなる。10%余裕は運用値である。本文正規化後のhash・policy versionが不一致なら埋め込みへ倒す。規則を変えるときは版を上げて参照を再構築する。
 
-SSRはメタデータを一括取得し、上部SVGだけR2から取得する。同じ生成物は重複取得せず、同時取得は最大6件。上部はdata URLのeager画像、下部は外部URLのlazy画像。下部SVG本体を記事リクエストで取得しない。
+SSRはメタデータを一括取得し、上部SVGだけR2から取得する。同じ生成物は重複取得せず、同時取得は最大6件。上部はdata URLのeager画像、下部は外部URLのlazy画像。下部SVG本体を記事リクエストで取得しない。1ページに埋め込むSVGは合計32KBまで（`EMBED_BUDGET`）とし、超えた上部SVGはeagerのまま外部URLで配信する。生成物IDは不変なので `/images/variants/`・`/media/variants/` は1年のimmutableキャッシュで返す。上部と判定したラスタ画像もeagerにし、先頭の1枚に `fetchpriority="high"` を付ける。
 
 ## 移行・監査
 

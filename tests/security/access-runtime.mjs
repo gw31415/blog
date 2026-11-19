@@ -70,9 +70,11 @@ try {
   assert.equal(anon.status, 200);
   assert(!anonHtml.includes("PRIVATE DRAFT"));
   assert(!anonHtml.includes("新規記事"));
-  assert.match(anon.headers.get("cache-control"), /no-store/);
+  // Anonymous pages may be revalidated from the visitor's own cache; managers' never stored.
+  assert.equal(anon.headers.get("cache-control"), "private, no-cache");
   const admin = await get("/", auth);
   const adminHtml = await admin.text();
+  assert.match(admin.headers.get("cache-control"), /no-store/);
   assert(adminHtml.includes("PRIVATE DRAFT"));
   assert(adminHtml.includes("新規記事"));
   assert(adminHtml.includes("を削除"));

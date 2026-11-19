@@ -89,8 +89,10 @@ pnpm preview:built --host 127.0.0.1 --port 4188 --strictPort
 previewのremote bindingsは常に無効です。このpreviewにはdevの管理者目線はなく、公開記事の閲覧とSSRを確認できます。別ターミナルで編集チャンクの分離を確認します。
 
 ```sh
-BLOG_PREVIEW_URL=http://127.0.0.1:4188 pnpm check:editor-chunk
+BLOG_PREVIEW_URL=http://127.0.0.1:4188 BLOG_PREVIEW_ARTICLE=/blog/<公開記事> pnpm check:editor-chunk
 ```
+
+この検査は、閲覧者の初期グラフに編集ランタイムや執筆用ライブラリ（Tiptap・Mermaid・MathJax・lowlight・xmldom）が入っていないことを確認します。`BLOG_PREVIEW_ARTICLE` を指定すると、記事本文がQwikの状態として二重に配信されていないことも確認します。記事ルートは `Server-Timing` で記事取得（`post`）とメディア取得（`media`）の待ち時間を返します。
 
 数式・Mermaidは管理クライアントで生成し、保存済みSVGを配信します。Browser Renderingは不要です。[メディア配信](media-delivery.md)のローカル移行・fixture手順を参照してください。
 

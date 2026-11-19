@@ -74,6 +74,14 @@ export function accessIdentity(event: AccessEvent): Promise<AccessIdentity | nul
   }
   return identity;
 }
+/** Cheap pre-check: a request that carries no credential cannot be a manager's. */
+export function presentsCredentials(event: Pick<AccessEvent, "request" | "cookie">) {
+  return (
+    event.request.headers.has("Cf-Access-Jwt-Assertion") ||
+    !!event.cookie.get("CF_Authorization") ||
+    (isDevServer() && event.cookie.get(DEV_MANAGER_COOKIE)?.value === "1")
+  );
+}
 export async function canManagePosts(event: AccessEvent) {
   if (isDevServer()) {
     return event.cookie.get(DEV_MANAGER_COOKIE)?.value === "1";

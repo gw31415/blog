@@ -72,9 +72,11 @@ const stickyHeaderStyles = css`
     min-height: 1lh;
     cursor: pointer;
   }
-  & button:hover {
-    color: var(--link);
-    background: var(--highlight);
+  @media (hover: hover) {
+    & button:hover {
+      color: var(--link);
+      background: var(--highlight);
+    }
   }
   & a:focus-visible {
     outline: 2px solid var(--red);

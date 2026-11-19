@@ -56,7 +56,8 @@ export function createInvisibleCharacterMarkers(editor: Editor) {
   };
   const resize = new ResizeObserver(update);
   resize.observe(editor.view.dom);
-  editor.on("transaction", update);
+  // Markers move with the document and with edit mode, not with the selection.
+  editor.on("update", update);
   window.addEventListener("scroll", update, true);
   window.addEventListener("resize", update);
   editor.view.dom.addEventListener("load", update, true);
@@ -67,7 +68,7 @@ export function createInvisibleCharacterMarkers(editor: Editor) {
       disposed = true;
       cancelAnimationFrame(frame);
       resize.disconnect();
-      editor.off("transaction", update);
+      editor.off("update", update);
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
       editor.view.dom.removeEventListener("load", update, true);

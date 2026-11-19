@@ -10,7 +10,8 @@ export const onGet: RequestHandler = async (event) => {
   if (!object) throw event.error(404, "画像が見つかりません");
   const headers = new Headers({
     "Content-Type": row.mime,
-    "Cache-Control": "public, max-age=0, must-revalidate",
+    // A variant id is never reused for other bytes, so the response can be cached for good.
+    "Cache-Control": "public, max-age=31536000, immutable",
     "X-Content-Type-Options": "nosniff",
     ETag: object.httpEtag,
   });
