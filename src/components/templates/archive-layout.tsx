@@ -14,7 +14,7 @@ export const ArchiveLayout = component$<{ title?: string }>((props) => (
       {props.title ? `${props.title}へ移動` : "記事一覧へ移動"}
     </a>
     <PaperContainer class="archive">
-      <StickyHeader class="archive-header" mode="persistent" surface="paper" title={props.title}>
+      <StickyHeader class="archive-header" mode="persistent" title={props.title}>
         <Slot name="header-actions" />
       </StickyHeader>
       <Slot />

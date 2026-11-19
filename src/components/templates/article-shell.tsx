@@ -72,21 +72,6 @@ export function canSwitchToView(mode: EditorUiState["mode"]): boolean {
   return mode !== "loading";
 }
 
-export type InsertDialogState =
-  | { kind: "link"; href: string; error: string }
-  | { kind: "image"; src: string; alt: string; error: string };
-
-export function createInsertDialog(kind: InsertDialogState["kind"]): InsertDialogState {
-  return kind === "link"
-    ? { kind, href: "https://", error: "" }
-    : { kind, src: "", alt: "", error: "" };
-}
-
-export function canApplyInsertDialog(dialog: InsertDialogState): boolean {
-  const destination = dialog.kind === "link" ? dialog.href.trim() : dialog.src.trim();
-  return destination !== "" && destination !== "https://" && dialog.error === "";
-}
-
 interface EditorUiState {
   mode: "view" | "loading" | "edit";
   editorReady: boolean;
@@ -102,7 +87,6 @@ interface EditorUiState {
   tags: string[];
   status: "draft" | "published";
   alias: string;
-  insertDialog: InsertDialogState | null;
 }
 
 interface ArticleShellProps {
@@ -240,8 +224,7 @@ const ArticleEditorLifecycle = component$(
           read,
           blocked: () =>
             !!controller.value?.getWorkingState()?.pending ||
-            !!controller.value?.getWorkingState()?.uploading ||
-            !!ui.insertDialog,
+            !!controller.value?.getWorkingState()?.uploading,
           save: (draft, intent, keepalive) => props.onSave$!(draft, intent, keepalive),
           state: (state, message) => {
             ui.saveState = state;
@@ -421,7 +404,6 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
     tags: article.tags,
     status: props.publicationStatus ?? "published",
     alias: props.canonicalAlias ?? "",
-    insertDialog: null,
   });
   const presentation = createArticlePresentation(ui);
 
@@ -496,34 +478,12 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
     await saveDraft$();
     if (ui.error || autosaver.value?.dirty()) return;
     controller.value?.enterView();
-    ui.insertDialog = null;
     ui.mode = "view";
     if (
       props.postId &&
       (window.location.search || window.location.pathname !== `/blog/${ui.alias || props.postId}`)
     )
       await navigate(`/blog/${ui.alias || props.postId}`, { replaceState: true, scroll: false });
-  });
-
-  const applyInsert$ = $(() => {
-    const dialog = ui.insertDialog;
-    if (!dialog || !canApplyInsertDialog(dialog)) return;
-    const applied =
-      dialog.kind === "link"
-        ? controller.value?.run({ type: "link", href: dialog.href.trim() })
-        : controller.value?.run({
-            type: "image",
-            src: dialog.src.trim(),
-            alt: dialog.alt.trim(),
-          });
-    if (!applied) {
-      dialog.error =
-        dialog.kind === "link"
-          ? "リンクを設定する文字列を選択してから、もう一度お試しください。"
-          : "画像を挿入できませんでした。カーソル位置を確認してください。";
-      return;
-    }
-    ui.insertDialog = null;
   });
 
   return (
@@ -717,91 +677,6 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
         <p class="editor-error" role="alert">
           {ui.error}
         </p>
-      )}
-
-      {ui.insertDialog && (
-        <div
-          class="editor-dialog-backdrop"
-          role="presentation"
-          onClick$={() => (ui.insertDialog = null)}
-        >
-          <form
-            class="editor-dialog insert-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="insert-dialog-title"
-            onClick$={(event) => event.stopPropagation()}
-            preventdefault:submit
-            onSubmit$={applyInsert$}
-          >
-            <div class="editor-dialog-heading">
-              <p>挿入ツール</p>
-              <h2 id="insert-dialog-title">
-                {ui.insertDialog.kind === "link" ? "リンクを挿入" : "画像を挿入"}
-              </h2>
-            </div>
-            <div class="editor-dialog-fields">
-              {ui.insertDialog.kind === "link" ? (
-                <label>
-                  リンクURL
-                  <input
-                    name="href"
-                    inputMode="url"
-                    value={ui.insertDialog.href}
-                    autoFocus
-                    onInput$={(_, el) => {
-                      if (ui.insertDialog?.kind === "link") {
-                        ui.insertDialog.href = el.value;
-                        ui.insertDialog.error = "";
-                      }
-                    }}
-                  />
-                </label>
-              ) : (
-                <>
-                  <label>
-                    画像URL
-                    <input
-                      name="src"
-                      inputMode="url"
-                      value={ui.insertDialog.src}
-                      autoFocus
-                      onInput$={(_, el) => {
-                        if (ui.insertDialog?.kind === "image") {
-                          ui.insertDialog.src = el.value;
-                          ui.insertDialog.error = "";
-                        }
-                      }}
-                    />
-                  </label>
-                  <label>
-                    代替テキスト（任意）
-                    <input
-                      name="alt"
-                      value={ui.insertDialog.alt}
-                      onInput$={(_, el) => {
-                        if (ui.insertDialog?.kind === "image") ui.insertDialog.alt = el.value;
-                      }}
-                    />
-                  </label>
-                </>
-              )}
-            </div>
-            {ui.insertDialog.error && (
-              <p class="editor-dialog-error" role="alert">
-                {ui.insertDialog.error}
-              </p>
-            )}
-            <div class="editor-dialog-actions">
-              <button type="button" onClick$={() => (ui.insertDialog = null)}>
-                キャンセル
-              </button>
-              <button type="submit" disabled={!canApplyInsertDialog(ui.insertDialog)}>
-                挿入
-              </button>
-            </div>
-          </form>
-        </div>
       )}
     </ArticleStyleBoundary>
   );
