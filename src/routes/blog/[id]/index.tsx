@@ -31,12 +31,19 @@ async function findRequestPost(event: RequestEventCommon) {
   return pending;
 }
 
+/** Wall time spent waiting on D1/R2, visible in the browser's network timing panel. */
+function timing(event: RequestEventCommon, name: string, started: number) {
+  event.headers.append("Server-Timing", `${name};dur=${(performance.now() - started).toFixed(1)}`);
+}
+
 export const onRequest: RequestHandler = async (event) => {
   if (event.params.id.endsWith(".md")) {
     await sendMarkdown(event);
     return;
   }
+  const started = performance.now();
   const post = await findRequestPost(event);
+  timing(event, "post", started);
   if (!post) throw event.error(404, "記事が見つかりません。");
   if (!event.internalRequest && event.originalUrl.pathname !== canonicalPath(post)) {
     redirectCanonical(event, `${canonicalPath(post)}${event.originalUrl.search}`);
@@ -46,16 +53,12 @@ export const onRequest: RequestHandler = async (event) => {
 export const usePost = routeLoader$(async (event) => {
   const post = await findRequestPost(event);
   if (!post) throw event.error(404, "記事が見つかりません。");
+  const started = performance.now();
   const rendered = await renderDocument(post.body, event, post.id, !!post.has_draft);
+  timing(event, "media", started);
   const canManage = await canManagePosts(event);
   const presentation = renderPost(post.body, rendered.diagrams, rendered.math);
-  const { results: images } = await database(event)
-    .prepare(
-      `SELECT v.id, v.width, v.height, MAX(p.embed_initial) AS upper FROM media_variants v JOIN ${post.has_draft ? "post_draft_media_refs" : "post_media_refs"} p ON p.variant_id=v.id WHERE p.post_id=? GROUP BY v.id`,
-    )
-    .bind(post.id)
-    .all<{ id: string; width: number; height: number; upper: number }>();
-  const dimensions = new Map(images.map((image) => [image.id, image]));
+  const dimensions = new Map(rendered.images.map((image) => [image.id, image]));
   // The stored fold result decides which rasters may start loading at once; the first
   // of them is the likely largest paint and is fetched ahead of other images.
   let prioritized = false;

@@ -34,16 +34,16 @@ export const mediaHash = async (s: string) =>
   Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s))))
     .map((x) => x.toString(16).padStart(2, "0"))
     .join("");
+export function readMediaStatement(db: D1Database, keys: string[]) {
+  return db
+    .prepare(
+      "SELECT * FROM media_variants WHERE state='ready' AND (render_key IN (SELECT value FROM json_each(?)) OR id IN (SELECT value FROM json_each(?)))",
+    )
+    .bind(JSON.stringify(keys), JSON.stringify(keys));
+}
 export async function readMedia(db: D1Database, keys: string[]): Promise<MediaRow[]> {
   if (!keys.length) return [];
-  return (
-    await db
-      .prepare(
-        "SELECT * FROM media_variants WHERE state='ready' AND (render_key IN (SELECT value FROM json_each(?)) OR id IN (SELECT value FROM json_each(?)))",
-      )
-      .bind(JSON.stringify(keys), JSON.stringify(keys))
-      .all<MediaRow>()
-  ).results;
+  return (await readMediaStatement(db, keys).all<MediaRow>()).results;
 }
 export function imageVariantId(node: JSONContent): string | null {
   const src = String(node.attrs?.src ?? "");
