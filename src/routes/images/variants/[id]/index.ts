@@ -6,7 +6,10 @@ export const onGet: RequestHandler = async (event) => {
   if (!object) throw event.error(404, "画像が見つかりません");
   const headers = new Headers();
   object.writeHttpMetadata(headers);
-  headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+  // A variant id is never reused for other bytes, so the response can be cached for good.
+  headers.set("Cache-Control", "public, max-age=31536000, immutable");
+  headers.set("ETag", object.httpEtag);
   headers.set("X-Content-Type-Options", "nosniff");
-  event.send(new Response(object.body, { headers }));
+  const fresh = event.request.headers.get("If-None-Match") === object.httpEtag;
+  event.send(new Response(fresh ? null : object.body, { status: fresh ? 304 : 200, headers }));
 };
