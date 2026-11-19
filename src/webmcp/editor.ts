@@ -17,11 +17,11 @@ export interface EditorState {
   publishedAt: string;
   alias: string;
   status: "draft" | "published";
-  body: JSONContent;
 }
 export interface EditorBinding {
   id: string;
   ui: EditorState;
+  initialBody: JSONContent;
   controller(): EditorController | undefined;
   enter(): Promise<void>;
   save(intent?: SaveIntent): Promise<void>;
@@ -41,7 +41,7 @@ export function registerEditorTools(binding: EditorBinding) {
       publishedAt: ui.publishedAt,
       alias: ui.alias,
       status: ui.status,
-      body: binding.controller()?.getJSON() ?? ui.body,
+      body: binding.controller()?.getJSON() ?? binding.initialBody,
     };
   };
   let saved = JSON.stringify(read());

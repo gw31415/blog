@@ -71,15 +71,13 @@ export const usePost = routeLoader$(async (event) => {
           )
       : tag;
   });
+  const { body: _body, ...summary } = post;
   return {
-    // Share the normalized tree with the editor input so Qwik serializes it once.
-    post: {
-      ...post,
-      body: presentation.content,
-      editing_state: canManage ? post.editing_state : null,
-    },
+    post: { ...summary, editing_state: canManage ? post.editing_state : null },
     canManage,
-    ...presentation,
+    html: presentation.html,
+    // Readers already have the rendered HTML; only the editor needs the document tree.
+    content: canManage ? presentation.content : null,
   };
 });
 
@@ -96,13 +94,12 @@ export default component$(() => {
         publishedAt: post.published_at?.slice(0, 10) ?? "",
         title: post.title,
         subtitle: post.subtitle ?? "",
-        body: post.body,
         editingState: post.editing_state,
         description: post.description ?? "",
         tags: post.tags,
       }}
       initialHtml={data.value.html}
-      initialContent={data.value.content}
+      initialContent={data.value.content ?? undefined}
       publicationStatus={post.status}
       hasDraft={!!post.has_draft}
       canonicalAlias={post.canonical_alias}

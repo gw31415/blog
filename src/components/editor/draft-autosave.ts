@@ -51,13 +51,12 @@ export function createDraftAutosaver(options: {
   const schedule = () => {
     clear();
     if (disposed || conflict) return;
-    if (!dirty()) {
-      if (!inflight) options.state("saved");
-      return;
-    }
+    // Called on every keystroke: comparing the whole document waits for the pause.
     options.state(inflight ? "saving" : "pending");
     timer = setTimeout(() => {
-      void flush().catch(() => {});
+      timer = undefined;
+      if (dirty()) void flush().catch(() => {});
+      else if (!inflight) options.state("saved");
     }, options.delay ?? 800);
   };
   const flush = async (intent: SaveIntent = "save", keepalive = false): Promise<void> => {

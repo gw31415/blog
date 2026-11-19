@@ -8,12 +8,7 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { replaceCodeLanguage } from "./code-language";
 import { createEditorExtensions } from "./editor-extensions";
-import type {
-  EditorCommand,
-  EditorHandle,
-  MountArticleEditorOptions,
-  ToolbarState,
-} from "./editor-controller";
+import type { EditorCommand, EditorHandle, MountArticleEditorOptions } from "./editor-controller";
 import { serializeArticleMarkdown } from "./markdown";
 import { createTableControlsPlugin } from "./table-controls";
 
@@ -70,28 +65,6 @@ export function requestMathEditWhenEditable(
   onMathEdit: (request: MathEditRequest) => void,
 ): void {
   if (editable) onMathEdit(request);
-}
-
-function toolbarState(editor: Editor): ToolbarState {
-  const heading = editor.isActive("heading", { level: 2 })
-    ? 2
-    : editor.isActive("heading", { level: 3 })
-      ? 3
-      : null;
-  return {
-    paragraph: editor.isActive("paragraph"),
-    bold: editor.isActive("b"),
-    italic: editor.isActive("i"),
-    strike: editor.isActive("strike"),
-    heading,
-    bulletList: editor.isActive("bulletList"),
-    orderedList: editor.isActive("orderedList"),
-    taskList: editor.isActive("taskList"),
-    blockquote: editor.isActive("blockquote"),
-    codeBlock: editor.isActive("codeBlock"),
-    canUndo: editor.can().undo(),
-    canRedo: editor.can().redo(),
-  };
 }
 
 function runCommand(editor: Editor, command: EditorCommand): boolean {
@@ -231,11 +204,9 @@ export async function mountArticleEditor(
         : normalizeDocument(options.workingState.document, { editing: true }),
     editable: false,
     injectCSS: false,
-    onUpdate: ({ editor: current }) => {
-      options.onUpdate(current.getJSON());
-    },
-    onSelectionUpdate: ({ editor: current }) => {
-      options.onSelectionChange(toolbarState(current));
+    // setEditable also emits "update"; only real edits should wake autosave.
+    onUpdate: ({ transaction }) => {
+      if (transaction.docChanged) options.onUpdate();
     },
   });
 
@@ -284,7 +255,6 @@ export async function mountArticleEditor(
   };
   const invisibleCharacters = createInvisibleCharacterMarkers(editor);
   options.element.dataset.editorReady = "";
-  options.onSelectionChange(toolbarState(editor));
 
   return {
     setEditable(editable) {
@@ -317,7 +287,6 @@ export async function mountArticleEditor(
         return true;
       }
       const result = runCommand(editor, command);
-      options.onSelectionChange(toolbarState(editor));
       return result;
     },
     getWorkingState() {

@@ -13,21 +13,6 @@ export type EditorCommand =
   | { type: "setCodeLanguage"; position: number; language: string }
   | { type: "updateMath"; kind: "inline" | "block"; position: number; latex: string };
 
-export interface ToolbarState {
-  paragraph: boolean;
-  bold: boolean;
-  italic: boolean;
-  strike: boolean;
-  heading: 2 | 3 | 4 | 5 | 6 | null;
-  bulletList: boolean;
-  orderedList: boolean;
-  taskList: boolean;
-  blockquote: boolean;
-  codeBlock: boolean;
-  canUndo: boolean;
-  canRedo: boolean;
-}
-
 export interface MathEditRequest {
   kind: "inline" | "block";
   latex: string;
@@ -51,8 +36,7 @@ export interface MountArticleEditorOptions<
   element: Element;
   content: JSONContent;
   workingState?: Record<string, unknown> | null;
-  onUpdate(content: JSONContent): void;
-  onSelectionChange(state: ToolbarState): void;
+  onUpdate(): void;
   onMathEdit(request: MathEditRequest): void;
 }
 
@@ -108,7 +92,6 @@ export function createEditorController<
           postId: options?.postId,
           workingState: options?.workingState,
           onUpdate: options?.onUpdate ?? NOOP,
-          onSelectionChange: options?.onSelectionChange ?? NOOP,
           onMathEdit: options?.onMathEdit ?? NOOP,
         });
         handle.setEditable(true);

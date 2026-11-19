@@ -45,9 +45,10 @@ import {
   createEditorController,
   type EditorCommand,
   type EditorController,
-  type ToolbarState,
 } from "../editor/editor-controller";
 import { ArticleStyleBoundary } from "../editor/article-styles";
+
+const EMPTY_DOCUMENT: JSONContent = { type: "doc", content: [{ type: "paragraph" }] };
 
 let editorRuntimePromise: Promise<typeof import("../editor/editor-runtime")> | undefined;
 
@@ -97,21 +98,20 @@ interface EditorUiState {
   publishedAt: string;
   title: string;
   subtitle: string;
-  body: JSONContent;
   description: string;
   tags: string[];
   status: "draft" | "published";
   alias: string;
   insertDialog: InsertDialogState | null;
-  toolbar: ToolbarState;
 }
 
 interface ArticleShellProps {
   postId?: string;
   version?: string;
-  article: ArticleDraft;
+  article: Omit<ArticleDraft, "body">;
   initialHtml: string;
-  initialContent: JSONContent;
+  /** Present only for managers. */
+  initialContent?: JSONContent;
   publicationStatus?: "draft" | "published";
   canonicalAlias?: string | null;
   hasDraft?: boolean;
@@ -130,8 +130,15 @@ const ArticleEditorLifecycle = component$(
     controller: Signal<NoSerialize<EditorController> | undefined>;
     formattingToolbar: Signal<HTMLElement | undefined>;
     editorMount: Signal<HTMLElement | undefined>;
+    autosaver: Signal<NoSerialize<DraftAutosaver> | undefined>;
+    postId?: string;
+    version?: string;
+    initialContent: JSONContent;
     autoEditFromQuery?: boolean;
     enterEdit$: QRL<() => Promise<void>>;
+    enterView$: QRL<() => Promise<void>>;
+    saveDraft$: QRL<(intent?: SaveIntent) => Promise<void>>;
+    onSave$?: ArticleShellProps["onSave$"];
   }) => {
     const { ui, controller, formattingToolbar, editorMount } = props;
     useTask$(({ cleanup, track }) => {
@@ -211,24 +218,159 @@ const ArticleEditorLifecycle = component$(
       { strategy: "document-ready" },
     );
 
+    // Autosave does not change mode, navigation, or the public revision.
+    // eslint-disable-next-line qwik/no-use-visible-task
+    useVisibleTask$(
+      ({ cleanup }) => {
+        if (!props.onSave$) return;
+        // Retain this article root: a queued unload save must not read the next route.
+        const metadataRoot =
+          (editorMount.value ?? document.querySelector("[data-editor-mount]"))?.closest(
+            "main.paper",
+          ) ?? null;
+        const read = (): DraftSnapshot => ({
+          ...readArticleMetadata(ui, metadataRoot),
+          publishedAt: ui.publishedAt,
+          body: controller.value?.getJSON() ?? props.initialContent,
+          editingState: null,
+          alias: ui.alias.trim(),
+        });
+        const saver = createDraftAutosaver({
+          initial: read(),
+          read,
+          blocked: () =>
+            !!controller.value?.getWorkingState()?.pending ||
+            !!controller.value?.getWorkingState()?.uploading ||
+            !!ui.insertDialog,
+          save: (draft, intent, keepalive) => props.onSave$!(draft, intent, keepalive),
+          state: (state, message) => {
+            ui.saveState = state;
+            ui.saving = state === "saving";
+            ui.error = message ?? "";
+            if (state === "error") ui.publishing = false;
+          },
+          saved: (result, intent) => {
+            if (intent !== "save") ui.publishing = false;
+            ui.status = result.status;
+            if (!ui.publishedAt && result.publishedAt)
+              ui.publishedAt = result.publishedAt.slice(0, 10);
+            ui.hasDraft = result.hasDraft;
+            document.dispatchEvent(new Event("blog:article-saved"));
+          },
+        });
+        props.autosaver.value = noSerialize(saver);
+        const beforeUnload = (event: BeforeUnloadEvent) => {
+          if (
+            saver.dirty() ||
+            controller.value?.getWorkingState()?.pending ||
+            controller.value?.getWorkingState()?.uploading
+          ) {
+            event.preventDefault();
+            event.returnValue = "";
+          }
+        };
+        const leaving = () => {
+          if (saver.dirty()) void saver.flush("save", true).catch(() => {});
+        };
+        const hidden = () => {
+          if (document.visibilityState === "hidden") leaving();
+        };
+        const online = () => {
+          void saver.flush().catch(() => {});
+        };
+        window.addEventListener("beforeunload", beforeUnload);
+        window.addEventListener("pagehide", leaving);
+        window.addEventListener("online", online);
+        document.addEventListener("visibilitychange", hidden);
+        cleanup(() => {
+          void saver
+            .flush("save", true)
+            .catch(() => {})
+            .finally(() => saver.dispose());
+          props.autosaver.value = undefined;
+          window.removeEventListener("beforeunload", beforeUnload);
+          window.removeEventListener("pagehide", leaving);
+          window.removeEventListener("online", online);
+          document.removeEventListener("visibilitychange", hidden);
+        });
+      },
+      { strategy: "document-ready" },
+    );
+
+    // eslint-disable-next-line qwik/no-use-visible-task
+    useVisibleTask$(
+      ({ track }) => {
+        track(() =>
+          JSON.stringify([
+            ui.title,
+            ui.subtitle,
+            ui.description,
+            ui.tags,
+            ui.publishedAt,
+            ui.alias,
+          ]),
+        );
+        if (ui.mode === "edit") props.autosaver.value?.schedule();
+      },
+      { strategy: "document-ready" },
+    );
+
+    // eslint-disable-next-line qwik/no-use-visible-task
+    useVisibleTask$(
+      async ({ cleanup }) => {
+        if (!props.postId || (!("modelContext" in document) && !("modelContext" in navigator)))
+          return;
+        let disposed = false,
+          unregister: (() => void) | undefined;
+        cleanup(() => {
+          disposed = true;
+          unregister?.();
+        });
+        const { registerEditorTools } = await import("~/webmcp/editor");
+        if (!disposed)
+          unregister = registerEditorTools({
+            id: props.postId,
+            ui,
+            initialBody: props.initialContent,
+            controller: () => controller.value,
+            enter: props.enterEdit$,
+            save: $(async (intent: SaveIntent = "save") => {
+              if (intent === "save") await props.enterView$();
+              else await props.saveDraft$(intent);
+            }),
+            dirty: () => props.autosaver.value?.dirty() ?? false,
+            version: () => props.version ?? "",
+          });
+      },
+      { strategy: "document-ready" },
+    );
+
     return null;
   },
 );
 
+// Kept apart from ArticleBody: a task there would make Qwik serialize the article
+// HTML a second time, as resumable state next to the markup it already rendered.
+const ArticleBodyObservers = component$((props: { target: Signal<HTMLElement | undefined> }) => {
+  const target = props.target;
+  // Browser-owned article DOM needs observers installed once after resume, with cleanup.
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(
+    ({ cleanup }) => {
+      if (target.value) {
+        cleanup(observeArticleImages(target.value));
+        cleanup(observeArticleAnnotations(target.value));
+      }
+    },
+    { strategy: "document-ready" },
+  );
+  return null;
+});
+
 const ArticleBody = component$(
   (props: { html: string; elementRef: Signal<HTMLElement | undefined> }) => {
+    // After mounting, Tiptap owns this DOM; a re-render must not restore the SSR HTML.
     const html = useConstant(() => props.html);
-    // Browser-owned article DOM needs observers installed once after resume, with cleanup.
-    // eslint-disable-next-line qwik/no-use-visible-task
-    useVisibleTask$(
-      ({ cleanup }) => {
-        if (props.elementRef.value) {
-          cleanup(observeArticleImages(props.elementRef.value));
-          cleanup(observeArticleAnnotations(props.elementRef.value));
-        }
-      },
-      { strategy: "document-ready" },
-    );
     return (
       <RenderOnce>
         <article
@@ -246,7 +388,6 @@ const ArticleBody = component$(
 export const ArticleShell = component$((props: ArticleShellProps) => {
   const article = props.article;
   const navigate = useNavigate();
-  const initialHtml = useConstant(() => props.initialHtml);
   const initialHeader = useConstant(() => ({
     title: article.title,
     subtitle: article.subtitle,
@@ -268,26 +409,11 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
     publishedAt: article.publishedAt,
     title: article.title,
     subtitle: article.subtitle,
-    body: article.body,
     description: article.description,
     tags: article.tags,
     status: props.publicationStatus ?? "published",
     alias: props.canonicalAlias ?? "",
     insertDialog: null,
-    toolbar: {
-      paragraph: true,
-      bold: false,
-      italic: false,
-      strike: false,
-      heading: null,
-      bulletList: false,
-      orderedList: false,
-      taskList: false,
-      blockquote: false,
-      codeBlock: false,
-      canUndo: false,
-      canRedo: false,
-    },
   });
   const presentation = createArticlePresentation(ui);
 
@@ -301,21 +427,20 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
     if (!mount || ui.mode !== "view") return;
     ui.mode = "loading";
     ui.error = "";
+    // Let the busy control paint before the editor mounts in one long task; the button
+    // then never shows a stale "edit" action for an article that is already editable.
+    await new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve)));
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         if (!controller.value) {
           controller.value = noSerialize(createEditorController(loadEditorRuntime));
         }
         await controller.value?.enterEdit(mount, {
-          content: props.initialContent,
+          content: props.initialContent ?? EMPTY_DOCUMENT,
           postId: props.postId,
           workingState: props.article.editingState,
-          onUpdate: (content) => {
-            ui.body = content;
-          },
-          onSelectionChange: (state) => {
-            ui.toolbar = state;
-          },
+          // The document stays in the editor; autosave reads it when its timer fires.
+          onUpdate: () => autosaver.value?.schedule(),
           onMathEdit: () => {},
         });
         ui.editorReady = true;
@@ -338,104 +463,6 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
       }
     }
   });
-
-  // Autosave does not change mode, navigation, or the public revision.
-  // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(
-    ({ cleanup }) => {
-      if (!props.canEdit || !props.onSave$) return;
-      // Retain this article root: a queued unload save must not read the next route.
-      const metadataRoot =
-        (editorMount.value ?? document.querySelector("[data-editor-mount]"))?.closest(
-          "main.paper",
-        ) ?? null;
-      const read = (): DraftSnapshot => ({
-        ...readArticleMetadata(ui, metadataRoot),
-        publishedAt: ui.publishedAt,
-        body: controller.value?.getJSON() ?? ui.body,
-        editingState: null,
-        alias: ui.alias.trim(),
-      });
-      const saver = createDraftAutosaver({
-        initial: read(),
-        read,
-        blocked: () =>
-          !!controller.value?.getWorkingState()?.pending ||
-          !!controller.value?.getWorkingState()?.uploading ||
-          !!ui.insertDialog,
-        save: (draft, intent, keepalive) => props.onSave$!(draft, intent, keepalive),
-        state: (state, message) => {
-          ui.saveState = state;
-          ui.saving = state === "saving";
-          ui.error = message ?? "";
-          if (state === "error") ui.publishing = false;
-        },
-        saved: (result, intent) => {
-          if (intent !== "save") ui.publishing = false;
-          ui.status = result.status;
-          if (!ui.publishedAt && result.publishedAt)
-            ui.publishedAt = result.publishedAt.slice(0, 10);
-          ui.hasDraft = result.hasDraft;
-          document.dispatchEvent(new Event("blog:article-saved"));
-        },
-      });
-      autosaver.value = noSerialize(saver);
-      const beforeUnload = (event: BeforeUnloadEvent) => {
-        if (
-          saver.dirty() ||
-          controller.value?.getWorkingState()?.pending ||
-          controller.value?.getWorkingState()?.uploading
-        ) {
-          event.preventDefault();
-          event.returnValue = "";
-        }
-      };
-      const leaving = () => {
-        if (saver.dirty()) void saver.flush("save", true).catch(() => {});
-      };
-      const hidden = () => {
-        if (document.visibilityState === "hidden") leaving();
-      };
-      const online = () => {
-        void saver.flush().catch(() => {});
-      };
-      window.addEventListener("beforeunload", beforeUnload);
-      window.addEventListener("pagehide", leaving);
-      window.addEventListener("online", online);
-      document.addEventListener("visibilitychange", hidden);
-      cleanup(() => {
-        void saver
-          .flush("save", true)
-          .catch(() => {})
-          .finally(() => saver.dispose());
-        autosaver.value = undefined;
-        window.removeEventListener("beforeunload", beforeUnload);
-        window.removeEventListener("pagehide", leaving);
-        window.removeEventListener("online", online);
-        document.removeEventListener("visibilitychange", hidden);
-      });
-    },
-    { strategy: "document-ready" },
-  );
-
-  // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(
-    ({ track }) => {
-      track(() =>
-        JSON.stringify([
-          ui.title,
-          ui.subtitle,
-          ui.description,
-          ui.tags,
-          ui.publishedAt,
-          ui.alias,
-          ui.body,
-        ]),
-      );
-      if (ui.mode === "edit") autosaver.value?.schedule();
-    },
-    { strategy: "document-ready" },
-  );
 
   const saveDraft$ = $(async (intent: SaveIntent = "save") => {
     try {
@@ -470,39 +497,6 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
       await navigate(`/blog/${ui.alias || props.postId}`, { replaceState: true, scroll: false });
   });
 
-  // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(
-    async ({ cleanup }) => {
-      if (
-        !props.postId ||
-        !props.canEdit ||
-        (!("modelContext" in document) && !("modelContext" in navigator))
-      )
-        return;
-      let disposed = false,
-        unregister: (() => void) | undefined;
-      cleanup(() => {
-        disposed = true;
-        unregister?.();
-      });
-      const { registerEditorTools } = await import("~/webmcp/editor");
-      if (!disposed)
-        unregister = registerEditorTools({
-          id: props.postId,
-          ui,
-          controller: () => controller.value,
-          enter: enterEdit$,
-          save: $(async (intent: SaveIntent = "save") => {
-            if (intent === "save") await enterView$();
-            else await saveDraft$(intent);
-          }),
-          dirty: () => autosaver.value?.dirty() ?? false,
-          version: () => props.version ?? "",
-        });
-    },
-    { strategy: "document-ready" },
-  );
-
   const applyInsert$ = $(() => {
     const dialog = ui.insertDialog;
     if (!dialog || !canApplyInsertDialog(dialog)) return;
@@ -532,8 +526,15 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
           controller={controller}
           formattingToolbar={formattingToolbar}
           editorMount={editorMount}
+          autosaver={autosaver}
+          postId={props.postId}
+          version={props.version}
+          initialContent={props.initialContent ?? EMPTY_DOCUMENT}
           autoEditFromQuery={props.autoEditFromQuery}
           enterEdit$={enterEdit$}
+          enterView$={enterView$}
+          saveDraft$={saveDraft$}
+          onSave$={props.onSave$}
         />
       )}
       <VirtualKeyboardViewport internalScroll={ui.mode === "edit"}>
@@ -618,7 +619,8 @@ export const ArticleShell = component$((props: ArticleShellProps) => {
             })}
           />
           {/* After mounting, Tiptap owns this DOM; mode updates must not restore the SSR HTML. */}
-          <ArticleBody key="article-body" html={initialHtml} elementRef={editorMount} />
+          <ArticleBody key="article-body" html={props.initialHtml} elementRef={editorMount} />
+          <ArticleBodyObservers target={editorMount} />
           <BlogFooterContainer q:slot="footer" wide>
             <BlogFooter left={BLOG_NAME} right={presentation.footerRight} />
           </BlogFooterContainer>
