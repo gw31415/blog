@@ -140,28 +140,32 @@ export const VirtualKeyboardViewport = component$((props: { internalScroll: bool
 
       let previousHeight: number | undefined;
       let previousOffsetTop: number | undefined;
-      const animationFrames = new Set<number>();
+      let animationFrame = 0;
+      let resized = false;
 
+      // iOS fires several viewport events per frame; one read and one write pass serve
+      // them all, so a later callback never reads layout the earlier one just dirtied.
       const syncVisualViewport = (event?: Event) => {
-        const height = visualViewport.height * visualViewport.scale;
-        const offsetTop = visualViewport.offsetTop;
-
-        const animationFrame = requestAnimationFrame(() => {
-          animationFrames.delete(animationFrame);
+        resized ||= event?.type === "resize";
+        if (animationFrame) return;
+        animationFrame = requestAnimationFrame(() => {
+          animationFrame = 0;
+          const wasResized = resized;
+          resized = false;
+          const height = visualViewport.height * visualViewport.scale;
+          const offsetTop = visualViewport.offsetTop;
           const keyboardOpen = height + 10 < document.documentElement.clientHeight;
           if (previousHeight !== height) {
             previousHeight = height;
             root.style.setProperty("--virtual-keyboard-svh", `${height * 0.01}px`);
           }
 
-          if (previousOffsetTop === undefined) {
+          if (previousOffsetTop !== offsetTop) {
+            const scrollOffset = offsetTop - (previousOffsetTop ?? offsetTop);
             previousOffsetTop = offsetTop;
-          } else if (previousOffsetTop !== offsetTop) {
-            const scrollOffset = offsetTop - previousOffsetTop;
-            previousOffsetTop = offsetTop;
-            if (event?.type === "resize") root.scrollBy(0, scrollOffset);
+            if (wasResized && scrollOffset) root.scrollBy(0, scrollOffset);
+            root.style.setProperty("--visual-viewport-offset-top", `${offsetTop}px`);
           }
-          root.style.setProperty("--visual-viewport-offset-top", `${offsetTop}px`);
 
           if (keyboardOpen) {
             root.setAttribute("data-virtual-keyboard-open", "");
@@ -169,15 +173,13 @@ export const VirtualKeyboardViewport = component$((props: { internalScroll: bool
             root.removeAttribute("data-virtual-keyboard-open");
           }
         });
-        animationFrames.add(animationFrame);
       };
 
       syncVisualViewport();
       visualViewport.addEventListener("resize", syncVisualViewport);
       visualViewport.addEventListener("scroll", syncVisualViewport);
       cleanup(() => {
-        for (const animationFrame of animationFrames) cancelAnimationFrame(animationFrame);
-        animationFrames.clear();
+        cancelAnimationFrame(animationFrame);
         visualViewport.removeEventListener("resize", syncVisualViewport);
         visualViewport.removeEventListener("scroll", syncVisualViewport);
       });
