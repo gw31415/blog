@@ -35,7 +35,7 @@ const articleShellStyles = css`
     position: relative;
     isolation: isolate;
 
-    min-height: 100dvh;
+    min-height: 100svh;
 
     padding: var(--paper-inset);
 
@@ -1445,16 +1445,14 @@ const articleShellStyles = css`
        ───────────────────────────── */
 
   & .editor-dock,
-  & .editor-error,
-  & .editor-dialog {
+  & .editor-error {
     color: #322b22;
     -webkit-text-fill-color: currentcolor;
     font-family: var(--sans);
     text-align: start;
   }
 
-  & .editor-dock button,
-  & .editor-dialog button {
+  & .editor-dock button {
     min-height: 28px;
     padding: 2px 6px;
 
@@ -1485,13 +1483,7 @@ const articleShellStyles = css`
     background: #352f25;
   }
 
-  & .editor-dialog button:last-child {
-    background: #352f25;
-    color: #fffaf0;
-  }
-
-  & .editor-dock button:disabled,
-  & .editor-dialog button:disabled {
+  & .editor-dock button:disabled {
     cursor: wait;
     opacity: 0.48;
   }
@@ -1549,15 +1541,6 @@ const articleShellStyles = css`
     flex: 0 0 auto;
   }
 
-  & .editor-dialog label {
-    display: grid;
-    gap: 5px;
-    color: #74685b;
-    font-size: 10px;
-    letter-spacing: 0.05em;
-  }
-
-  & .editor-dialog input,
   & .math-dialog textarea {
     width: 100%;
     min-height: 36px;
@@ -1569,50 +1552,11 @@ const articleShellStyles = css`
     font: 13px/1.35 var(--sans);
   }
 
-  & .editor-dialog input:focus,
   & .math-dialog textarea:focus {
     outline: 2px solid rgb(135 89 79 / 42%);
     outline-offset: 2px;
   }
 
-  & .editor-dialog-backdrop {
-    position: fixed;
-    z-index: 60;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    padding: 20px;
-    background: rgb(53 47 37 / 32%);
-  }
-
-  & .editor-dialog {
-    width: min(560px, 100%);
-    padding: 0;
-    border: 1px solid var(--line-strong);
-    border-radius: 0;
-    background: var(--paper);
-    box-shadow: 8px 8px 0 rgb(53 47 37 / 14%);
-  }
-
-  & .editor-dialog-heading {
-    padding: 14px 16px 12px;
-    border-bottom: 1px solid var(--line-soft);
-  }
-
-  & .editor-dialog-heading p {
-    margin: 0 0 3px;
-    color: var(--faint);
-    font-size: 9px;
-    letter-spacing: 0.14em;
-  }
-
-  & .editor-dialog h2 {
-    margin: 0;
-    font-size: 17px;
-    font-weight: 400;
-  }
-
-  & .editor-dialog-fields,
   & .math-dialog > label {
     display: grid;
     gap: 12px;
@@ -1642,13 +1586,6 @@ const articleShellStyles = css`
     margin-inline: 16px;
   }
 
-  & .editor-dialog-error {
-    margin: 0 16px;
-    color: var(--link);
-    font-size: 11px;
-  }
-
-  & .editor-dialog-actions,
   & .math-dialog-actions {
     display: flex;
     justify-content: flex-end;
@@ -1657,7 +1594,6 @@ const articleShellStyles = css`
     border-top: 1px solid var(--line-soft);
   }
 
-  & .editor-dialog-actions button,
   & .math-dialog-actions button {
     min-width: 84px;
     min-height: 36px;
@@ -1993,10 +1929,6 @@ const articleShellStyles = css`
 
     & .editor-formatting {
       width: calc(100% - 2 * var(--paper-inset));
-    }
-
-    & .editor-dialog {
-      width: min(100%, 420px);
     }
 
     & .content {

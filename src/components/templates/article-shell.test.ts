@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { canApplyInsertDialog, canSwitchToView, createArticlePresentation } from "./article-shell";
+import { canSwitchToView, createArticlePresentation } from "./article-shell";
 
 describe("article shell", () => {
   it("derives visible date and footer text from the article date", () => {
@@ -22,16 +22,5 @@ describe("article shell", () => {
   it("does not switch to view while the first editor load is pending", () => {
     expect(canSwitchToView("loading")).toBe(false);
     expect(canSwitchToView("edit")).toBe(true);
-  });
-
-  it("requires a destination but keeps image alternative text optional", () => {
-    expect(canApplyInsertDialog({ kind: "link", href: "https://", error: "" })).toBe(false);
-    expect(canApplyInsertDialog({ kind: "link", href: "https://example.com", error: "" })).toBe(
-      true,
-    );
-    expect(canApplyInsertDialog({ kind: "image", src: "", alt: "", error: "" })).toBe(false);
-    expect(canApplyInsertDialog({ kind: "image", src: "/image.png", alt: "", error: "" })).toBe(
-      true,
-    );
   });
 });

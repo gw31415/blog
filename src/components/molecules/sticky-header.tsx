@@ -2,12 +2,11 @@ import { component$, Slot } from "@qwik.dev/core";
 import { css } from "@qstyle/qwik";
 import { BlogTopbar } from "./topbar";
 
-/** Shared site chrome; only reveal behavior and surface treatment vary by page. */
+/** Shared site chrome; only reveal behavior varies by page. */
 export const StickyHeader = component$<{
   title?: string;
   class?: string;
   mode?: "scroll-reveal" | "persistent";
-  surface?: "paper" | "glass";
 }>((props) => (
   <header
     css={stickyHeaderStyles}
@@ -15,7 +14,7 @@ export const StickyHeader = component$<{
     data-site-header
     data-scroll-header={props.mode === "persistent" ? undefined : ""}
     data-header-mode={props.mode ?? "scroll-reveal"}
-    data-header-surface={props.surface ?? "paper"}
+    data-header-surface="paper"
   >
     <BlogTopbar title={props.title}>
       <Slot />
@@ -54,11 +53,6 @@ const stickyHeaderStyles = css`
     background-size: var(--paper-stock-size);
     background-blend-mode: multiply;
   }
-  &[data-header-surface="glass"] {
-    background: rgb(242 234 213 / 62%);
-    -webkit-backdrop-filter: blur(12px) saturate(112%);
-    backdrop-filter: blur(12px) saturate(112%);
-  }
   & form {
     margin: 0 0 0 auto;
     flex: none;
@@ -96,8 +90,6 @@ const stickyHeaderStyles = css`
   @media (forced-colors: active) {
     &[data-header-surface] {
       background: Canvas;
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
     }
   }
 `;
